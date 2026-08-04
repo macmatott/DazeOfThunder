@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Standings — Daze of Thunder{% endblock %}
+{% block content %}
+  <h1 class="page-title">Formula Fantasy Championship</h1>
+  <p class="page-subtitle">Updates automatically as results are scored</p>
+
+  <div
+    id="standings-tower"
+    hx-get="/partials/standings-table"
+    hx-trigger="load, every 30s"
+    hx-swap="innerHTML"
+  >
+    {% include "_standings_table.html" %}
+  </div>
+{% endblock %}

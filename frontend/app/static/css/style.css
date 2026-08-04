@@ -1,0 +1,242 @@
+/*
+  Design direction: a race-control timing tower, not a marketing site.
+  F1 timing towers are dense, monospaced, high-contrast displays built to
+  be read at a glance from across a garage — that's the reference point,
+  not a generic dashboard template.
+
+  Palette: dusk-storm, not the usual cream/terracotta or near-black/acid-
+  green AI-default pairings. Deep blue-charcoal ground, a warm amber-gold
+  accent (storm light through cloud cover — ties to "Daze of Thunder"
+  without being literal), a cool slate for secondary text.
+*/
+
+:root {
+  --color-ground: #12141c;
+  --color-surface: #1b1e29;
+  --color-surface-raised: #232735;
+  --color-accent: #e8a33d;
+  --color-accent-dim: #b9812f;
+  --color-text: #eef0f5;
+  --color-text-dim: #8b90a3;
+  --color-rule: #2e3242;
+  --color-positive: #5fb87a;
+  --color-negative: #d9634a;
+
+  --font-display: "Space Grotesk", "Arial Narrow", sans-serif;
+  --font-data: "IBM Plex Mono", "Courier New", monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+  --space-6: 4rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ground);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration: underline;
+}
+
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Top bar ─────────────────────────────────────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-surface);
+}
+
+.topbar__brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.topbar__brand span {
+  color: var(--color-accent);
+}
+
+.topbar__nav {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 0.9rem;
+  color: var(--color-text-dim);
+}
+
+.topbar__nav a {
+  color: var(--color-text-dim);
+}
+
+.topbar__nav a:hover {
+  color: var(--color-text);
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-5);
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 var(--space-1) 0;
+}
+
+.page-subtitle {
+  color: var(--color-text-dim);
+  font-size: 0.95rem;
+  margin: 0 0 var(--space-5) 0;
+}
+
+/* ── Timing-tower table (the signature element) ────────────
+   Every standings/results table on the site uses this — fixed-width
+   position numbers, monospace point totals, a live pulse dot to signal
+   "this updates automatically" rather than a generic refresh icon. */
+
+.tower {
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.tower__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-rule);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
+.pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-positive);
+  box-shadow: 0 0 0 0 rgba(95, 184, 122, 0.6);
+  animation: pulse 2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(95, 184, 122, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(95, 184, 122, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(95, 184, 122, 0);
+  }
+}
+
+.tower__row {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.tower__row:last-child {
+  border-bottom: none;
+}
+
+.tower__pos {
+  font-family: var(--font-data);
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+  text-align: center;
+}
+
+.tower__name {
+  font-weight: 500;
+}
+
+.tower__points {
+  font-family: var(--font-data);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tower__empty {
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--color-text-dim);
+  font-size: 0.9rem;
+}
+
+/* ── Utility ─────────────────────────────────────────────── */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  padding: var(--space-4);
+}
+
+.stat-card__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-2);
+}
+
+.stat-card__value {
+  font-family: var(--font-data);
+  font-size: 1.5rem;
+  color: var(--color-accent);
+}

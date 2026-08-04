@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Daze of Thunder{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar__brand">DAZE OF <span>THUNDER</span></div>
+    <nav class="topbar__nav">
+      <a href="/">Dashboard</a>
+      <a href="/standings">Standings</a>
+      <a href="/schedule">Schedule</a>
+      <a href="/draft">Draft</a>
+    </nav>
+  </div>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

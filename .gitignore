@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Data files that shouldn't be committed (real league data, not fixtures)
+*.csv
+!tests/fixtures/*.csv
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

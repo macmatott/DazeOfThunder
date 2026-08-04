@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Daze of Thunder{% endblock %}
+{% block content %}
+  <h1 class="page-title">Formula Fantasy</h1>
+  <p class="page-subtitle">Season {{ season_name or "not yet started" }}</p>
+
+  <div class="card-grid">
+    <div class="stat-card">
+      <div class="stat-card__label">Formula Fantasy Leader</div>
+      <div class="stat-card__value">{{ ff_leader or "—" }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__label">Constructors Leader</div>
+      <div class="stat-card__value">{{ constructor_leader or "—" }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__label">Latest Race</div>
+      <div class="stat-card__value">{{ latest_race or "—" }}</div>
+    </div>
+  </div>
+
+  {% if not season_name %}
+    <div class="tower">
+      <div class="tower__empty">
+        No season set up yet. Create a season and import the first race
+        to start the championship.
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
