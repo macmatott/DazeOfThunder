@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Formula Fantasy — Daze of Thunder{% endblock %}
+{% block content %}
+  <h1 class="page-title">Formula Fantasy</h1>
+  <p class="page-subtitle">Upcoming races on the 2026 F1 calendar</p>
+
+  <div class="tower">
+    {% if races %}
+      {% for race in races %}
+        <div class="tower__row">
+          <div class="tower__pos">R{{ race.round_number }}</div>
+          <div>
+            <div class="tower__name">{{ race.race_name }}</div>
+            <div class="tower__meta">{{ race.circuit_name }} — {{ race.location }}</div>
+          </div>
+          <div class="tower__points">{{ race.race_date }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="tower__empty">
+        No upcoming races found — the season may be over.
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

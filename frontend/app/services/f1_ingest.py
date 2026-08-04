@@ -48,6 +48,11 @@ class JolpicaClient:
         races = data["MRData"]["RaceTable"]["Races"]
         return [int(r["round"]) for r in races]
 
+    def get_full_schedule(self, season: int) -> list[dict]:
+        """Full race entries (round, raceName, Circuit, date, time)."""
+        data = self._get(f"/{season}.json")
+        return data["MRData"]["RaceTable"]["Races"]
+
     def get_race_results(self, season: int, round_number: int) -> dict | None:
         """Race name + Results list, or None if the race hasn't happened yet."""
         data = self._get(f"/{season}/{round_number}/results.json")
