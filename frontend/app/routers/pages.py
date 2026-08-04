@@ -1,7 +1,14 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from postgrest.exceptions import APIError
 
 from app.services.f1_schedule import get_season_timeline, get_upcoming_races
+from app.services.participants import (
+    get_participant,
+    parse_iracing_cust_id,
+    update_participant,
+)
 from app.services.standings import get_formula_fantasy_standings
 
 router = APIRouter()
@@ -76,3 +83,63 @@ def schedule_page(request: Request):
 @router.get("/draft")
 def draft_page(request: Request):
     return templates.TemplateResponse(request, "draft.html", {})
+
+
+@router.get("/profile")
+def profile_page(request: Request):
+    if not request.state.current_user:
+        return RedirectResponse("/auth/login")
+    participant = get_participant(request.state.current_user["participant_id"])
+    return templates.TemplateResponse(
+        request, "profile.html", {"participant": participant, "saved": False, "error": None}
+    )
+
+
+@router.post("/profile")
+def profile_update(
+    request: Request,
+    display_name: str = Form(...),
+    iracing_display_name: str = Form(""),
+    iracing_cust_id: str = Form(""),
+):
+    if not request.state.current_user:
+        return RedirectResponse("/auth/login")
+
+    participant_id = request.state.current_user["participant_id"]
+    display_name = display_name.strip()
+    error = None
+
+    try:
+        cust_id = parse_iracing_cust_id(iracing_cust_id)
+    except ValueError:
+        error = "iRacing Customer ID must be a number."
+        participant = get_participant(participant_id)
+        return templates.TemplateResponse(
+            request, "profile.html", {"participant": participant, "saved": False, "error": error}
+        )
+
+    try:
+        participant = update_participant(
+            participant_id,
+            display_name=display_name,
+            iracing_display_name=iracing_display_name.strip() or None,
+            iracing_cust_id=cust_id,
+        )
+    except APIError as exc:
+        if exc.code == "23505":
+            error = "That iRacing Customer ID is already linked to another profile."
+        else:
+            error = "Couldn't save your profile — please try again."
+        participant = get_participant(participant_id)
+        return templates.TemplateResponse(
+            request, "profile.html", {"participant": participant, "saved": False, "error": error}
+        )
+
+    # Update both: the session cookie (for future requests) and
+    # request.state.current_user (already set by CurrentUserMiddleware
+    # before this handler ran, so the nav in *this* response needs it too).
+    request.session["display_name"] = participant["display_name"]
+    request.state.current_user["display_name"] = participant["display_name"]
+    return templates.TemplateResponse(
+        request, "profile.html", {"participant": participant, "saved": True, "error": None}
+    )

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Profile — Daze of Thunder{% endblock %}
+{% block content %}
+  <h1 class="page-title">Profile Settings</h1>
+  <p class="page-subtitle">Your display name and iRacing identity for leaderboards</p>
+
+  {% if saved %}
+    <div class="form-notice form-notice--success">Saved.</div>
+  {% endif %}
+  {% if error %}
+    <div class="form-notice form-notice--error">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/profile" class="tower form">
+    <div class="form-field">
+      <label for="display_name">Display Name</label>
+      <input type="text" id="display_name" name="display_name" value="{{ participant.display_name }}" required>
+      <div class="tower__meta">Shown across the site instead of your Discord username.</div>
+    </div>
+
+    <div class="form-field">
+      <label for="iracing_display_name">iRacing Display Name</label>
+      <input type="text" id="iracing_display_name" name="iracing_display_name" value="{{ participant.iracing_display_name or '' }}">
+    </div>
+
+    <div class="form-field">
+      <label for="iracing_cust_id">iRacing Customer ID</label>
+      <input type="text" inputmode="numeric" id="iracing_cust_id" name="iracing_cust_id" value="{{ participant.iracing_cust_id or '' }}">
+      <div class="tower__meta">Find this on your iRacing member profile page — it's what actually matches your results, since display names aren't unique.</div>
+    </div>
+
+    <button type="submit" class="form-submit">Save</button>
+  </form>
+{% endblock %}

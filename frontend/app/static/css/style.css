@@ -130,6 +130,11 @@ button:focus-visible,
   display: flex;
 }
 
+.nav-dropdown__menu--right {
+  left: auto;
+  right: 0;
+}
+
 .nav-dropdown__menu a {
   padding: var(--space-2) var(--space-3);
   color: var(--color-text-dim);
@@ -140,6 +145,43 @@ button:focus-visible,
 .nav-dropdown__menu a:focus-visible {
   color: var(--color-text);
   background: var(--color-surface);
+  text-decoration: none;
+}
+
+.nav-dropdown__menu form {
+  margin: 0;
+}
+
+.nav-dropdown__signout {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nav-dropdown__signout:hover,
+.nav-dropdown__signout:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.topbar__signin {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  color: var(--color-accent) !important;
+  font-size: 0.9rem;
+}
+
+.topbar__signin:hover {
+  background: var(--color-accent);
+  color: var(--color-ground) !important;
   text-decoration: none;
 }
 
@@ -538,4 +580,77 @@ dialog.session-modal::backdrop {
 
 .session-field span:first-child {
   color: var(--color-text-dim);
+}
+
+/* ── Forms (Profile Settings) ────────────────────────────── */
+
+.form {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-field label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
+.form-field input {
+  font-family: var(--font-data);
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.form-field input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.form-submit {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent);
+  color: var(--color-ground);
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.form-submit:hover {
+  background: var(--color-accent-dim);
+}
+
+.form-notice {
+  padding: var(--space-3);
+  border-radius: 4px;
+  margin-bottom: var(--space-3);
+  font-size: 0.9rem;
+}
+
+.form-notice--success {
+  background: rgba(95, 184, 122, 0.1);
+  border: 1px solid var(--color-positive);
+  color: var(--color-positive);
+}
+
+.form-notice--error {
+  background: rgba(217, 99, 74, 0.1);
+  border: 1px solid var(--color-negative);
+  color: var(--color-negative);
 }

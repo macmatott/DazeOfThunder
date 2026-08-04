@@ -18,6 +18,11 @@ class Settings(BaseSettings):
 
     f1_data_api_base_url: str = "https://api.jolpi.ca/ergast/f1"
 
+    # Signs the session cookie (Starlette SessionMiddleware) — a random
+    # value, not a Supabase key. Set via .env locally / `fly secrets set`
+    # in production; never commit a real value.
+    secret_key: str = ""
+
     environment: str = "development"
     log_level: str = "INFO"
 

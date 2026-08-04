@@ -26,6 +26,19 @@
         </div>
       </div>
       <a href="/draft">Draft</a>
+      {% if request.state.current_user %}
+        <div class="nav-dropdown">
+          <a href="#" class="nav-dropdown__trigger">{{ request.state.current_user.display_name }}</a>
+          <div class="nav-dropdown__menu nav-dropdown__menu--right">
+            <a href="/profile">Profile Settings</a>
+            <form method="post" action="/auth/logout">
+              <button type="submit" class="nav-dropdown__signout">Sign Out</button>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <a href="/auth/login" class="topbar__signin">Sign In</a>
+      {% endif %}
     </nav>
   </div>
 
