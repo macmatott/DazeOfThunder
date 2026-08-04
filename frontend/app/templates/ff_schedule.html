@@ -10,23 +10,28 @@
     <div class="schedule-progress">{{ completed }}/{{ races | length }} complete</div>
   </div>
 
-  <div class="tower">
+  <div class="tower schedule-table-wrap">
     {% if races %}
+      <div class="schedule-row schedule-row--header">
+        <div></div>
+        <div>WK</div>
+        <div>Track</div>
+        <div>Date</div>
+        <div>Sim Details</div>
+        <div></div>
+      </div>
       {% for race in races %}
         <details
           class="race-row{% if race.is_past %} race-row--past{% endif %}{% if race.is_next %} race-row--next{% endif %}"
           {% if race.is_next %}id="next-race" open{% endif %}
         >
-          <summary>
-            <div class="race-row__main">
-              <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
-              <span class="tower__pos">WK{{ race.round_number }}</span>
-              <span class="tower__name">{{ race.race_name }}</span>
-              <span class="tower__points">{{ race.sim_date }}</span>
-            </div>
-            <div class="race-detail-strip">
-              🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }}
-            </div>
+          <summary class="schedule-row">
+            <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
+            <span class="tower__pos">WK{{ race.round_number }}</span>
+            <span class="tower__name">{{ race.race_name }}</span>
+            <span class="tower__points">{{ race.sim_date }}</span>
+            <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }}</span>
+            <span class="race-row__toggle" aria-hidden="true">⌄</span>
           </summary>
 
           <div class="race-results">
