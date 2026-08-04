@@ -277,7 +277,7 @@ main {
 
 .schedule-row {
   display: grid;
-  grid-template-columns: 2rem 2.75rem 1fr 6.5rem 11rem 1.5rem;
+  grid-template-columns: 2rem 2.75rem 1fr 6.5rem 6.5rem 11rem 1.5rem;
   align-items: center;
   gap: var(--space-3);
 }

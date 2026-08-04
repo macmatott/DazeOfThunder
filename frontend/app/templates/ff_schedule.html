@@ -16,7 +16,8 @@
         <div></div>
         <div>WK</div>
         <div>Track</div>
-        <div>Date</div>
+        <div>F1 Date</div>
+        <div>Sim Date</div>
         <div>Sim Details</div>
         <div></div>
       </div>
@@ -29,6 +30,7 @@
             <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
             <span class="tower__pos">WK{{ race.round_number }}</span>
             <span class="tower__name">{{ race.race_name }}</span>
+            <span class="tower__points">{{ race.race_date }}</span>
             <span class="tower__points">{{ race.sim_date }}</span>
             <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }}</span>
             <span class="race-row__toggle" aria-hidden="true">⌄</span>
