@@ -15,7 +15,7 @@
       <div class="schedule-row schedule-row--header">
         <div></div>
         <div>WK</div>
-        <div>Track</div>
+        <div>Race</div>
         <div>F1 Date</div>
         <div>Sim Date</div>
         <div>Sim Details</div>
@@ -29,7 +29,12 @@
           <summary class="schedule-row">
             <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
             <span class="tower__pos">WK{{ race.round_number }}</span>
-            <span class="tower__name">{{ race.race_name }}</span>
+            <span class="race-track">
+              <span class="tower__name">{{ race.race_name }}</span>
+              {% if race.round_number == 1 %}
+                <span class="tower__meta">Mount Panorama Circuit</span>
+              {% endif %}
+            </span>
             <span class="tower__points">{{ race.race_date }}</span>
             <span class="tower__points">{{ race.sim_date }}</span>
             <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }}</span>

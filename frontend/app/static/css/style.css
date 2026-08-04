@@ -282,6 +282,12 @@ main {
   gap: var(--space-3);
 }
 
+.race-track {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .schedule-row--header {
   padding: var(--space-2) var(--space-3);
   font-size: 0.75rem;
