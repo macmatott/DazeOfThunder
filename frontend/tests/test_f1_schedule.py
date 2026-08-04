@@ -3,12 +3,15 @@ get_upcoming_races filter/sort logic, tested against the JolpicaClient
 boundary (get_full_schedule mocked) rather than the network.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import patch
 
 from app.services.f1_schedule import (
+    SIM_CONDITIONS,
+    SIM_TEMPERATURE_F,
     _group_results_by_round,
     _merge_schedule_with_results,
+    _thursday_before,
     get_upcoming_races,
 )
 
@@ -130,3 +133,27 @@ def test_merge_past_round_with_no_imported_results_is_empty_not_missing():
     by_round = {r["round_number"]: r for r in races}
     assert by_round[1]["is_past"] is True
     assert by_round[1]["results"] == []
+
+
+def test_thursday_before_sunday_race():
+    # 2026-03-08 is a Sunday; the Thursday before it is 2026-03-05.
+    race_dt = datetime(2026, 3, 8, 4, 0, tzinfo=timezone.utc)
+    assert _thursday_before(race_dt) == date(2026, 3, 5)
+
+
+def test_thursday_before_race_already_on_thursday():
+    race_dt = datetime(2026, 3, 5, 12, 0, tzinfo=timezone.utc)
+    assert _thursday_before(race_dt) == date(2026, 3, 5)
+
+
+def test_merge_attaches_sim_placeholder_fields_to_every_race():
+    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
+    races = _merge_schedule_with_results(SCHEDULE, {}, now)
+
+    by_round = {r["round_number"]: r for r in races}
+    assert by_round[1]["sim_date"] == "Mar 5, 2026"
+    assert by_round[2]["sim_date"] == "Mar 19, 2026"
+    assert by_round[3]["sim_date"] == "Apr 2, 2026"
+    for race in races:
+        assert race["sim_temperature_f"] == SIM_TEMPERATURE_F
+        assert race["sim_conditions"] == SIM_CONDITIONS

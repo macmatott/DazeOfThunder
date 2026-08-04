@@ -1,8 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Schedule — Daze of Thunder{% endblock %}
 {% block content %}
-  <h1 class="page-title">Schedule</h1>
-  <p class="page-subtitle">Full 2026 season — click a race for results</p>
+  {% set completed = races | selectattr("is_past") | list | length %}
+  <div class="schedule-header">
+    <div>
+      <h1 class="page-title">Schedule</h1>
+      <p class="page-subtitle">2026 season — click a race for results</p>
+    </div>
+    <div class="schedule-progress">{{ completed }}/{{ races | length }} complete</div>
+  </div>
 
   <div class="tower">
     {% if races %}
@@ -11,13 +17,16 @@
           class="race-row{% if race.is_past %} race-row--past{% endif %}{% if race.is_next %} race-row--next{% endif %}"
           {% if race.is_next %}id="next-race" open{% endif %}
         >
-          <summary class="tower__row">
-            <div class="tower__pos">R{{ race.round_number }}</div>
-            <div>
-              <div class="tower__name">{{ race.race_name }}</div>
-              <div class="tower__meta">{{ race.circuit_name }} — {{ race.location }}</div>
+          <summary>
+            <div class="race-row__main">
+              <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
+              <span class="tower__pos">WK{{ race.round_number }}</span>
+              <span class="tower__name">{{ race.race_name }}</span>
+              <span class="tower__points">{{ race.sim_date }}</span>
             </div>
-            <div class="tower__points">{{ race.race_date }}</div>
+            <div class="race-detail-strip">
+              🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }}
+            </div>
           </summary>
 
           <div class="race-results">

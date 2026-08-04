@@ -116,8 +116,8 @@ button:focus-visible,
   left: 0;
   flex-direction: column;
   min-width: 160px;
-  margin-top: var(--space-2);
-  padding: var(--space-2) 0;
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-rule);
   border-radius: 4px;
@@ -244,13 +244,44 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Schedule header ─────────────────────────────────────── */
+
+.schedule-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.schedule-header .page-title,
+.schedule-header .page-subtitle {
+  margin-bottom: 0;
+}
+
+.schedule-progress {
+  font-family: var(--font-data);
+  font-size: 0.9rem;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
 /* ── Race timeline (Schedule page) ──────────────────────────
    Each race is a native <details>/<summary> — click-to-expand for free,
    no JS. */
 
+.race-row {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.race-row:last-child {
+  border-bottom: none;
+}
+
 .race-row summary {
   cursor: pointer;
   list-style: none;
+  padding: var(--space-3);
 }
 
 .race-row summary::-webkit-details-marker {
@@ -261,16 +292,53 @@ main {
   content: "";
 }
 
-.race-row:last-child summary {
-  border-bottom: none;
-}
-
 .race-row[open] summary {
   border-bottom: 1px solid var(--color-rule);
 }
 
+.race-row__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.race-row__main .tower__name {
+  flex: 1;
+}
+
+.race-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+}
+
+.race-detail-strip {
+  margin-top: var(--space-1);
+  padding-left: calc(1.5rem + var(--space-3));
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+}
+
 .race-row--past {
-  opacity: 0.55;
+  background: rgba(95, 184, 122, 0.05);
+}
+
+.race-row--past .race-status-icon {
+  color: var(--color-ground);
+  background: var(--color-positive);
+  border-color: var(--color-positive);
+}
+
+.race-row--past .tower__name {
+  color: var(--color-text-dim);
 }
 
 .race-row--next {

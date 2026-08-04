@@ -9,16 +9,28 @@ public-facing data.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.db.supabase_client import public_client
 from app.services.f1_ingest import JolpicaClient
 
+# Placeholder sim-session details shown on the Schedule page until real
+# iRacing session data exists — deliberately fixed, not derived from
+# anything, so they can't be mistaken for real weather/session data.
+SIM_TEMPERATURE_F = 80
+SIM_CONDITIONS = "No rain"
+
 
 def _race_datetime(race: dict) -> datetime:
-    date = race["date"]
+    date_str = race["date"]
     time = race.get("time", "00:00:00Z")
-    return datetime.fromisoformat(f"{date}T{time}".replace("Z", "+00:00"))
+    return datetime.fromisoformat(f"{date_str}T{time}".replace("Z", "+00:00"))
+
+
+def _thursday_before(race_dt: datetime) -> date:
+    """Most recent Thursday on/before race_dt's date (weekday 3 = Thursday)."""
+    days_since_thursday = (race_dt.weekday() - 3) % 7
+    return race_dt.date() - timedelta(days=days_since_thursday)
 
 
 def _format_race(race: dict, race_dt: datetime) -> dict:
@@ -84,6 +96,12 @@ def _merge_schedule_with_results(
         formatted["results"] = (
             results_by_round.get(formatted["round_number"], []) if is_past else None
         )
+
+        sim_date = _thursday_before(race_dt)
+        formatted["sim_date"] = f"{sim_date:%b} {sim_date.day}, {sim_date:%Y}"
+        formatted["sim_temperature_f"] = SIM_TEMPERATURE_F
+        formatted["sim_conditions"] = SIM_CONDITIONS
+
         races.append(formatted)
 
     races.sort(key=lambda r: r["race_datetime"])
