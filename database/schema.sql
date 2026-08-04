@@ -264,3 +264,12 @@ alter table public.scoring_rules enable row level security;
 -- (Section 11 of the design doc) is still open. RLS is enabled by default
 -- (safe default = no access) so nothing is accidentally exposed before
 -- policies are written.
+--
+-- Exception: seasons/f1_drivers/f1_race_results are public reference data
+-- (race results, not accounts or picks) that the public-facing site reads
+-- directly via the anon key — opened up read-only below. Everything else
+-- stays fully closed until the public/private split is decided.
+
+create policy "Public read access" on public.seasons for select using (true);
+create policy "Public read access" on public.f1_drivers for select using (true);
+create policy "Public read access" on public.f1_race_results for select using (true);

@@ -244,6 +244,44 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Race timeline (Schedule page) ──────────────────────────
+   Each race is a native <details>/<summary> — click-to-expand for free,
+   no JS. */
+
+.race-row summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.race-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.race-row summary::marker {
+  content: "";
+}
+
+.race-row:last-child summary {
+  border-bottom: none;
+}
+
+.race-row[open] summary {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.race-row--past {
+  opacity: 0.55;
+}
+
+.race-row--next {
+  border: 1px solid var(--color-accent);
+  background: rgba(232, 163, 61, 0.06);
+}
+
+.race-results .tower__row:last-child {
+  border-bottom: none;
+}
+
 .tower__meta {
   font-size: 0.85rem;
   color: var(--color-text-dim);

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Schedule — Daze of Thunder{% endblock %}
+{% block content %}
+  <h1 class="page-title">Schedule</h1>
+  <p class="page-subtitle">Full 2026 season — click a race for results</p>
+
+  <div class="tower">
+    {% if races %}
+      {% for race in races %}
+        <details
+          class="race-row{% if race.is_past %} race-row--past{% endif %}{% if race.is_next %} race-row--next{% endif %}"
+          {% if race.is_next %}id="next-race" open{% endif %}
+        >
+          <summary class="tower__row">
+            <div class="tower__pos">R{{ race.round_number }}</div>
+            <div>
+              <div class="tower__name">{{ race.race_name }}</div>
+              <div class="tower__meta">{{ race.circuit_name }} — {{ race.location }}</div>
+            </div>
+            <div class="tower__points">{{ race.race_date }}</div>
+          </summary>
+
+          <div class="race-results">
+            {% if not race.is_past %}
+              <div class="tower__empty">Race hasn't happened yet.</div>
+            {% elif race.results %}
+              {% for result in race.results %}
+                <div class="tower__row">
+                  <div class="tower__pos">{{ result.position }}</div>
+                  <div>
+                    <div class="tower__name">{{ result.driver_name }}</div>
+                    <div class="tower__meta">
+                      {{ result.team_name }}{% if result.status != "Finished" %} — {{ result.status }}{% endif %}
+                    </div>
+                  </div>
+                  <div class="tower__points">{{ result.points }} pts</div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="tower__empty">No results imported yet.</div>
+            {% endif %}
+          </div>
+        </details>
+      {% endfor %}
+    {% else %}
+      <div class="tower__empty">No schedule found.</div>
+    {% endif %}
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script src="/static/js/schedule.js"></script>
+{% endblock %}

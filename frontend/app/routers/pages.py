@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
-from app.services.f1_schedule import get_upcoming_races
+from app.services.f1_schedule import get_season_timeline, get_upcoming_races
 from app.services.standings import get_formula_fantasy_standings
 
 router = APIRouter()
@@ -31,6 +31,12 @@ def formula_fantasy_landing(request: Request):
     return templates.TemplateResponse(
         request, "formula_fantasy.html", {"races": races}
     )
+
+
+@router.get("/formula-fantasy/schedule")
+def ff_schedule(request: Request):
+    races = get_season_timeline(CURRENT_SEASON)
+    return templates.TemplateResponse(request, "ff_schedule.html", {"races": races})
 
 
 @router.get("/formula-fantasy/standings/combined")
