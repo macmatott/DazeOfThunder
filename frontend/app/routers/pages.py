@@ -80,11 +80,6 @@ def schedule_page(request: Request):
     return templates.TemplateResponse(request, "schedule.html", {})
 
 
-@router.get("/draft")
-def draft_page(request: Request):
-    return templates.TemplateResponse(request, "draft.html", {})
-
-
 @router.get("/profile")
 def profile_page(request: Request):
     if not request.state.current_user:

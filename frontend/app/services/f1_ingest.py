@@ -71,6 +71,12 @@ class JolpicaClient:
         race = races[0]
         return {"race_name": race["raceName"], "results": race["SprintResults"]}
 
+    def get_driver_standings(self, season: int) -> list[dict]:
+        """Final championship standings for a completed season."""
+        data = self._get(f"/{season}/driverStandings.json")
+        lists = data["MRData"]["StandingsTable"]["StandingsLists"]
+        return lists[0]["DriverStandings"] if lists else []
+
 
 def map_result_to_row(
     result: dict,

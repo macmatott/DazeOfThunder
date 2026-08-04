@@ -79,12 +79,33 @@ button:focus-visible,
 }
 
 .topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-weight: 700;
   font-size: 1.1rem;
   letter-spacing: 0.02em;
 }
 
 .topbar__brand span {
+  color: var(--color-accent);
+}
+
+.topbar__brand-link {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.topbar__brand-link:hover {
+  text-decoration: none;
+}
+
+.topbar__discord {
+  display: inline-flex;
+  color: var(--color-text-dim);
+}
+
+.topbar__discord:hover {
   color: var(--color-accent);
 }
 
@@ -653,4 +674,103 @@ dialog.session-modal::backdrop {
   background: rgba(217, 99, 74, 0.1);
   border: 1px solid var(--color-negative);
   color: var(--color-negative);
+}
+
+/* ── Draft board ─────────────────────────────────────────── */
+
+.draft-pool {
+  /* Single column, top-to-bottom by 2025 points (best first) — each row
+     carries the driver's fixed 1-22 rank on the left. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.draft-pool-header {
+  display: grid;
+  grid-template-columns: 3rem 1fr 5.5rem;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+}
+
+.draft-pool-header span:nth-child(3) {
+  text-align: right;
+}
+
+.draft-pick-btn {
+  display: grid;
+  grid-template-columns: 3rem 1fr 5.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.draft-pick-btn__rank {
+  font-family: var(--font-data);
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+  text-align: center;
+}
+
+.draft-pick-btn__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.draft-pick-btn__logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.draft-pick-btn__points {
+  font-family: var(--font-data);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--color-text-dim);
+}
+
+.draft-pick-btn__points--fantasy {
+  font-size: 1.05rem;
+  color: var(--color-accent);
+}
+
+.draft-pick-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.draft-timer {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.draft-timer--low {
+  color: var(--color-negative);
+}
+
+.draft-picks-list {
+  margin-top: var(--space-4);
 }

@@ -8,10 +8,13 @@ and swaps in whatever comes back.
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
+from app.services.draft import build_draft_board_context, get_season_id
 from app.services.standings import get_formula_fantasy_standings
 
 router = APIRouter(prefix="/partials")
 templates = Jinja2Templates(directory="app/templates")
+
+DRAFT_SEASON = "2026"
 
 
 @router.get("/standings-table")
@@ -20,3 +23,13 @@ def standings_table(request: Request):
     return templates.TemplateResponse(
         request, "_standings_table.html", {"standings": standings}
     )
+
+
+@router.get("/draft-board")
+def draft_board(request: Request):
+    participant_id = None
+    if request.state.current_user:
+        participant_id = request.state.current_user["participant_id"]
+    season_id = get_season_id(DRAFT_SEASON)
+    board = build_draft_board_context(season_id, participant_id)
+    return templates.TemplateResponse(request, "_draft_board.html", {"board": board})

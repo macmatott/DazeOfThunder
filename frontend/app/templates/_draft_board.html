@@ -1,0 +1,85 @@
+{# Rendered on full-page load (via include), by /partials/draft-board on
+   every HTMX poll, and by POST /formula-fantasy/draft/pick — keep this
+   fragment self-contained (no base.html deps), same pattern as
+   _standings_table.html. #}
+<div
+  id="draft-turn-marker"
+  data-on-the-clock="{{ 'true' if board.viewer_is_on_the_clock else 'false' }}"
+  data-pick-number="{{ board.status.current_pick_number if board.status else '' }}"
+  hidden
+></div>
+
+<div class="tower">
+  <div class="tower__header">
+    <span class="pulse" aria-hidden="true"></span>
+    {% if board.status.is_complete %}
+      Draft complete
+    {% elif board.on_the_clock_name %}
+      On the clock: {{ board.on_the_clock_name }}
+      (Pick {{ board.status.current_pick_number }}, Round {{ board.status.current_round }})
+      {% if board.seconds_remaining is not none %}
+        <span class="draft-timer{% if board.seconds_remaining <= 10 %} draft-timer--low{% endif %}">
+          {{ board.seconds_remaining }}s left
+        </span>
+      {% endif %}
+    {% else %}
+      Live
+    {% endif %}
+  </div>
+
+  {% if board.viewer_is_on_the_clock %}
+    <div class="draft-pool">
+      <div class="draft-pool-header">
+        <span></span>
+        <span></span>
+        <span>2025 FPTS</span>
+      </div>
+      {% for driver in board.available_drivers %}
+        <button
+          type="button"
+          class="draft-pick-btn"
+          hx-post="/formula-fantasy/draft/pick"
+          hx-vals='{"f1_driver_id": "{{ driver.id }}"}'
+          hx-target="#draft-board"
+          hx-swap="innerHTML"
+        >
+          <span class="draft-pick-btn__rank">{{ driver.rank }}</span>
+          <span>
+            <span class="draft-pick-btn__header">
+              {% if driver.logo_url %}
+                <img src="{{ driver.logo_url }}" alt="" class="draft-pick-btn__logo">
+              {% endif %}
+              <span>{{ driver.full_name }}</span>
+            </span>
+            <span class="tower__meta">{{ driver.team_name }}</span>
+          </span>
+          <span class="draft-pick-btn__points draft-pick-btn__points--fantasy">
+            {% if driver.fantasy_points_2025 is not none %}{{ driver.fantasy_points_2025 | int }}{% endif %}
+          </span>
+        </button>
+      {% endfor %}
+    </div>
+  {% elif not board.status.is_complete %}
+    <div class="tower__empty">
+      Waiting for {{ board.on_the_clock_name }} to pick...
+    </div>
+  {% endif %}
+</div>
+
+<div class="tower draft-picks-list">
+  <div class="tower__header">Picks so far</div>
+  {% if board.picks %}
+    {% for pick in board.picks %}
+      <div class="tower__row">
+        <div class="tower__pos">{{ pick.pick_number }}</div>
+        <div>
+          <div class="tower__name">{{ pick.participants.display_name }}</div>
+          <div class="tower__meta">{{ pick.f1_drivers.full_name }} — {{ pick.f1_drivers.team_name }}</div>
+        </div>
+        <div class="tower__points">R{{ pick.round_number }}</div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="tower__empty">No picks yet.</div>
+  {% endif %}
+</div>

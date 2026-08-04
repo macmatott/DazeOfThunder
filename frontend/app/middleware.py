@@ -18,6 +18,7 @@ AUTH_SESSION_KEYS = (
     "refresh_token",
     "expires_at",
     "participant_id",
+    "is_admin",
     "display_name",
     "avatar_url",
 )
@@ -31,6 +32,7 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
         if expires_at and expires_at > time.time():
             request.state.current_user = {
                 "participant_id": session.get("participant_id"),
+                "is_admin": session.get("is_admin", False),
                 "display_name": session.get("display_name"),
                 "avatar_url": session.get("avatar_url"),
             }

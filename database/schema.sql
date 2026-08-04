@@ -175,6 +175,19 @@ create table public.draft_picks (
     unique (season_id, participant_id, round_number)
 );
 
+-- Live draft session state — separate from draft_picks (the record of
+-- completed picks) because whose turn it is gets *computed* from
+-- draft_order + len(draft_picks), not stored redundantly.
+create table public.draft_state (
+    id uuid primary key default gen_random_uuid(),
+    season_id uuid not null unique references public.seasons(id),
+    is_live boolean not null default false,
+    draft_order uuid[] not null default '{}',
+    total_rounds int not null default 2,
+    launched_at timestamptz,
+    launched_by uuid references public.participants(id)
+);
+
 -- Real-world F1 race results, feeding fantasy scoring. Data source TBD
 -- (Jolpica-F1 API is the free Ergast-compatible option) — this table is
 -- the adapter boundary: however results arrive, they land here in a
@@ -254,6 +267,7 @@ alter table public.race_results enable row level security;
 alter table public.sim_points_awarded enable row level security;
 alter table public.f1_drivers enable row level security;
 alter table public.draft_picks enable row level security;
+alter table public.draft_state enable row level security;
 alter table public.f1_race_results enable row level security;
 alter table public.fantasy_points_awarded enable row level security;
 alter table public.constructors enable row level security;

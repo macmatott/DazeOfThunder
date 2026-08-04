@@ -1,12 +1,55 @@
 {% extends "base.html" %}
-{% block title %}Draft — Daze of Thunder{% endblock %}
+{% block title %}2026 Fantasy Formula Draft — Daze of Thunder{% endblock %}
 {% block content %}
-  <h1 class="page-title">Fantasy Draft</h1>
-  <p class="page-subtitle">Live pick-by-pick, once it opens</p>
-  <div class="tower">
-    <div class="tower__empty">
-      The draft hasn't started. It'll open here once the season and
-      driver pool are set up.
+  <h1 class="page-title">2026 Fantasy Formula Draft</h1>
+  <p class="page-subtitle">Test run ahead of the real 2027 draft</p>
+
+  {% if launch_error %}
+    <div class="form-notice form-notice--error">{{ launch_error }}</div>
+  {% endif %}
+
+  {% if not board.is_live and is_admin %}
+    <div class="tower form">
+      <div class="session-card__title">Launch the draft</div>
+      <p class="tower__meta">
+        Set the pick order for everyone currently signed in. Each round is
+        one pick per person; round 2 snakes back in reverse order.
+      </p>
+      <form method="post" action="/formula-fantasy/draft/launch">
+        {% for i in range(participants | length) %}
+          <div class="form-field">
+            <label for="order-{{ i }}">Pick {{ i + 1 }}</label>
+            <select id="order-{{ i }}" name="order" required>
+              <option value="" disabled selected>Choose a member</option>
+              {% for p in participants %}
+                <option value="{{ p.id }}">{{ p.display_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endfor %}
+        <button type="submit" class="form-submit">Launch Draft</button>
+      </form>
     </div>
-  </div>
+  {% elif not board.is_live %}
+    <div class="tower">
+      <div class="tower__empty">
+        The draft hasn't started yet. Check back once an admin launches it.
+      </div>
+    </div>
+  {% else %}
+    <audio id="draft-turn-chime" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
+    <div
+      id="draft-board"
+      hx-get="/partials/draft-board"
+      hx-trigger="load, every 2s"
+      hx-swap="innerHTML"
+    >
+      {% include "_draft_board.html" %}
+    </div>
+  {% endif %}
+{% endblock %}
+{% block scripts %}
+  {% if board.is_live %}
+    <script src="/static/js/draft.js"></script>
+  {% endif %}
 {% endblock %}
