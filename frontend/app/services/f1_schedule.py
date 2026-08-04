@@ -20,6 +20,35 @@ from app.services.f1_ingest import JolpicaClient
 SIM_TEMPERATURE_F = 80
 SIM_CONDITIONS = "No rain"
 
+# iRacing track assigned to each round's sim race — set by league admin,
+# not derived from the F1 calendar. Not tied to real-world geography (the
+# sim track doesn't have to match the host country).
+IRACING_TRACK_BY_ROUND: dict[int, str] = {
+    1: "Phillip Island Circuit",
+    2: "Okayama International Circuit -- Full Course",
+    3: "Suzuka International Racing Course -- Grand Prix",
+    4: "Miami International Autodrome -- Grand Prix",
+    5: "Circuit Gilles Villeneuve -- Grand Prix",
+    6: "Adelaide Street Circuit",
+    7: "Circuit de Barcelona-Catalunya -- Grand Prix",
+    8: "Red Bull Ring -- Grand Prix",
+    9: "Silverstone Circuit -- Grand Prix",
+    10: "Circuit de Spa-Francorchamps -- Grand Prix Pits",
+    11: "Hungaroring",
+    12: "Circuit Park Zandvoort",
+    13: "Autodromo Nazionale Monza -- Grand Prix",
+    14: "Autódromo Internacional do Algarve -- Grand Prix",
+    15: "Circuit de Nevers Magny-Cours -- Grand Prix",
+    16: "Nürburgring Grand-Prix-Strecke - Grand Prix",
+    17: "Circuit de Lédenon -- Grand Prix",
+    18: "Circuit of the Americas -- Grand Prix",
+    19: "Autódromo Hermanos Rodríguez -- Grand Prix",
+    20: "Autódromo José Carlos Pace -- Grand Prix",
+    21: "Qualcomm Circuit (Naval Base Coronado)",
+    22: "Road America -- Full Course",
+    23: "Daytona International Speedway -- Road Course",
+}
+
 
 def _race_datetime(race: dict) -> datetime:
     date_str = race["date"]
@@ -101,6 +130,7 @@ def _merge_schedule_with_results(
         formatted["sim_date"] = f"{sim_date:%b} {sim_date.day}, {sim_date:%Y}"
         formatted["sim_temperature_f"] = SIM_TEMPERATURE_F
         formatted["sim_conditions"] = SIM_CONDITIONS
+        formatted["iracing_track"] = IRACING_TRACK_BY_ROUND.get(formatted["round_number"])
 
         races.append(formatted)
 

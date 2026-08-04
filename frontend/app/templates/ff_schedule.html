@@ -31,8 +31,8 @@
             <span class="tower__pos">WK{{ race.round_number }}</span>
             <span class="race-track">
               <span class="tower__name">{{ race.race_name }}</span>
-              {% if race.round_number == 1 %}
-                <span class="tower__meta">Mount Panorama Circuit</span>
+              {% if race.iracing_track %}
+                <span class="tower__meta">{{ race.iracing_track }}</span>
               {% endif %}
             </span>
             <span class="tower__points">{{ race.race_date }}</span>

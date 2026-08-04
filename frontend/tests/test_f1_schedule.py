@@ -7,6 +7,7 @@ from datetime import date, datetime, timezone
 from unittest.mock import patch
 
 from app.services.f1_schedule import (
+    IRACING_TRACK_BY_ROUND,
     SIM_CONDITIONS,
     SIM_TEMPERATURE_F,
     _group_results_by_round,
@@ -157,3 +158,22 @@ def test_merge_attaches_sim_placeholder_fields_to_every_race():
     for race in races:
         assert race["sim_temperature_f"] == SIM_TEMPERATURE_F
         assert race["sim_conditions"] == SIM_CONDITIONS
+
+
+def test_merge_attaches_iracing_track_by_round():
+    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
+    races = _merge_schedule_with_results(SCHEDULE, {}, now)
+
+    by_round = {r["round_number"]: r for r in races}
+    assert by_round[1]["iracing_track"] == IRACING_TRACK_BY_ROUND[1]
+    assert by_round[2]["iracing_track"] == IRACING_TRACK_BY_ROUND[2]
+    assert by_round[3]["iracing_track"] == IRACING_TRACK_BY_ROUND[3]
+
+
+def test_merge_iracing_track_is_none_for_unmapped_round():
+    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
+    unmapped_schedule = [{**SCHEDULE[0], "round": "99"}]
+
+    races = _merge_schedule_with_results(unmapped_schedule, {}, now)
+
+    assert races[0]["iracing_track"] is None
