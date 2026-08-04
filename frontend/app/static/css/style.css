@@ -251,7 +251,7 @@ main {
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .schedule-header .page-title,
@@ -266,10 +266,15 @@ main {
   white-space: nowrap;
 }
 
+.schedule-meta {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-4);
+}
+
 /* ── Race table (Schedule page) ─────────────────────────────
-   A compact grid table. Each race is a native <details>/<summary> — the
-   summary is itself a grid row sharing the header's column template, so
-   columns line up; click-to-expand is free, no JS. */
+   A compact grid table. Each row's .schedule-row shares the header's
+   column template so everything lines up. */
 
 .schedule-table-wrap {
   overflow-x: auto;
@@ -277,9 +282,10 @@ main {
 
 .schedule-row {
   display: grid;
-  grid-template-columns: 2rem 2.75rem 1fr 6.5rem 6.5rem 11rem 1.5rem;
+  grid-template-columns: 2rem 2.75rem 1fr 6.5rem 20rem 1.5rem;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
 }
 
 .race-track {
@@ -289,7 +295,6 @@ main {
 }
 
 .schedule-row--header {
-  padding: var(--space-2) var(--space-3);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -303,24 +308,6 @@ main {
 
 .race-row:last-child {
   border-bottom: none;
-}
-
-.race-row summary {
-  cursor: pointer;
-  list-style: none;
-  padding: var(--space-2) var(--space-3);
-}
-
-.race-row summary::-webkit-details-marker {
-  display: none;
-}
-
-.race-row summary::marker {
-  content: "";
-}
-
-.race-row[open] summary {
-  border-bottom: 1px solid var(--color-rule);
 }
 
 .race-status-icon {
@@ -344,16 +331,6 @@ main {
   text-overflow: ellipsis;
 }
 
-.race-row__toggle {
-  color: var(--color-text-dim);
-  text-align: center;
-  transition: transform 0.15s ease;
-}
-
-.race-row[open] .race-row__toggle {
-  transform: rotate(180deg);
-}
-
 .race-row--past {
   background: rgba(95, 184, 122, 0.05);
 }
@@ -371,10 +348,6 @@ main {
 .race-row--next {
   border: 1px solid var(--color-accent);
   background: rgba(232, 163, 61, 0.06);
-}
-
-.race-results .tower__row:last-child {
-  border-bottom: none;
 }
 
 .tower__meta {
@@ -418,4 +391,151 @@ main {
   font-family: var(--font-data);
   font-size: 1.5rem;
   color: var(--color-accent);
+}
+
+/* ── Session detail popout (Schedule page) ──────────────────
+   Native <dialog> — free ::backdrop blur, native scroll, native Escape.
+   Opening it needs JS (schedule.js); everything else here is CSS-only. */
+
+.race-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.race-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-dim);
+  cursor: pointer;
+}
+
+.race-info-btn:hover {
+  color: var(--color-accent);
+}
+
+dialog.session-modal {
+  width: min(680px, 90vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+dialog.session-modal::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.session-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-surface-raised);
+}
+
+.session-modal__title {
+  font-weight: 700;
+}
+
+.session-modal__subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  margin-top: var(--space-1);
+}
+
+.session-modal__close {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.session-modal__close:hover {
+  color: var(--color-text);
+}
+
+.session-modal__body {
+  padding: var(--space-4);
+}
+
+.session-modal__note {
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+  font-style: italic;
+  margin: 0 0 var(--space-4) 0;
+}
+
+.session-overview-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+}
+
+.session-overview-card__date {
+  text-align: right;
+}
+
+.session-section-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+  margin: var(--space-4) 0 var(--space-2) 0;
+}
+
+.session-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.session-card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  padding: var(--space-3);
+}
+
+.session-card__title {
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.session-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.session-field:last-child {
+  border-bottom: none;
+}
+
+.session-field span:first-child {
+  color: var(--color-text-dim);
 }
