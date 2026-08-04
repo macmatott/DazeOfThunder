@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
 
+    f1_data_api_base_url: str = "https://api.jolpi.ca/ergast/f1"
+
     environment: str = "development"
     log_level: str = "INFO"
 

@@ -1,0 +1,261 @@
+"""
+F1 real-world results ingestion — Jolpica-F1 (Ergast-schema-compatible) into
+f1_race_results. This is the adapter boundary named in database/schema.sql:
+however results arrive, they land in f1_race_results in a consistent shape
+before fantasy scoring touches them.
+
+No separate driver-seeding step: f1_drivers rows are get-or-created here,
+per result, keyed by (season_id, full_name) with team_name taken from that
+same result's Constructor — sidesteps needing to model reserve drivers
+separately, since only drivers who actually appear in results get created.
+
+Writes use admin_client() (service_role) — this runs as an offline script,
+not an authenticated user request.
+"""
+
+from __future__ import annotations
+
+import time
+
+import httpx
+from supabase import Client
+
+from app.config import settings
+from app.db.supabase_client import admin_client
+
+
+class JolpicaClient:
+    def __init__(self, base_url: str | None = None, request_delay: float = 1.0):
+        self._base_url = (base_url or settings.f1_data_api_base_url).rstrip("/")
+        self._delay = request_delay
+        self._http = httpx.Client(timeout=10.0)
+
+    def _get(self, path: str, *, retries: int = 3) -> dict:
+        for attempt in range(retries + 1):
+            resp = self._http.get(f"{self._base_url}{path}")
+            if resp.status_code == 429 and attempt < retries:
+                retry_after = float(resp.headers.get("Retry-After", 5))
+                time.sleep(retry_after)
+                continue
+            resp.raise_for_status()
+            break
+        time.sleep(self._delay)
+        return resp.json()
+
+    def get_schedule(self, season: int) -> list[int]:
+        """Round numbers on the season's calendar, in order."""
+        data = self._get(f"/{season}.json")
+        races = data["MRData"]["RaceTable"]["Races"]
+        return [int(r["round"]) for r in races]
+
+    def get_race_results(self, season: int, round_number: int) -> dict | None:
+        """Race name + Results list, or None if the race hasn't happened yet."""
+        data = self._get(f"/{season}/{round_number}/results.json")
+        races = data["MRData"]["RaceTable"]["Races"]
+        if not races:
+            return None
+        race = races[0]
+        return {"race_name": race["raceName"], "results": race["Results"]}
+
+    def get_sprint_results(self, season: int, round_number: int) -> dict | None:
+        """Race name + SprintResults list, or None if no sprint that round."""
+        data = self._get(f"/{season}/{round_number}/sprint.json")
+        races = data["MRData"]["RaceTable"]["Races"]
+        if not races:
+            return None
+        race = races[0]
+        return {"race_name": race["raceName"], "results": race["SprintResults"]}
+
+
+def map_result_to_row(
+    result: dict,
+    *,
+    season_id: str,
+    round_number: int,
+    race_name: str,
+    is_sprint: bool,
+    f1_driver_id: str,
+) -> dict:
+    """One Jolpica Results/SprintResults entry -> one f1_race_results row."""
+    fastest_lap = result.get("FastestLap", {}).get("rank") == "1"
+    return {
+        "season_id": season_id,
+        "round_number": round_number,
+        "race_name": race_name,
+        "is_sprint": is_sprint,
+        "f1_driver_id": f1_driver_id,
+        "finish_position": int(result["position"]),
+        "status": result["status"],
+        "points": float(result["points"]),
+        "fastest_lap": fastest_lap,
+    }
+
+
+def get_or_create_season(client: Client, name: str, *, dry_run: bool = False) -> str:
+    existing = client.table("seasons").select("id").eq("name", name).execute()
+    if existing.data:
+        return existing.data[0]["id"]
+    if dry_run:
+        return f"<would-create-season:{name}>"
+    created = client.table("seasons").insert({"name": name}).execute()
+    return created.data[0]["id"]
+
+
+def get_or_create_driver(
+    client: Client,
+    season_id: str,
+    *,
+    given_name: str,
+    family_name: str,
+    team_name: str,
+    cache: dict[str, str],
+    dry_run: bool = False,
+) -> str:
+    full_name = f"{given_name} {family_name}"
+    if full_name in cache:
+        return cache[full_name]
+
+    existing = (
+        client.table("f1_drivers")
+        .select("id")
+        .eq("season_id", season_id)
+        .eq("full_name", full_name)
+        .execute()
+    )
+    if existing.data:
+        driver_id = existing.data[0]["id"]
+    elif dry_run:
+        driver_id = f"<would-create-driver:{full_name}>"
+    else:
+        created = (
+            client.table("f1_drivers")
+            .insert(
+                {
+                    "season_id": season_id,
+                    "full_name": full_name,
+                    "team_name": team_name,
+                }
+            )
+            .execute()
+        )
+        driver_id = created.data[0]["id"]
+
+    cache[full_name] = driver_id
+    return driver_id
+
+
+def _import_results(
+    client: Client,
+    jolpica_results: list[dict],
+    *,
+    season_id: str,
+    round_number: int,
+    race_name: str,
+    is_sprint: bool,
+    driver_cache: dict[str, str],
+    dry_run: bool,
+) -> int:
+    rows = []
+    for result in jolpica_results:
+        driver = result["Driver"]
+        driver_id = get_or_create_driver(
+            client,
+            season_id,
+            given_name=driver["givenName"],
+            family_name=driver["familyName"],
+            team_name=result["Constructor"]["name"],
+            cache=driver_cache,
+            dry_run=dry_run,
+        )
+        rows.append(
+            map_result_to_row(
+                result,
+                season_id=season_id,
+                round_number=round_number,
+                race_name=race_name,
+                is_sprint=is_sprint,
+                f1_driver_id=driver_id,
+            )
+        )
+
+    if dry_run:
+        for row in rows:
+            print(f"    [dry-run] {row}")
+        return len(rows)
+
+    if rows:
+        client.table("f1_race_results").upsert(
+            rows, on_conflict="season_id,round_number,is_sprint,f1_driver_id"
+        ).execute()
+    return len(rows)
+
+
+def import_round(
+    jolpica: JolpicaClient,
+    client: Client,
+    *,
+    season_id: str,
+    season_year: int,
+    round_number: int,
+    driver_cache: dict[str, str],
+    dry_run: bool = False,
+) -> dict:
+    """Imports race results, and sprint results if the round had one."""
+    race_count = 0
+    sprint_count = 0
+
+    race = jolpica.get_race_results(season_year, round_number)
+    if race is not None:
+        race_count = _import_results(
+            client,
+            race["results"],
+            season_id=season_id,
+            round_number=round_number,
+            race_name=race["race_name"],
+            is_sprint=False,
+            driver_cache=driver_cache,
+            dry_run=dry_run,
+        )
+
+    sprint = jolpica.get_sprint_results(season_year, round_number)
+    if sprint is not None:
+        sprint_count = _import_results(
+            client,
+            sprint["results"],
+            season_id=season_id,
+            round_number=round_number,
+            race_name=sprint["race_name"],
+            is_sprint=True,
+            driver_cache=driver_cache,
+            dry_run=dry_run,
+        )
+
+    return {"round": round_number, "race_rows": race_count, "sprint_rows": sprint_count}
+
+
+def import_season(
+    season_year: int,
+    *,
+    round_number: int | None = None,
+    dry_run: bool = False,
+) -> list[dict]:
+    client = admin_client()
+    jolpica = JolpicaClient()
+    season_id = get_or_create_season(client, str(season_year), dry_run=dry_run)
+    driver_cache: dict[str, str] = {}
+
+    rounds = [round_number] if round_number else jolpica.get_schedule(season_year)
+
+    summaries = []
+    for rnd in rounds:
+        summary = import_round(
+            jolpica,
+            client,
+            season_id=season_id,
+            season_year=season_year,
+            round_number=rnd,
+            driver_cache=driver_cache,
+            dry_run=dry_run,
+        )
+        summaries.append(summary)
+    return summaries
