@@ -9,7 +9,7 @@ from app.services.participants import (
     parse_iracing_cust_id,
     update_participant,
 )
-from app.services.standings import get_formula_fantasy_standings
+from app.services.standings import get_fantasy_only_standings, get_formula_fantasy_standings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -19,15 +19,18 @@ CURRENT_SEASON = 2026
 
 @router.get("/")
 def dashboard(request: Request):
-    standings = get_formula_fantasy_standings()
+    overall_standings = get_formula_fantasy_standings()
+    fantasy_standings = get_fantasy_only_standings()
+    upcoming_races = get_upcoming_races(CURRENT_SEASON)
     return templates.TemplateResponse(
         request,
         "dashboard.html",
         {
-            "season_name": None,  # TODO: read the active season once seasons exist
-            "ff_leader": standings[0]["display_name"] if standings else None,
-            "constructor_leader": None,  # TODO once constructor scoring exists
-            "latest_race": None,  # TODO once race_events has rows
+            "overall_leader": overall_standings[0]["display_name"] if overall_standings else None,
+            "fantasy_leader": fantasy_standings[0]["display_name"] if fantasy_standings else None,
+            "sim_racing_leader": None,  # TODO once sim racing scoring exists
+            "constructor_leader": None,  # TODO once constructor pairing/scoring exists
+            "next_race": upcoming_races[0] if upcoming_races else None,
         },
     )
 

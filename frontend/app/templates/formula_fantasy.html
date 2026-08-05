@@ -2,9 +2,153 @@
 {% block title %}Formula Fantasy — Daze of Thunder{% endblock %}
 {% block content %}
   <h1 class="page-title">Formula Fantasy</h1>
-  <p class="page-subtitle">Upcoming races on the 2026 F1 calendar</p>
+  <p class="page-subtitle">Draft real F1 drivers. Race each other in iRacing. One league, two ways to win.</p>
+
+  <p class="ff-intro">
+    Formula Fantasy is Daze of Thunder's season-long competition for our
+    private league, run alongside the real 2026 Formula 1 calendar. Draft
+    real F1 drivers, then rack up points two ways: how they actually finish
+    on Sundays, and how you finish against each other on the sim.
+  </p>
+
+  <div class="card-grid">
+    <div class="stat-card">
+      <div class="stat-card__label">League Members</div>
+      <div class="stat-card__value">10</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__label">Drivers Drafted Each</div>
+      <div class="stat-card__value">2</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__label">Championships</div>
+      <div class="stat-card__value">4</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__label">F1 Season</div>
+      <div class="stat-card__value">2026</div>
+    </div>
+  </div>
+
+  <p class="section-label">Four Championships</p>
+  <div class="trophy-grid">
+    <div class="trophy-card">
+      <svg class="trophy-card__icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <circle cx="12" cy="12" r="2.5"/>
+        <path d="M12 3v6.5M4.8 16.3l5.4-3M19.2 16.3l-5.4-3"/>
+      </svg>
+      <div class="trophy-card__title">Driver's Championship</div>
+      <div class="trophy-card__body">
+        Your season Sim Racing points — how you stack up against the whole
+        league behind the wheel in iRacing.
+      </div>
+    </div>
+    <div class="trophy-card">
+      <svg class="trophy-card__icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
+        <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
+        <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
+      </svg>
+      <div class="trophy-card__title">Fantasy Championship</div>
+      <div class="trophy-card__body">
+        Your season Fantasy F1 points — how your two drafted drivers
+        actually perform on Sundays.
+      </div>
+    </div>
+    <div class="trophy-card">
+      <svg class="trophy-card__icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="8.5" cy="8" r="3"/>
+        <circle cx="16" cy="9" r="2.5"/>
+        <path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M13.2 14.4c2.7.3 4.8 2.2 4.8 4.6"/>
+      </svg>
+      <div class="trophy-card__title">Constructors' Championship</div>
+      <div class="trophy-card__body">
+        You and your teammate's combined season Sim Racing points — pit
+        crew pride on the line.
+      </div>
+    </div>
+    <div class="trophy-card">
+      <svg class="trophy-card__icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M4 17h16M5 17l-1.5-8L8 12l4-6 4 6 4.5-3L19 17"/>
+      </svg>
+      <div class="trophy-card__title">Overall Championship</div>
+      <div class="trophy-card__body">
+        Your combined seasonal Fantasy F1 and Sim Racing points — the
+        ultimate Daze of Thunder title.
+      </div>
+    </div>
+  </div>
 
   <div class="tower">
+    <div class="tower__header">How It Works</div>
+    <div class="tower__row">
+      <div class="tower__pos">1</div>
+      <div>
+        <div class="tower__name">Draft your drivers</div>
+        <div class="tower__meta">
+          At the start of the season, each member drafts 2 real F1 drivers
+          in a live snake-order draft — pick order reverses every round, so
+          nobody drafts twice in a row.
+        </div>
+      </div>
+      <div></div>
+    </div>
+    <div class="tower__row">
+      <div class="tower__pos">2</div>
+      <div>
+        <div class="tower__name">Draft your teammate as your constructor team</div>
+        <div class="tower__meta">
+          With an even 10-person league, everyone also pairs up with one
+          teammate to form a two-person Constructor team — same idea as a
+          real F1 team fielding two cars. Your team's combined Sim Racing
+          results carry the Constructors' Championship, so who you're
+          paired with matters as much as who you draft.
+        </div>
+      </div>
+      <div></div>
+    </div>
+    <div class="tower__row">
+      <div class="tower__pos">3</div>
+      <div>
+        <div class="tower__name">Score with Fantasy F1 points</div>
+        <div class="tower__meta">
+          Every real F1 race weekend, your two drafted drivers earn Fantasy
+          F1 points based on how they actually finish — our own
+          NASCAR-inspired scale, where every finisher scores, not just the
+          top 10.
+        </div>
+      </div>
+      <div></div>
+    </div>
+    <div class="tower__row">
+      <div class="tower__pos">4</div>
+      <div>
+        <div class="tower__name">Race each other in iRacing</div>
+        <div class="tower__meta">
+          Members also go wheel-to-wheel in iRacing, with each event mapped
+          to a round on the real F1 calendar — your on-track finishes earn
+          Sim Racing points of their own.
+        </div>
+      </div>
+      <div></div>
+    </div>
+    <div class="tower__row">
+      <div class="tower__pos">5</div>
+      <div>
+        <div class="tower__name">Chase the championship</div>
+        <div class="tower__meta">
+          Fantasy F1 and Sim Racing points combine into one overall Daze of
+          Thunder champion — plus standalone Fantasy, Sim Racing, and
+          Constructors' standings.
+        </div>
+      </div>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="tower">
+    <div class="tower__header">What's Next</div>
     {% if races %}
       {% for race in races %}
         <div class="tower__row">

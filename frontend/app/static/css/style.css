@@ -230,6 +230,62 @@ main {
   margin: 0 0 var(--space-5) 0;
 }
 
+.ff-intro {
+  max-width: 640px;
+  color: var(--color-text);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 var(--space-5) 0;
+}
+
+.section-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+  margin: var(--space-5) 0 var(--space-2) 0;
+}
+
+.page-cta {
+  margin-bottom: var(--space-5);
+}
+
+.trophy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.trophy-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  padding: var(--space-5);
+}
+
+.trophy-card__icon {
+  display: block;
+  color: var(--color-accent);
+  margin-bottom: var(--space-3);
+}
+
+.trophy-card__title {
+  font-weight: 700;
+  font-size: 1.4rem;
+  margin-bottom: var(--space-2);
+}
+
+.trophy-card__body {
+  color: var(--color-text-dim);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.trophy-card .form-submit {
+  margin-top: var(--space-4);
+}
+
 /* ── Timing-tower table (the signature element) ────────────
    Every standings/results table on the site uses this — fixed-width
    position numbers, monospace point totals, a live pulse dot to signal
@@ -240,6 +296,10 @@ main {
   border-radius: 4px;
   overflow: hidden;
   background: var(--color-surface);
+}
+
+.tower + .tower {
+  margin-top: var(--space-4);
 }
 
 .tower__header {
@@ -460,6 +520,25 @@ main {
   color: var(--color-accent);
 }
 
+.stat-card__meta {
+  font-family: var(--font-data);
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+  margin-top: var(--space-1);
+}
+
+.stat-card--wide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.stat-card__details {
+  text-align: right;
+}
+
 /* ── Session detail popout (Schedule page) ──────────────────
    Native <dialog> — free ::backdrop blur, native scroll, native Escape.
    Opening it needs JS (schedule.js); everything else here is CSS-only. */
@@ -645,6 +724,7 @@ dialog.session-modal::backdrop {
 }
 
 .form-submit {
+  display: inline-block;
   align-self: flex-start;
   padding: var(--space-2) var(--space-4);
   background: var(--color-accent);
@@ -654,11 +734,13 @@ dialog.session-modal::backdrop {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 0.9rem;
+  text-decoration: none;
   cursor: pointer;
 }
 
 .form-submit:hover {
   background: var(--color-accent-dim);
+  text-decoration: none;
 }
 
 .form-notice {
