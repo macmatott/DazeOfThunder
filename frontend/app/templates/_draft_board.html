@@ -6,6 +6,7 @@
   id="draft-turn-marker"
   data-on-the-clock="{{ 'true' if board.viewer_is_on_the_clock else 'false' }}"
   data-pick-number="{{ board.status.current_pick_number if board.status else '' }}"
+  data-seconds-remaining="{{ board.seconds_remaining if board.seconds_remaining is not none else '' }}"
   hidden
 ></div>
 
@@ -32,18 +33,15 @@
       <div class="draft-pool-header">
         <span></span>
         <span></span>
+        <span></span>
         <span>2025 FPTS</span>
+        <span>AVG FPTS</span>
+        <span></span>
       </div>
       {% for driver in board.available_drivers %}
-        <button
-          type="button"
-          class="draft-pick-btn"
-          hx-post="/formula-fantasy/draft/pick"
-          hx-vals='{"f1_driver_id": "{{ driver.id }}"}'
-          hx-target="#draft-board"
-          hx-swap="innerHTML"
-        >
+        <div class="draft-pick-btn">
           <span class="draft-pick-btn__rank">{{ driver.rank }}</span>
+          <span class="driver-photo" style="background-image: url('{{ driver.photo_url }}')"></span>
           <span>
             <span class="draft-pick-btn__header">
               {% if driver.logo_url %}
@@ -56,7 +54,20 @@
           <span class="draft-pick-btn__points draft-pick-btn__points--fantasy">
             {% if driver.fantasy_points_2025 is not none %}{{ driver.fantasy_points_2025 | int }}{% endif %}
           </span>
-        </button>
+          <span class="draft-pick-btn__points">
+            {% if driver.avg_fantasy_points_2025 is not none %}{{ driver.avg_fantasy_points_2025 | round(1) }}{% endif %}
+          </span>
+          <button
+            type="button"
+            class="draft-pick-btn__action"
+            hx-post="/formula-fantasy/draft/pick"
+            hx-vals='{"f1_driver_id": "{{ driver.id }}"}'
+            hx-target="#draft-board"
+            hx-swap="innerHTML"
+          >
+            Draft
+          </button>
+        </div>
       {% endfor %}
     </div>
   {% elif not board.status.is_complete %}
@@ -70,11 +81,17 @@
   <div class="tower__header">Picks so far</div>
   {% if board.picks %}
     {% for pick in board.picks %}
-      <div class="tower__row">
+      <div class="draft-pick-row">
         <div class="tower__pos">{{ pick.pick_number }}</div>
+        <div class="driver-photo" style="background-image: url('{{ pick.f1_drivers.photo_url }}')"></div>
         <div>
           <div class="tower__name">{{ pick.participants.display_name }}</div>
-          <div class="tower__meta">{{ pick.f1_drivers.full_name }} — {{ pick.f1_drivers.team_name }}</div>
+          <div class="draft-pick-btn__header">
+            {% if pick.f1_drivers.logo_url %}
+              <img src="{{ pick.f1_drivers.logo_url }}" alt="" class="draft-pick-row__logo">
+            {% endif %}
+            <span class="tower__meta">{{ pick.f1_drivers.full_name }} — {{ pick.f1_drivers.team_name }}</span>
+          </div>
         </div>
         <div class="tower__points">R{{ pick.round_number }}</div>
       </div>

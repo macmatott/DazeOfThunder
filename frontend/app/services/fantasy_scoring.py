@@ -116,16 +116,23 @@ def compute_round_scores(
     }
 
 
-def compute_driver_season_points(
+def compute_driver_season_stats(
     season_results: list[dict], points_table: dict[int, float]
-) -> dict[str, float]:
-    """{f1_driver_id: total fantasy points} across every result row for a
-    season (all rounds, race + sprint) — same grouping/summing as a single
-    round's scoring, just fed a whole season's results at once. Used to
-    show "what would this driver have scored under our scale", independent
-    of who (if anyone) actually drafted them."""
+) -> dict[str, dict]:
+    """{f1_driver_id: {"total": ..., "average": ...}} across every result
+    row for a season (all rounds, race + sprint) — same grouping/summing
+    as a single round's scoring, just fed a whole season's results at
+    once. `average` is per race *weekend* (distinct round_number), not per
+    result row — a sprint weekend contributes 2 rows but is still one
+    week. Used to show "what would this driver have scored under our
+    scale", independent of who (if anyone) actually drafted them."""
     grouped = group_results_by_driver(season_results)
-    return {driver_id: score_driver_results(rows, points_table) for driver_id, rows in grouped.items()}
+    stats = {}
+    for driver_id, rows in grouped.items():
+        total = score_driver_results(rows, points_table)
+        weeks = len({r["round_number"] for r in rows}) or 1
+        stats[driver_id] = {"total": total, "average": total / weeks}
+    return stats
 
 
 def _points_table_from_rule_rows(rows: list[dict]) -> tuple[dict[int, float], str]:
@@ -214,18 +221,18 @@ def get_season_results(season_id: str) -> list[dict]:
     client = admin_client()
     return (
         client.table("f1_race_results")
-        .select("f1_driver_id, finish_position, is_sprint")
+        .select("f1_driver_id, finish_position, is_sprint, round_number")
         .eq("season_id", season_id)
         .execute()
         .data
     )
 
 
-def get_driver_season_fantasy_points_by_name(season_id: str) -> dict[str, float]:
-    """{full_name: total fantasy points} for a season, keyed by name (not
-    id) so callers matching against a *different* season's f1_drivers rows
-    (e.g. a later season's draft pool) can look drivers up the same way
-    draft.py's `_build_standings_order` already does for real F1 points."""
+def get_driver_season_fantasy_stats_by_name(season_id: str) -> dict[str, dict]:
+    """{full_name: {"total": ..., "average": ...}} for a season, keyed by
+    name (not id) so callers matching against a *different* season's
+    f1_drivers rows (e.g. a later season's draft pool) can look drivers up
+    the same way draft.py used to for real F1 points."""
     client = admin_client()
     drivers = (
         client.table("f1_drivers")
@@ -237,11 +244,11 @@ def get_driver_season_fantasy_points_by_name(season_id: str) -> dict[str, float]
     names_by_id = {d["id"]: d["full_name"] for d in drivers}
 
     points_table, _ = get_active_points_table(season_id)
-    points_by_driver_id = compute_driver_season_points(get_season_results(season_id), points_table)
+    stats_by_driver_id = compute_driver_season_stats(get_season_results(season_id), points_table)
 
     return {
-        names_by_id[driver_id]: points
-        for driver_id, points in points_by_driver_id.items()
+        names_by_id[driver_id]: stats
+        for driver_id, stats in stats_by_driver_id.items()
         if driver_id in names_by_id
     }
 

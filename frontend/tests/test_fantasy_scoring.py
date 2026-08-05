@@ -5,7 +5,7 @@ from app.services.fantasy_scoring import (
     ScoringRulesNotSeededError,
     _points_table_from_rule_rows,
     build_scoring_rule_rows,
-    compute_driver_season_points,
+    compute_driver_season_stats,
     compute_round_scores,
     nascar_points_table,
     points_for_position,
@@ -130,18 +130,35 @@ def test_participant_with_zero_picks_is_absent_from_scores():
     assert scores == {}
 
 
-def test_compute_driver_season_points_sums_across_all_rounds_and_sprints():
+def test_compute_driver_season_stats_sums_across_all_rounds_and_sprints():
     table = nascar_points_table(grid_size=3)
     season_results = [
-        {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False},  # round 1
-        {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": False},  # round 2
-        {"f1_driver_id": "d1", "finish_position": 3, "is_sprint": True},   # round 2 sprint
-        {"f1_driver_id": "d2", "finish_position": 1, "is_sprint": False},
+        {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False, "round_number": 1},
+        {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": False, "round_number": 2},
+        {"f1_driver_id": "d1", "finish_position": 3, "is_sprint": True, "round_number": 2},
+        {"f1_driver_id": "d2", "finish_position": 1, "is_sprint": False, "round_number": 1},
     ]
 
-    totals = compute_driver_season_points(season_results, table)
+    stats = compute_driver_season_stats(season_results, table)
 
-    assert totals == {"d1": 40.0 + 35.0 + 34.0, "d2": 40.0}
+    assert stats["d1"]["total"] == 40.0 + 35.0 + 34.0
+    assert stats["d2"]["total"] == 40.0
+
+
+def test_compute_driver_season_stats_averages_per_race_weekend_not_per_row():
+    # d1 raced 2 weekends (round 2 had a sprint, contributing 2 rows for
+    # that one week) — average should divide by 2 weeks, not 3 rows.
+    table = nascar_points_table(grid_size=3)
+    season_results = [
+        {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False, "round_number": 1},
+        {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": False, "round_number": 2},
+        {"f1_driver_id": "d1", "finish_position": 3, "is_sprint": True, "round_number": 2},
+    ]
+
+    stats = compute_driver_season_stats(season_results, table)
+
+    assert stats["d1"]["total"] == 40.0 + 35.0 + 34.0
+    assert stats["d1"]["average"] == (40.0 + 35.0 + 34.0) / 2
 
 
 def test_points_table_from_rule_rows_builds_table_and_version():

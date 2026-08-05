@@ -97,10 +97,10 @@ def test_validate_draft_order_rejects_empty():
         validate_draft_order([], {"A"})
 
 
-FANTASY_POINTS = {
-    "Lando Norris": 891.0,
-    "Max Verstappen": 879.0,
-    "Oscar Piastri": 869.0,
+FANTASY_STATS = {
+    "Lando Norris": {"total": 891.0, "average": 37.1},
+    "Max Verstappen": {"total": 879.0, "average": 36.6},
+    "Oscar Piastri": {"total": 869.0, "average": 36.2},
 }
 
 
@@ -111,7 +111,7 @@ def test_sort_by_fantasy_points_ranks_highest_total_first():
         {"id": "2", "full_name": "Max Verstappen"},
     ]
 
-    sorted_drivers = _sort_by_fantasy_points(drivers, FANTASY_POINTS)
+    sorted_drivers = _sort_by_fantasy_points(drivers, FANTASY_STATS)
 
     assert [d["full_name"] for d in sorted_drivers] == [
         "Lando Norris",
@@ -123,9 +123,10 @@ def test_sort_by_fantasy_points_ranks_highest_total_first():
 def test_sort_by_fantasy_points_attaches_2025_fantasy_points():
     drivers = [{"id": "1", "full_name": "Lando Norris"}]
 
-    sorted_drivers = _sort_by_fantasy_points(drivers, FANTASY_POINTS)
+    sorted_drivers = _sort_by_fantasy_points(drivers, FANTASY_STATS)
 
     assert sorted_drivers[0]["fantasy_points_2025"] == 891.0
+    assert sorted_drivers[0]["avg_fantasy_points_2025"] == 37.1
 
 
 def test_sort_by_fantasy_points_puts_unranked_drivers_last_alphabetically():
@@ -135,7 +136,7 @@ def test_sort_by_fantasy_points_puts_unranked_drivers_last_alphabetically():
         {"id": "3", "full_name": "Rookie Alpha"},
     ]
 
-    sorted_drivers = _sort_by_fantasy_points(drivers, FANTASY_POINTS)
+    sorted_drivers = _sort_by_fantasy_points(drivers, FANTASY_STATS)
 
     assert [d["full_name"] for d in sorted_drivers] == [
         "Lando Norris",
@@ -145,6 +146,7 @@ def test_sort_by_fantasy_points_puts_unranked_drivers_last_alphabetically():
     assert sorted_drivers[0]["fantasy_points_2025"] == 891.0
     assert sorted_drivers[1]["fantasy_points_2025"] is None
     assert sorted_drivers[2]["fantasy_points_2025"] is None
+    assert sorted_drivers[1]["avg_fantasy_points_2025"] is None
 
 
 def test_logo_url_for_known_team():

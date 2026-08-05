@@ -16,9 +16,10 @@ from functools import lru_cache
 from postgrest.exceptions import APIError
 
 from app.db.supabase_client import admin_client
+from app.services.driver_photos import driver_photo_url
 from app.services.fantasy_scoring import (
     ScoringRulesNotSeededError,
-    get_driver_season_fantasy_points_by_name,
+    get_driver_season_fantasy_stats_by_name,
 )
 
 # Order the draft pool by how drivers would have scored under our own
@@ -138,7 +139,7 @@ def list_participants() -> list[dict]:
 
 def get_draft_picks(season_id: str) -> list[dict]:
     client = admin_client()
-    return (
+    picks = (
         client.table("draft_picks")
         .select(
             "pick_number, round_number, participant_id, f1_driver_id, picked_at, "
@@ -149,13 +150,26 @@ def get_draft_picks(season_id: str) -> list[dict]:
         .execute()
         .data
     )
+    for pick in picks:
+        driver = pick["f1_drivers"]
+        driver["logo_url"] = logo_url_for_team(driver["team_name"])
+        driver["photo_url"] = driver_photo_url(driver["full_name"])
+    return picks
 
 
-def _sort_by_fantasy_points(drivers: list[dict], fantasy_points: dict[str, float]) -> list[dict]:
+def _sort_by_fantasy_points(drivers: list[dict], fantasy_stats: dict[str, dict]) -> list[dict]:
     """Ranked drivers first (highest fantasy total first); unranked
     (rookies/new teams with no previous-season results) fall to the end,
-    alphabetically. Attaches `fantasy_points_2025` (None if unranked)."""
-    enriched = [{**d, "fantasy_points_2025": fantasy_points.get(d["full_name"])} for d in drivers]
+    alphabetically. Attaches `fantasy_points_2025` (season total) and
+    `avg_fantasy_points_2025` (per race weekend) — both None if unranked."""
+    enriched = [
+        {
+            **d,
+            "fantasy_points_2025": fantasy_stats.get(d["full_name"], {}).get("total"),
+            "avg_fantasy_points_2025": fantasy_stats.get(d["full_name"], {}).get("average"),
+        }
+        for d in drivers
+    ]
     return sorted(
         enriched,
         key=lambda d: (
@@ -166,17 +180,18 @@ def _sort_by_fantasy_points(drivers: list[dict], fantasy_points: dict[str, float
 
 
 @lru_cache
-def _previous_season_fantasy_points_by_name() -> dict[str, float]:
-    """{full_name: 2025 season fantasy total}, our NASCAR scale recomputed
-    from that season's actual race-by-race results. Cached per process — a
-    finished season's results never change. Empty if 2025 hasn't been
-    imported and scored yet (import_f1_results + seed_scoring_rules), so
-    the pool just won't show a fantasy-points line rather than erroring."""
+def _previous_season_fantasy_stats_by_name() -> dict[str, dict]:
+    """{full_name: {"total": ..., "average": ...}} for 2025, our NASCAR
+    scale recomputed from that season's actual race-by-race results.
+    Cached per process — a finished season's results never change. Empty
+    if 2025 hasn't been imported and scored yet (import_f1_results +
+    seed_scoring_rules), so the pool just won't show fantasy points rather
+    than erroring."""
     season_id = get_season_id(str(PREVIOUS_SEASON_FOR_DRAFT_ORDER))
     if not season_id:
         return {}
     try:
-        return get_driver_season_fantasy_points_by_name(season_id)
+        return get_driver_season_fantasy_stats_by_name(season_id)
     except ScoringRulesNotSeededError:
         return {}
 
@@ -184,9 +199,10 @@ def _previous_season_fantasy_points_by_name() -> dict[str, float]:
 def get_ranked_drivers(season_id: str) -> list[dict]:
     """All of the season's drivers, sorted best-to-worst by what they'd
     have scored in 2025 under our own NASCAR-style fantasy scale, each
-    tagged with a fixed rank (1..22) and logo. Ranks are assigned once
-    over the *full* field so a driver's number stays put as other drivers
-    get drafted, rather than being renumbered around the gaps."""
+    tagged with a fixed rank (1..22), constructor logo, and headshot photo.
+    Ranks are assigned once over the *full* field so a driver's number
+    stays put as other drivers get drafted, rather than being renumbered
+    around the gaps."""
     client = admin_client()
     all_drivers = (
         client.table("f1_drivers")
@@ -195,10 +211,11 @@ def get_ranked_drivers(season_id: str) -> list[dict]:
         .execute()
         .data
     )
-    ranked = _sort_by_fantasy_points(all_drivers, _previous_season_fantasy_points_by_name())
+    ranked = _sort_by_fantasy_points(all_drivers, _previous_season_fantasy_stats_by_name())
     for i, driver in enumerate(ranked):
         driver["rank"] = i + 1
         driver["logo_url"] = logo_url_for_team(driver["team_name"])
+        driver["photo_url"] = driver_photo_url(driver["full_name"])
     return ranked
 
 
