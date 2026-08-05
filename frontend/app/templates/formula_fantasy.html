@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Formula Fantasy — Daze of Thunder{% endblock %}
+{% macro medal_row(color, label) %}
+  <span class="medal-row">
+    <svg class="medal-icon medal-icon--{{ color }}" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
+      <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
+      <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
+    </svg>
+    <span>{{ label }}</span>
+  </span>
+{% endmacro %}
 {% block content %}
   <h1 class="page-title">Formula Fantasy</h1>
   <p class="page-subtitle">Draft real F1 drivers. Race each other in iRacing. One league, two ways to win.</p>
@@ -76,6 +86,70 @@
       <div class="trophy-card__body">
         Your combined seasonal Fantasy F1 and Sim Racing points — the
         ultimate Daze of Thunder title.
+      </div>
+    </div>
+  </div>
+
+  <div class="scoring-columns">
+    <p class="section-label">Fantasy F1 Scoring</p>
+    <p class="section-label">Sim Racing Scoring</p>
+
+    <p class="ff-intro">
+      Every classified finisher scores under our own NASCAR-inspired
+      scale — no cutoff at 10th like real F1. The win is worth the full
+      grid size, then points drop by one per position, down to 1 point
+      for last.
+    </p>
+    <p class="ff-intro">
+      Same NASCAR-inspired shape, scaled to our own 10-person grid
+      instead of F1's — every finisher scores, the win is worth 10
+      points, and points drop by one per position after a small bonus
+      over 2nd place.
+    </p>
+
+    <div class="tower">
+      <div class="tower__row">
+        <div class="tower__pos">1st</div>
+        <div><div class="tower__name">{{ medal_row('gold', 'Race winner') }}</div></div>
+        <div class="tower__points">22 pts</div>
+      </div>
+      <div class="tower__row">
+        <div class="tower__pos">2nd</div>
+        <div><div class="tower__name">{{ medal_row('silver', 'Runner-up') }}</div></div>
+        <div class="tower__points">20 pts</div>
+      </div>
+      <div class="tower__row">
+        <div class="tower__pos">3rd</div>
+        <div><div class="tower__name">{{ medal_row('bronze', 'One point less each position from here down') }}</div></div>
+        <div class="tower__points">19 pts</div>
+      </div>
+      <div class="tower__row">
+        <div class="tower__pos">22nd</div>
+        <div><div class="tower__name">Last-place finisher — still on the board</div></div>
+        <div class="tower__points">1 pt</div>
+      </div>
+    </div>
+
+    <div class="tower">
+      <div class="tower__row">
+        <div class="tower__pos">1st</div>
+        <div><div class="tower__name">{{ medal_row('gold', 'Race winner') }}</div></div>
+        <div class="tower__points">10 pts</div>
+      </div>
+      <div class="tower__row">
+        <div class="tower__pos">2nd</div>
+        <div><div class="tower__name">{{ medal_row('silver', 'Runner-up') }}</div></div>
+        <div class="tower__points">8 pts</div>
+      </div>
+      <div class="tower__row">
+        <div class="tower__pos">3rd</div>
+        <div><div class="tower__name">{{ medal_row('bronze', 'One point less each position from here down') }}</div></div>
+        <div class="tower__points">7 pts</div>
+      </div>
+      <div class="tower__row">
+        <div class="tower__pos">10th</div>
+        <div><div class="tower__name">Last-place finisher — still on the board</div></div>
+        <div class="tower__points">1 pt</div>
       </div>
     </div>
   </div>

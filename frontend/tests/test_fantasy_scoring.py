@@ -12,20 +12,29 @@ from app.services.fantasy_scoring import (
 )
 
 
-def test_first_place_is_forty_points():
-    assert nascar_points_table()[1] == 40.0
+def test_first_place_equals_grid_size():
+    assert nascar_points_table(grid_size=22)[1] == 22.0
 
 
-def test_points_decrease_by_one_from_second_place():
-    table = nascar_points_table()
-    assert table[2] == 35.0
-    assert table[3] == 34.0
-    assert table[22] == 15.0
+def test_points_decrease_by_one_after_the_win_bonus():
+    table = nascar_points_table(grid_size=22)
+    assert table[2] == 20.0
+    assert table[3] == 19.0
+    assert table[4] == 18.0
+
+
+def test_last_two_positions_floor_at_one_point():
+    # The win-bonus-then-decrement math runs out of room right at the
+    # bottom of a 22-car grid — both the last two positions floor at 1
+    # point rather than going to 0 or negative.
+    table = nascar_points_table(grid_size=22)
+    assert table[21] == 1.0
+    assert table[22] == 1.0
 
 
 def test_table_size_matches_grid_size():
     table = nascar_points_table(grid_size=3)
-    assert table == {1: 40.0, 2: 35.0, 3: 34.0}
+    assert table == {1: 3.0, 2: 1.0, 3: 1.0}
 
 
 def test_build_scoring_rule_rows_shape():
@@ -34,25 +43,25 @@ def test_build_scoring_rule_rows_shape():
         {
             "season_id": "season-1",
             "rule_type": "fantasy_f1",
-            "version": "nascar-2024",
+            "version": "nascar-v2-scaled",
             "position": 1,
-            "points": 40.0,
+            "points": 3.0,
             "is_active": True,
         },
         {
             "season_id": "season-1",
             "rule_type": "fantasy_f1",
-            "version": "nascar-2024",
+            "version": "nascar-v2-scaled",
             "position": 2,
-            "points": 35.0,
+            "points": 1.0,
             "is_active": True,
         },
         {
             "season_id": "season-1",
             "rule_type": "fantasy_f1",
-            "version": "nascar-2024",
+            "version": "nascar-v2-scaled",
             "position": 3,
-            "points": 34.0,
+            "points": 1.0,
             "is_active": True,
         },
     ]
@@ -76,7 +85,7 @@ DRAFT_PICKS = [
 
 
 def test_compute_round_scores_sums_across_participants_drivers():
-    table = nascar_points_table(grid_size=3)
+    table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
     round_results = [
         {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False},
         {"f1_driver_id": "d2", "finish_position": 3, "is_sprint": False},
@@ -85,11 +94,11 @@ def test_compute_round_scores_sums_across_participants_drivers():
 
     scores = compute_round_scores(DRAFT_PICKS, round_results, table)
 
-    assert scores == {"p1": 40.0 + 34.0, "p2": 35.0}
+    assert scores == {"p1": 3.0 + 1.0, "p2": 1.0}
 
 
 def test_compute_round_scores_combines_race_and_sprint_with_same_table():
-    table = nascar_points_table(grid_size=3)
+    table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
     round_results = [
         {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False},
         {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": True},
@@ -99,7 +108,8 @@ def test_compute_round_scores_combines_race_and_sprint_with_same_table():
 
     scores = compute_round_scores(DRAFT_PICKS, round_results, table)
 
-    assert scores["p1"] == 40.0 + 35.0 + 34.0
+    # p1 owns both d1 (race 3.0 + sprint 1.0) and d2 (race 1.0).
+    assert scores["p1"] == 3.0 + 1.0 + 1.0
 
 
 def test_dnf_still_scored_by_classified_position():
@@ -131,7 +141,7 @@ def test_participant_with_zero_picks_is_absent_from_scores():
 
 
 def test_compute_driver_season_stats_sums_across_all_rounds_and_sprints():
-    table = nascar_points_table(grid_size=3)
+    table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
     season_results = [
         {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False, "round_number": 1},
         {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": False, "round_number": 2},
@@ -141,14 +151,14 @@ def test_compute_driver_season_stats_sums_across_all_rounds_and_sprints():
 
     stats = compute_driver_season_stats(season_results, table)
 
-    assert stats["d1"]["total"] == 40.0 + 35.0 + 34.0
-    assert stats["d2"]["total"] == 40.0
+    assert stats["d1"]["total"] == 3.0 + 1.0 + 1.0
+    assert stats["d2"]["total"] == 3.0
 
 
 def test_compute_driver_season_stats_averages_per_race_weekend_not_per_row():
     # d1 raced 2 weekends (round 2 had a sprint, contributing 2 rows for
     # that one week) — average should divide by 2 weeks, not 3 rows.
-    table = nascar_points_table(grid_size=3)
+    table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
     season_results = [
         {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False, "round_number": 1},
         {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": False, "round_number": 2},
@@ -157,8 +167,8 @@ def test_compute_driver_season_stats_averages_per_race_weekend_not_per_row():
 
     stats = compute_driver_season_stats(season_results, table)
 
-    assert stats["d1"]["total"] == 40.0 + 35.0 + 34.0
-    assert stats["d1"]["average"] == (40.0 + 35.0 + 34.0) / 2
+    assert stats["d1"]["total"] == 3.0 + 1.0 + 1.0
+    assert stats["d1"]["average"] == (3.0 + 1.0 + 1.0) / 2
 
 
 def test_points_table_from_rule_rows_builds_table_and_version():

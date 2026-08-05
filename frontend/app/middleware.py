@@ -19,6 +19,7 @@ AUTH_SESSION_KEYS = (
     "expires_at",
     "participant_id",
     "is_admin",
+    "is_active",
     "display_name",
     "avatar_url",
 )
@@ -33,6 +34,7 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
             request.state.current_user = {
                 "participant_id": session.get("participant_id"),
                 "is_admin": session.get("is_admin", False),
+                "is_active": session.get("is_active", False),
                 "display_name": session.get("display_name"),
                 "avatar_url": session.get("avatar_url"),
             }

@@ -1,11 +1,14 @@
 """
 Fantasy F1 scoring — our own points scale, not real F1 points.
 `f1_race_results.points` (real F1 points) is reference data only; league
-scoring runs on a NASCAR-style scale instead: 1st = 40, then every position
-after that drops by 1 (2nd = 35, 3rd = 34, ... nth = 37 - n for n >= 2).
-Every classified finisher scores, including DNFs — `finish_position` is
-always the classified position regardless of `status`, same as real NASCAR
-(a car that drops out still scores based on where it was running).
+scoring runs on a NASCAR-style scale instead, scaled to the actual grid
+size rather than borrowing NASCAR's raw 40-car numbers: 1st place scores
+`grid_size` points, 2nd gets a win bonus taken off that, then every
+position after drops by 1, floored at 1 point so every classified
+finisher scores (for a 22-car grid: 1st=22, 2nd=20, 3rd=19, ... 22nd=1).
+DNFs still score — `finish_position` is always the classified position
+regardless of `status`, same as real NASCAR (a car that drops out still
+scores based on where it was running).
 
 The position -> points mapping lives in `scoring_rules` (versioned, so
 historical `fantasy_points_awarded` rows stay reproducible even after the
@@ -21,9 +24,24 @@ from collections import defaultdict
 
 from app.db.supabase_client import admin_client
 
-NASCAR_RULE_VERSION = "nascar-2024"
+NASCAR_RULE_VERSION = "nascar-v2-scaled"
 DEFAULT_RULE_TYPE = "fantasy_f1"
 DEFAULT_GRID_SIZE = 22
+DEFAULT_WIN_BONUS = 2
+
+
+def nascar_points_table(
+    grid_size: int = DEFAULT_GRID_SIZE, win_bonus: int = DEFAULT_WIN_BONUS
+) -> dict[int, float]:
+    """1st = grid_size; 2nd = grid_size - win_bonus; every position after
+    that drops by 1, floored at 1 point (every classified finisher scores,
+    same NASCAR-inspired shape as before but proportional to the actual
+    grid size instead of NASCAR's own ~40-car numbers)."""
+    table = {1: float(grid_size)}
+    second_place = grid_size - win_bonus
+    for position in range(2, grid_size + 1):
+        table[position] = max(1.0, float(second_place - (position - 2)))
+    return table
 
 
 class ScoringRulesNotSeededError(Exception):
@@ -32,14 +50,6 @@ class ScoringRulesNotSeededError(Exception):
 
 class MultipleActiveScoringRuleVersionsError(Exception):
     pass
-
-
-def nascar_points_table(grid_size: int = DEFAULT_GRID_SIZE) -> dict[int, float]:
-    """1st = 40.0; 2nd on = 37 - position (2nd=35, 3rd=34, ..., 22nd=15)."""
-    table = {1: 40.0}
-    for position in range(2, grid_size + 1):
-        table[position] = float(37 - position)
-    return table
 
 
 def build_scoring_rule_rows(
@@ -155,12 +165,15 @@ def seed_scoring_rules(
     rule_type: str = DEFAULT_RULE_TYPE,
     dry_run: bool = False,
 ) -> list[dict]:
-    """Upserts the position->points table for `version`, then deactivates
-    every other version for this (season, rule_type) so exactly one is
-    ever active. Re-running with the same version is a safe no-op; a
-    rules change is a new version string + an explicit re-run of
-    score_fantasy_points — past fantasy_points_awarded rows keep whatever
-    scoring_rule_version they were calculated under, untouched here."""
+    """Upserts the position->points table for `version`, deletes any rows
+    beyond `grid_size` left over from a previous seed of this *same*
+    version with a larger grid (upsert alone never removes rows outside
+    what it's given), then deactivates every other version for this
+    (season, rule_type) so exactly one is ever active. Re-running with the
+    same version and grid_size is a safe no-op; a rules change is a new
+    version string + an explicit re-run of score_fantasy_points — past
+    fantasy_points_awarded rows keep whatever scoring_rule_version they
+    were calculated under, untouched here."""
     rows = build_scoring_rule_rows(
         season_id, rule_type=rule_type, version=version, grid_size=grid_size
     )
@@ -171,6 +184,9 @@ def seed_scoring_rules(
     client.table("scoring_rules").upsert(
         rows, on_conflict="season_id,rule_type,version,position"
     ).execute()
+    client.table("scoring_rules").delete().eq("season_id", season_id).eq(
+        "rule_type", rule_type
+    ).eq("version", version).gt("position", grid_size).execute()
     client.table("scoring_rules").update({"is_active": False}).eq(
         "season_id", season_id
     ).eq("rule_type", rule_type).neq("version", version).execute()

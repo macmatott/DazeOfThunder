@@ -127,10 +127,30 @@ def get_draft_state(season_id: str) -> dict | None:
 
 
 def list_participants() -> list[dict]:
+    """Everyone, active or pending — used for name *resolution* (e.g.
+    on_the_clock_name for whoever's already in draft_order), since a
+    participant's status can change after the draft launched with them
+    in it. For "who's allowed to be drafted", use
+    list_active_participants() instead."""
     client = admin_client()
     return (
         client.table("participants")
         .select("id, display_name")
+        .order("display_name")
+        .execute()
+        .data
+    )
+
+
+def list_active_participants() -> list[dict]:
+    """Approved participants only — the admin's draft-order dropdown and
+    launch_draft's permutation check both use this, so a pending
+    participant can never end up in draft_order in the first place."""
+    client = admin_client()
+    return (
+        client.table("participants")
+        .select("id, display_name")
+        .eq("is_active", True)
         .order("display_name")
         .execute()
         .data
@@ -288,7 +308,7 @@ def launch_draft(
     launched_by: str,
     total_rounds: int = 2,
 ) -> dict:
-    valid_ids = {p["id"] for p in list_participants()}
+    valid_ids = {p["id"] for p in list_active_participants()}
     validate_draft_order(ordered_participant_ids, valid_ids)
 
     client = admin_client()

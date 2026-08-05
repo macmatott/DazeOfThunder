@@ -49,33 +49,9 @@ def ff_schedule(request: Request):
     return templates.TemplateResponse(request, "ff_schedule.html", {"races": races})
 
 
-@router.get("/formula-fantasy/standings/combined")
-def ff_standings_combined(request: Request):
-    standings = get_formula_fantasy_standings()
-    return templates.TemplateResponse(
-        request, "standings.html", {"standings": standings}
-    )
-
-
-@router.get("/formula-fantasy/standings/sim-racing")
-def ff_standings_sim_racing(request: Request):
-    return templates.TemplateResponse(
-        request, "ff_standings_stub.html", {"trophy_name": "Sim Racing"}
-    )
-
-
-@router.get("/formula-fantasy/standings/fantasy")
-def ff_standings_fantasy(request: Request):
-    return templates.TemplateResponse(
-        request, "ff_standings_stub.html", {"trophy_name": "Fantasy"}
-    )
-
-
-@router.get("/formula-fantasy/standings/constructors")
-def ff_standings_constructors(request: Request):
-    return templates.TemplateResponse(
-        request, "ff_standings_stub.html", {"trophy_name": "Constructors"}
-    )
+@router.get("/formula-fantasy/standings")
+def ff_standings(request: Request):
+    return templates.TemplateResponse(request, "ff_standings.html", {})
 
 
 @router.get("/schedule")

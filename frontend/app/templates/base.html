@@ -27,10 +27,7 @@
         <a href="/formula-fantasy" class="nav-dropdown__trigger">Formula Fantasy</a>
         <div class="nav-dropdown__menu">
           <a href="/formula-fantasy/schedule">Schedule</a>
-          <a href="/formula-fantasy/standings/sim-racing">Drivers' Standings</a>
-          <a href="/formula-fantasy/standings/fantasy">Fantasy Standings</a>
-          <a href="/formula-fantasy/standings/combined">Combined Standings</a>
-          <a href="/formula-fantasy/standings/constructors">Constructors' Standings</a>
+          <a href="/formula-fantasy/standings">Standings</a>
           <a href="/formula-fantasy/draft">Draft</a>
         </div>
       </div>
@@ -39,6 +36,9 @@
           <a href="#" class="nav-dropdown__trigger">{{ request.state.current_user.display_name }}</a>
           <div class="nav-dropdown__menu nav-dropdown__menu--right">
             <a href="/profile">Profile Settings</a>
+            {% if request.state.current_user.is_admin %}
+              <a href="/admin/members">Pending Members</a>
+            {% endif %}
             <form method="post" action="/auth/logout">
               <button type="submit" class="nav-dropdown__signout">Sign Out</button>
             </form>
@@ -51,6 +51,12 @@
   </div>
 
   <main>
+    {% if request.state.current_user and not request.state.current_user.is_active %}
+      <div class="form-notice form-notice--info">
+        Your account is waiting on admin approval — you can look around,
+        but you won't be eligible for the draft until you're approved.
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

@@ -32,6 +32,7 @@ def callback(request: Request, code: str | None = None):
     request.session["expires_at"] = session.expires_at
     request.session["participant_id"] = participant["id"]
     request.session["is_admin"] = participant["is_admin"]
+    request.session["is_active"] = participant["is_active"]
     request.session["display_name"] = participant["display_name"]
     request.session["avatar_url"] = session.user.user_metadata.get("avatar_url")
 

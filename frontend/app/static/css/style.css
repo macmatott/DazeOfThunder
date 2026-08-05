@@ -238,6 +238,47 @@ main {
   margin: 0 0 var(--space-5) 0;
 }
 
+.scoring-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 7rem auto;
+  align-items: start;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.scoring-columns .ff-intro {
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+}
+
+.scoring-columns .tower__row {
+  min-height: 5.5rem;
+}
+
+.medal-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.medal-icon {
+  flex-shrink: 0;
+}
+
+.medal-icon--gold {
+  color: #d4af37;
+}
+
+.medal-icon--silver {
+  color: #b8bcc4;
+}
+
+.medal-icon--bronze {
+  color: #b3702a;
+}
+
 .section-label {
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -760,6 +801,12 @@ dialog.session-modal::backdrop {
   background: rgba(217, 99, 74, 0.1);
   border: 1px solid var(--color-negative);
   color: var(--color-negative);
+}
+
+.form-notice--info {
+  background: rgba(232, 163, 61, 0.1);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
 }
 
 /* ── Draft board ─────────────────────────────────────────── */

@@ -8,7 +8,7 @@ from app.services.draft import (
     build_draft_board_context,
     get_season_id,
     launch_draft,
-    list_participants,
+    list_active_participants,
     make_pick,
 )
 
@@ -33,7 +33,7 @@ def draft_page(request: Request):
         {
             "board": board,
             "is_admin": request.state.current_user.get("is_admin", False),
-            "participants": list_participants(),
+            "participants": list_active_participants(),
             "launch_error": None,
         },
     )
@@ -58,7 +58,7 @@ def launch(request: Request, order: list[str] = Form(...)):
             {
                 "board": board,
                 "is_admin": True,
-                "participants": list_participants(),
+                "participants": list_active_participants(),
                 "launch_error": str(exc),
             },
         )

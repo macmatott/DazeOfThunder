@@ -35,12 +35,45 @@ def get_or_create_participant(auth_user_id: str, default_display_name: str) -> d
     if existing.data:
         return existing.data[0]
 
+    # New sign-ups land pending (is_active=False) until an admin approves
+    # them — anyone with a Discord account can sign in, but that shouldn't
+    # instantly make them a full league participant.
     created = (
         client.table("participants")
-        .insert({"auth_user_id": auth_user_id, "display_name": default_display_name})
+        .insert(
+            {
+                "auth_user_id": auth_user_id,
+                "display_name": default_display_name,
+                "is_active": False,
+            }
+        )
         .execute()
     )
     return created.data[0]
+
+
+def list_pending_participants() -> list[dict]:
+    """Signed-up participants awaiting admin approval (is_active=False)."""
+    client = admin_client()
+    result = (
+        client.table("participants")
+        .select("id, display_name, created_at")
+        .eq("is_active", False)
+        .order("created_at")
+        .execute()
+    )
+    return result.data
+
+
+def approve_participant(participant_id: str) -> dict:
+    client = admin_client()
+    updated = (
+        client.table("participants")
+        .update({"is_active": True})
+        .eq("id", participant_id)
+        .execute()
+    )
+    return updated.data[0]
 
 
 def update_participant(

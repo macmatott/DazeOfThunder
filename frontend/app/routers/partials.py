@@ -1,28 +1,19 @@
 """
 Endpoints that return HTML fragments for HTMX to swap in, not full pages.
 This is the entire mechanism behind "live updates without writing JS" —
-the standings page polls this every 30s (see standings.html's hx-trigger)
-and swaps in whatever comes back.
+the draft board polls this every 2s (see draft.html's hx-trigger) and
+swaps in whatever comes back.
 """
 
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
 from app.services.draft import build_draft_board_context, get_season_id
-from app.services.standings import get_formula_fantasy_standings
 
 router = APIRouter(prefix="/partials")
 templates = Jinja2Templates(directory="app/templates")
 
 DRAFT_SEASON = "2026"
-
-
-@router.get("/standings-table")
-def standings_table(request: Request):
-    standings = get_formula_fantasy_standings()
-    return templates.TemplateResponse(
-        request, "_standings_table.html", {"standings": standings}
-    )
 
 
 @router.get("/draft-board")

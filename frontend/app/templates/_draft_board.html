@@ -1,7 +1,6 @@
 {# Rendered on full-page load (via include), by /partials/draft-board on
    every HTMX poll, and by POST /formula-fantasy/draft/pick — keep this
-   fragment self-contained (no base.html deps), same pattern as
-   _standings_table.html. #}
+   fragment self-contained (no base.html deps). #}
 <div
   id="draft-turn-marker"
   data-on-the-clock="{{ 'true' if board.viewer_is_on_the_clock else 'false' }}"
