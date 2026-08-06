@@ -10,6 +10,14 @@ from __future__ import annotations
 
 from app.db.supabase_client import admin_client
 
+ROLE_OWNER = "owner"
+ROLE_ADMIN = "admin"
+ROLE_DOT_MEMBER = "dot_member"
+ROLE_MEMBER = "member"
+
+# Owner is excluded — it's a permanent singleton, never settable through the UI.
+ASSIGNABLE_ROLES = {ROLE_ADMIN, ROLE_DOT_MEMBER, ROLE_MEMBER}
+
 
 def parse_iracing_cust_id(raw: str) -> int | None:
     raw = raw.strip()
@@ -57,7 +65,7 @@ def list_pending_participants() -> list[dict]:
     client = admin_client()
     result = (
         client.table("participants")
-        .select("id, display_name, created_at")
+        .select("id, display_name, role, created_at")
         .eq("is_active", False)
         .order("created_at")
         .execute()
@@ -74,6 +82,45 @@ def approve_participant(participant_id: str) -> dict:
         .execute()
     )
     return updated.data[0]
+
+
+def list_all_participants() -> list[dict]:
+    """Everyone, for the admin role-management table."""
+    client = admin_client()
+    return (
+        client.table("participants")
+        .select("id, display_name, role, is_active")
+        .order("display_name")
+        .execute()
+        .data
+    )
+
+
+def set_participant_role(participant_id: str, role: str) -> dict:
+    if role not in ASSIGNABLE_ROLES:
+        raise ValueError(f"{role!r} isn't a role you can assign.")
+    client = admin_client()
+    updated = (
+        client.table("participants")
+        .update({"role": role})
+        .eq("id", participant_id)
+        .execute()
+    )
+    return updated.data[0]
+
+
+def list_iracing_cust_id_lookup() -> dict[int, str]:
+    """{iracing_cust_id: participant_id} for every participant with a
+    linked iRacing account — used to match CSV import rows by Cust ID."""
+    client = admin_client()
+    rows = (
+        client.table("participants")
+        .select("id, iracing_cust_id")
+        .not_.is_("iracing_cust_id", "null")
+        .execute()
+        .data
+    )
+    return {row["iracing_cust_id"]: row["id"] for row in rows}
 
 
 def update_participant(

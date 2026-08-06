@@ -135,7 +135,7 @@ def list_participants() -> list[dict]:
     client = admin_client()
     return (
         client.table("participants")
-        .select("id, display_name")
+        .select("id, display_name, role")
         .order("display_name")
         .execute()
         .data
@@ -149,7 +149,7 @@ def list_active_participants() -> list[dict]:
     client = admin_client()
     return (
         client.table("participants")
-        .select("id, display_name")
+        .select("id, display_name, role")
         .eq("is_active", True)
         .order("display_name")
         .execute()
@@ -163,7 +163,7 @@ def get_draft_picks(season_id: str) -> list[dict]:
         client.table("draft_picks")
         .select(
             "pick_number, round_number, participant_id, f1_driver_id, picked_at, "
-            "participants(display_name), f1_drivers(full_name, team_name)"
+            "participants(display_name, role), f1_drivers(full_name, team_name)"
         )
         .eq("season_id", season_id)
         .order("pick_number")
@@ -352,6 +352,26 @@ def make_pick(season_id: str, participant_id: str, f1_driver_id: str) -> dict:
     }
     result = client.table("draft_picks").insert(row).execute()
     return result.data[0]
+
+
+def get_driver_draft_summary(season_id: str | None) -> dict:
+    """Read-only phase snapshot for the admin hub. Deliberately doesn't
+    call maybe_auto_pick the way build_draft_board_context does — a
+    landing page shouldn't silently execute a pick as a side effect of
+    being viewed."""
+    if not season_id:
+        return {"phase": "no_season"}
+    state = get_draft_state(season_id)
+    if not state or not state["is_live"]:
+        return {"phase": "not_started"}
+    picks = get_draft_picks(season_id)
+    status = compute_draft_status(state["draft_order"], state["total_rounds"], picks)
+    return {
+        "phase": "complete" if status["is_complete"] else "live",
+        "picks_made": len(picks),
+        "total_picks": len(state["draft_order"]) * state["total_rounds"],
+        "current_round": status["current_round"],
+    }
 
 
 def build_draft_board_context(season_id: str, viewer_participant_id: str | None) -> dict:

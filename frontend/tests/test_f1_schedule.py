@@ -220,7 +220,7 @@ def test_session_detail_splits_track_name_and_config():
     detail = _session_detail(
         round_number=7,
         race_name="Barcelona Grand Prix",
-        iracing_track="Circuit de Barcelona-Catalunya -- Grand Prix",
+        iracing_track="Circuit de Barcelona-Catalunya — Grand Prix",
         location="Barcelona, Spain",
         sim_date="Jun 11, 2026",
         sim_temperature_f=75,
@@ -277,7 +277,7 @@ def test_session_detail_status_and_has_results_reflect_past_vs_future():
     past_no_results_yet = _session_detail(
         round_number=2,
         race_name="Chinese Grand Prix",
-        iracing_track="Okayama International Circuit -- Full Course",
+        iracing_track="Okayama International Circuit — Full Course",
         location="Shanghai, China",
         sim_date="Mar 19, 2026",
         sim_temperature_f=66,
@@ -300,7 +300,7 @@ def test_session_detail_carries_real_weather_and_round_number():
     detail = _session_detail(
         round_number=9,
         race_name="British Grand Prix",
-        iracing_track="Silverstone Circuit -- Grand Prix",
+        iracing_track="Silverstone Circuit — Grand Prix",
         location="Silverstone, UK",
         sim_date="Jul 16, 2026",
         sim_temperature_f=67,
@@ -320,7 +320,7 @@ def test_session_detail_computes_50pct_race_laps_rounding_down():
     detail = _session_detail(
         round_number=3,  # F1_LAPS_BY_ROUND[3] == 53 (odd)
         race_name="Japanese Grand Prix",
-        iracing_track="Suzuka International Racing Course -- Grand Prix",
+        iracing_track="Suzuka International Racing Course — Grand Prix",
         location="Suzuka, Japan",
         sim_date="Apr 2, 2026",
         sim_temperature_f=67,

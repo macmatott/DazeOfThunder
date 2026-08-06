@@ -8,7 +8,7 @@
     <div class="form-notice form-notice--error">{{ launch_error }}</div>
   {% endif %}
 
-  {% if not board.is_live and is_admin %}
+  {% if not board.is_live and is_owner %}
     <div class="tower form">
       <div class="session-card__title">Launch the draft</div>
       <p class="tower__meta">

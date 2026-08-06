@@ -134,6 +134,30 @@ button:focus-visible,
   position: relative;
 }
 
+.nav-dropdown__trigger {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.nav-avatar--fallback {
+  padding: 5px;
+  color: var(--color-text-dim);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+}
+
+.nav-dropdown__trigger:hover .nav-avatar--fallback {
+  color: var(--color-text);
+}
+
 .nav-dropdown__menu {
   display: none;
   position: absolute;
@@ -216,6 +240,10 @@ main {
   max-width: 960px;
   margin: 0 auto;
   padding: var(--space-5);
+}
+
+main.main--wide {
+  max-width: 1300px;
 }
 
 .page-title {
@@ -410,6 +438,7 @@ main {
   font-family: var(--font-data);
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ── Schedule header ─────────────────────────────────────── */
@@ -450,13 +479,31 @@ main {
 
 .schedule-row {
   display: grid;
-  grid-template-columns: 2rem 2.75rem 1fr 6.5rem 20rem 1.5rem;
+  grid-template-columns: 2rem 2.75rem 1fr 8.5rem 20rem 1.5rem;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
 }
 
 .race-track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.race-track__image {
+  width: 168px;
+  height: 108px;
+  border-radius: 4px;
+  background-color: var(--color-surface);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--color-rule);
+  flex-shrink: 0;
+}
+
+.race-track__info {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -492,7 +539,7 @@ main {
 }
 
 .race-detail-strip {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--color-text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -782,6 +829,14 @@ dialog.session-modal::backdrop {
 .form-submit:hover {
   background: var(--color-accent-dim);
   text-decoration: none;
+}
+
+.role-badge {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-left: 0.25em;
+  border-radius: 3px;
 }
 
 .form-notice {

@@ -56,3 +56,12 @@ def exchange_code(code: str, code_verifier: str) -> Session:
         {"auth_code": code, "code_verifier": code_verifier}
     )
     return response.session
+
+
+def refresh_session(refresh_token: str) -> Session:
+    # Supabase access tokens are short-lived (~1hr) — CurrentUserMiddleware
+    # calls this to silently renew one via its long-lived refresh_token
+    # instead of signing the user out every time the access token expires.
+    client = create_client(settings.supabase_url, settings.supabase_anon_key)
+    response = client.auth.refresh_session(refresh_token)
+    return response.session

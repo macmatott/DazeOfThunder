@@ -33,7 +33,7 @@ def constructor_draft_page(request: Request):
         "constructor_draft.html",
         {
             **context,
-            "is_admin": request.state.current_user.get("is_admin", False),
+            "is_owner": request.state.current_user.get("is_owner", False),
             "participants": list_active_participants(),
             "launch_error": None,
         },
@@ -44,7 +44,7 @@ def constructor_draft_page(request: Request):
 def launch_pairing(request: Request, order: list[str] = Form(...)):
     if not request.state.current_user:
         return RedirectResponse("/auth/login")
-    if not request.state.current_user.get("is_admin"):
+    if not request.state.current_user.get("is_owner"):
         return RedirectResponse("/formula-fantasy/constructor-draft")
 
     season_id = get_season_id(CURRENT_SEASON)
@@ -59,7 +59,7 @@ def launch_pairing(request: Request, order: list[str] = Form(...)):
             "constructor_draft.html",
             {
                 **context,
-                "is_admin": True,
+                "is_owner": True,
                 "participants": list_active_participants(),
                 "launch_error": str(exc),
             },
@@ -72,7 +72,7 @@ def launch_pairing(request: Request, order: list[str] = Form(...)):
 def launch_naming(request: Request):
     if not request.state.current_user:
         return RedirectResponse("/auth/login")
-    if not request.state.current_user.get("is_admin"):
+    if not request.state.current_user.get("is_owner"):
         return RedirectResponse("/formula-fantasy/constructor-draft")
 
     season_id = get_season_id(CURRENT_SEASON)
@@ -87,7 +87,7 @@ def launch_naming(request: Request):
             "constructor_draft.html",
             {
                 **context,
-                "is_admin": True,
+                "is_owner": True,
                 "participants": list_active_participants(),
                 "launch_error": str(exc),
             },
@@ -115,7 +115,7 @@ def pick_teammate(request: Request, partner_participant_id: str = Form(...)):
     return templates.TemplateResponse(
         request,
         "_constructor_draft_board.html",
-        {**context, "is_admin": request.state.current_user.get("is_admin", False)},
+        {**context, "is_owner": request.state.current_user.get("is_owner", False)},
     )
 
 
@@ -136,5 +136,5 @@ def pick_name(request: Request, name: str = Form(...)):
     return templates.TemplateResponse(
         request,
         "_constructor_draft_board.html",
-        {**context, "is_admin": request.state.current_user.get("is_admin", False)},
+        {**context, "is_owner": request.state.current_user.get("is_owner", False)},
     )

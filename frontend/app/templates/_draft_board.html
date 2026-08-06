@@ -1,6 +1,7 @@
 {# Rendered on full-page load (via include), by /partials/draft-board on
    every HTMX poll, and by POST /formula-fantasy/draft/pick — keep this
    fragment self-contained (no base.html deps). #}
+{% from "_macros.html" import role_badge %}
 <div
   id="draft-turn-marker"
   data-on-the-clock="{{ 'true' if board.viewer_is_on_the_clock else 'false' }}"
@@ -84,7 +85,7 @@
         <div class="tower__pos">{{ pick.pick_number }}</div>
         <div class="driver-photo" style="background-image: url('{{ pick.f1_drivers.photo_url }}')"></div>
         <div>
-          <div class="tower__name">{{ pick.participants.display_name }}</div>
+          <div class="tower__name">{{ pick.participants.display_name }}{{ role_badge(pick.participants.role) }}</div>
           <div class="draft-pick-btn__header">
             {% if pick.f1_drivers.logo_url %}
               <img src="{{ pick.f1_drivers.logo_url }}" alt="" class="draft-pick-row__logo">

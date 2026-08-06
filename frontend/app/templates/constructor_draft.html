@@ -8,7 +8,7 @@
     <div class="form-notice form-notice--error">{{ launch_error }}</div>
   {% endif %}
 
-  {% if phase == 'not_started' and is_admin %}
+  {% if phase == 'not_started' and is_owner %}
     <div class="tower form">
       <div class="session-card__title">Launch the pairing draft</div>
       <p class="tower__meta">

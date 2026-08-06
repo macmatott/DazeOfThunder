@@ -34,11 +34,19 @@
       </div>
       {% if request.state.current_user %}
         <div class="nav-dropdown">
-          <a href="#" class="nav-dropdown__trigger">{{ request.state.current_user.display_name }}</a>
+          <a href="#" class="nav-dropdown__trigger" aria-label="{{ request.state.current_user.display_name }}">
+            {% if request.state.current_user.avatar_url %}
+              <img src="{{ request.state.current_user.avatar_url }}" alt="" class="nav-avatar">
+            {% else %}
+              <svg class="nav-avatar nav-avatar--fallback" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 12.5c2.9 0 5.25-2.35 5.25-5.25S14.9 2 12 2 6.75 4.35 6.75 7.25 9.1 12.5 12 12.5zm0 2.25c-3.53 0-10.5 1.77-10.5 5.29V22h21v-1.96c0-3.52-6.97-5.29-10.5-5.29z"/>
+              </svg>
+            {% endif %}
+          </a>
           <div class="nav-dropdown__menu nav-dropdown__menu--right">
             <a href="/profile">Profile Settings</a>
             {% if request.state.current_user.is_admin %}
-              <a href="/admin/members">Pending Members</a>
+              <a href="/admin">Admin</a>
             {% endif %}
             <form method="post" action="/auth/logout">
               <button type="submit" class="nav-dropdown__signout">Sign Out</button>
@@ -51,7 +59,7 @@
     </nav>
   </div>
 
-  <main>
+  <main class="{% block main_class %}{% endblock %}">
     {% if request.state.current_user and not request.state.current_user.is_active %}
       <div class="form-notice form-notice--info">
         Your account is waiting on admin approval — you can look around,

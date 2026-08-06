@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import role_badge %}
 {% block title %}Daze of Thunder{% endblock %}
 {% block content %}
   <h1 class="page-title">Daze of Thunder</h1>
@@ -40,7 +41,9 @@
     </div>
     <div class="stat-card">
       <div class="stat-card__label">Fantasy Championship</div>
-      <div class="stat-card__value">{{ fantasy_leader or "—" }}</div>
+      <div class="stat-card__value">
+        {% if fantasy_leader %}{{ fantasy_leader.display_name }}{{ role_badge(fantasy_leader.role) }}{% else %}—{% endif %}
+      </div>
     </div>
     <div class="stat-card">
       <div class="stat-card__label">Constructors' Championship</div>
@@ -48,7 +51,9 @@
     </div>
     <div class="stat-card">
       <div class="stat-card__label">Overall Championship</div>
-      <div class="stat-card__value">{{ overall_leader or "—" }}</div>
+      <div class="stat-card__value">
+        {% if overall_leader %}{{ overall_leader.display_name }}{{ role_badge(overall_leader.role) }}{% else %}—{% endif %}
+      </div>
     </div>
   </div>
 
@@ -59,9 +64,12 @@
     </div>
     {% if next_race %}
       <div class="stat-card__details">
-        <div class="stat-card__meta">{{ next_race.circuit_name }} — {{ next_race.location }}</div>
-        <div class="stat-card__meta">{{ next_race.race_date }}</div>
+        <div class="stat-card__meta">{{ next_race.iracing_track or next_race.circuit_name }}</div>
+        <div class="stat-card__meta">{{ next_race.sim_date }}</div>
       </div>
+      {% if next_race.track_image_url %}
+        <span class="race-track__image" style="background-image: url('{{ next_race.track_image_url }}')"></span>
+      {% endif %}
     {% endif %}
   </div>
 {% endblock %}

@@ -32,7 +32,7 @@ def draft_page(request: Request):
         "draft.html",
         {
             "board": board,
-            "is_admin": request.state.current_user.get("is_admin", False),
+            "is_owner": request.state.current_user.get("is_owner", False),
             "participants": list_active_participants(),
             "launch_error": None,
         },
@@ -43,7 +43,7 @@ def draft_page(request: Request):
 def launch(request: Request, order: list[str] = Form(...)):
     if not request.state.current_user:
         return RedirectResponse("/auth/login")
-    if not request.state.current_user.get("is_admin"):
+    if not request.state.current_user.get("is_owner"):
         return RedirectResponse("/formula-fantasy/draft")
 
     season_id = get_season_id(CURRENT_SEASON)
@@ -57,7 +57,7 @@ def launch(request: Request, order: list[str] = Form(...)):
             "draft.html",
             {
                 "board": board,
-                "is_admin": True,
+                "is_owner": True,
                 "participants": list_active_participants(),
                 "launch_error": str(exc),
             },

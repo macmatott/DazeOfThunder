@@ -30,12 +30,12 @@ def draft_board(request: Request):
 @router.get("/constructor-draft-board")
 def constructor_draft_board(request: Request):
     participant_id = None
-    is_admin = False
+    is_owner = False
     if request.state.current_user:
         participant_id = request.state.current_user["participant_id"]
-        is_admin = request.state.current_user.get("is_admin", False)
+        is_owner = request.state.current_user.get("is_owner", False)
     season_id = get_season_id(DRAFT_SEASON)
     context = build_constructor_draft_context(season_id, participant_id)
     return templates.TemplateResponse(
-        request, "_constructor_draft_board.html", {**context, "is_admin": is_admin}
+        request, "_constructor_draft_board.html", {**context, "is_owner": is_owner}
     )

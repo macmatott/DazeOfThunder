@@ -18,12 +18,15 @@ import re
 import unicodedata
 
 
-def driver_photo_slug(full_name: str) -> str:
+def slugify_name(name: str) -> str:
     """"Nico Hülkenberg" -> "nico-hulkenberg" (accents stripped, lowercased,
-    non-alphanumerics collapsed to single hyphens)."""
-    ascii_name = unicodedata.normalize("NFKD", full_name).encode("ascii", "ignore").decode("ascii")
+    non-alphanumerics collapsed to single hyphens). Generic enough to reuse
+    anywhere a name needs to become a filename slug — not driver-specific,
+    despite living in this module (e.g. f1_schedule.py reuses it for track
+    image filenames)."""
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^a-z0-9]+", "-", ascii_name.lower()).strip("-")
 
 
 def driver_photo_url(full_name: str) -> str:
-    return f"/static/img/drivers/{driver_photo_slug(full_name)}.png"
+    return f"/static/img/drivers/{slugify_name(full_name)}.png"

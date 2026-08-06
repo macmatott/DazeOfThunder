@@ -1,17 +1,17 @@
-from app.services.driver_photos import driver_photo_slug, driver_photo_url
+from app.services.driver_photos import driver_photo_url, slugify_name
 
 
 def test_slug_lowercases_and_hyphenates():
-    assert driver_photo_slug("Lando Norris") == "lando-norris"
+    assert slugify_name("Lando Norris") == "lando-norris"
 
 
 def test_slug_strips_accents():
-    assert driver_photo_slug("Nico Hülkenberg") == "nico-hulkenberg"
-    assert driver_photo_slug("Sergio Pérez") == "sergio-perez"
+    assert slugify_name("Nico Hülkenberg") == "nico-hulkenberg"
+    assert slugify_name("Sergio Pérez") == "sergio-perez"
 
 
 def test_slug_handles_three_part_names():
-    assert driver_photo_slug("Andrea Kimi Antonelli") == "andrea-kimi-antonelli"
+    assert slugify_name("Andrea Kimi Antonelli") == "andrea-kimi-antonelli"
 
 
 def test_photo_url_shape():

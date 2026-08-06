@@ -220,24 +220,4 @@
       <div></div>
     </div>
   </div>
-
-  <div class="tower">
-    <div class="tower__header">What's Next</div>
-    {% if races %}
-      {% for race in races %}
-        <div class="tower__row">
-          <div class="tower__pos">R{{ race.round_number }}</div>
-          <div>
-            <div class="tower__name">{{ race.race_name }}</div>
-            <div class="tower__meta">{{ race.circuit_name }} — {{ race.location }}</div>
-          </div>
-          <div class="tower__points">{{ race.race_date }}</div>
-        </div>
-      {% endfor %}
-    {% else %}
-      <div class="tower__empty">
-        No upcoming races found — the season may be over.
-      </div>
-    {% endif %}
-  </div>
 {% endblock %}

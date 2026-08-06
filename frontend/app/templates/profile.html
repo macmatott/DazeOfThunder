@@ -1,8 +1,11 @@
 {% extends "base.html" %}
+{% from "_macros.html" import role_badge %}
 {% block title %}Profile — Daze of Thunder{% endblock %}
 {% block content %}
+  {% set role_labels = {"owner": "Owner", "admin": "Admin", "dot_member": "Daze of Thunder Member", "member": "Member"} %}
   <h1 class="page-title">Profile Settings</h1>
   <p class="page-subtitle">Your display name and iRacing identity for leaderboards</p>
+  <p class="tower__meta">Role: {{ role_labels[participant.role] }}{{ role_badge(participant.role) }}</p>
 
   {% if saved %}
     <div class="form-notice form-notice--success">Saved.</div>

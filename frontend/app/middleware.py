@@ -8,9 +8,12 @@ Must run after Starlette's SessionMiddleware (registered in app/main.py),
 since it reads `request.session`.
 """
 
+import asyncio
 import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.services.auth import refresh_session
 
 
 AUTH_SESSION_KEYS = (
@@ -18,11 +21,15 @@ AUTH_SESSION_KEYS = (
     "refresh_token",
     "expires_at",
     "participant_id",
-    "is_admin",
+    "role",
     "is_active",
     "display_name",
     "avatar_url",
 )
+
+# Refresh a little before the access token actually expires so a request
+# that lands right at the boundary doesn't race it.
+REFRESH_LEEWAY_SECONDS = 60
 
 
 class CurrentUserMiddleware(BaseHTTPMiddleware):
@@ -30,10 +37,28 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
         session = request.session
         expires_at = session.get("expires_at")
 
+        # The Supabase access token itself only lives ~1hr — without this,
+        # anyone idle (or asleep) longer than that gets silently signed out
+        # and has to redo Discord OAuth. Swap it for a fresh one via the
+        # long-lived refresh_token instead of treating this as a real logout.
+        if expires_at and session.get("refresh_token") and expires_at <= time.time() + REFRESH_LEEWAY_SECONDS:
+            try:
+                refreshed = await asyncio.to_thread(refresh_session, session["refresh_token"])
+            except Exception:
+                refreshed = None
+            if refreshed:
+                session["access_token"] = refreshed.access_token
+                session["refresh_token"] = refreshed.refresh_token
+                session["expires_at"] = refreshed.expires_at
+                expires_at = refreshed.expires_at
+
         if expires_at and expires_at > time.time():
+            role = session.get("role", "member")
             request.state.current_user = {
                 "participant_id": session.get("participant_id"),
-                "is_admin": session.get("is_admin", False),
+                "role": role,
+                "is_admin": role in ("owner", "admin"),
+                "is_owner": role == "owner",
                 "is_active": session.get("is_active", False),
                 "display_name": session.get("display_name"),
                 "avatar_url": session.get("avatar_url"),

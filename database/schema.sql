@@ -22,7 +22,8 @@ create table public.participants (
     auth_user_id uuid unique references auth.users(id) on delete set null,
 
     display_name text not null,
-    is_admin boolean not null default false,
+    role text not null default 'member'
+        check (role in ('owner', 'admin', 'dot_member', 'member')),
     is_active boolean not null default true,
 
     -- Stable iRacing identity — the key CSV rows are matched against.
@@ -37,6 +38,10 @@ create table public.participants (
 comment on table public.participants is
     'A Formula Fantasy league member. auth_user_id links to Supabase Auth; '
     'iracing_cust_id is the stable key for matching iRacing CSV rows.';
+
+-- At most one Owner can ever exist, enforced independently of the app layer.
+create unique index participants_one_owner_only on public.participants ((true))
+    where role = 'owner';
 
 -- ============================================================
 -- Seasons

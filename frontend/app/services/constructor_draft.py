@@ -170,14 +170,16 @@ def get_available_partners(season_id: str, captain_ids: set[str]) -> list[dict]:
 
 def get_pairs(season_id: str) -> list[dict]:
     """Formed pairs, ascending by formation order (pick_number). Each row
-    is tagged with member_names (e.g. "Alice & Bob") and logo_url (once
-    named)."""
+    is tagged with member_names (e.g. "Alice & Bob", for inline
+    sentence-style labels like on_the_clock_team_label), members (the
+    same two people as a role-aware list, for list-row rendering that
+    needs to badge each name individually), and logo_url (once named)."""
     client = admin_client()
     rows = (
         client.table("constructors")
         .select(
             "id, name, pick_number, paired_at, named_at, "
-            "constructor_members(participant_id, participants(display_name))"
+            "constructor_members(participant_id, participants(display_name, role))"
         )
         .eq("season_id", season_id)
         .order("pick_number")
@@ -185,8 +187,12 @@ def get_pairs(season_id: str) -> list[dict]:
         .data
     )
     for row in rows:
-        member_names = sorted(m["participants"]["display_name"] for m in row["constructor_members"])
-        row["member_names"] = " & ".join(member_names)
+        members = sorted(
+            (m["participants"] for m in row["constructor_members"]),
+            key=lambda p: p["display_name"],
+        )
+        row["members"] = members
+        row["member_names"] = " & ".join(m["display_name"] for m in members)
         row["logo_url"] = logo_url_for_team(row["name"]) if row["name"] else None
     return rows
 
@@ -396,6 +402,27 @@ def maybe_auto_pick_naming(season_id: str) -> bool:
     except (DraftError, APIError):
         pass
     return True
+
+
+def get_constructor_draft_summary(season_id: str | None) -> dict:
+    """Read-only phase snapshot for the admin hub — same
+    doesn't-auto-pick-as-a-side-effect reasoning as
+    get_driver_draft_summary in draft.py."""
+    if not season_id:
+        return {"phase": "no_season"}
+    state = get_constructor_draft_state(season_id)
+    phase = state["phase"] if state else "not_started"
+    detail = None
+    if phase == "pairing":
+        pairs = get_pairs(season_id)
+        status = compute_pairing_status(state["pairing_order"], pairs)
+        detail = f"{status['pairs_formed']}/{len(state['pairing_order'])} pairs formed"
+    elif phase == "naming":
+        constructors_desc = get_constructors_desc_by_pick_number(season_id)
+        status = compute_naming_status(constructors_desc)
+        named = sum(1 for c in constructors_desc if c["name"])
+        detail = f"{named}/{len(constructors_desc)} named"
+    return {"phase": phase, "detail": detail}
 
 
 def build_pairing_board_context(season_id: str, viewer_participant_id: str | None) -> dict:

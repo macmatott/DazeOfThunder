@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 
 from app.db.supabase_client import public_client
+from app.services.driver_photos import slugify_name
 from app.services.f1_ingest import JolpicaClient
 
 # Placeholder sim-session weather, per round — set by league admin as real
@@ -85,28 +86,28 @@ F1_LAPS_BY_ROUND: dict[int, int] = {
 # sim track doesn't have to match the host country).
 IRACING_TRACK_BY_ROUND: dict[int, str] = {
     1: "Phillip Island Circuit",
-    2: "Okayama International Circuit -- Full Course",
-    3: "Suzuka International Racing Course -- Grand Prix",
-    4: "Miami International Autodrome -- Grand Prix",
-    5: "Circuit Gilles Villeneuve -- Grand Prix",
+    2: "Okayama International Circuit — Full Course",
+    3: "Suzuka International Racing Course — Grand Prix",
+    4: "Miami International Autodrome — Grand Prix",
+    5: "Circuit Gilles Villeneuve — Grand Prix",
     6: "Adelaide Street Circuit",
-    7: "Circuit de Barcelona-Catalunya -- Grand Prix",
-    8: "Red Bull Ring -- Grand Prix",
-    9: "Silverstone Circuit -- Grand Prix",
-    10: "Circuit de Spa-Francorchamps -- Grand Prix Pits",
+    7: "Circuit de Barcelona-Catalunya — Grand Prix",
+    8: "Red Bull Ring — Grand Prix",
+    9: "Silverstone Circuit — Grand Prix",
+    10: "Circuit de Spa-Francorchamps — Grand Prix Pits",
     11: "Hungaroring",
-    12: "Circuit Park Zandvoort",
-    13: "Autodromo Nazionale Monza -- Grand Prix",
-    14: "Autódromo Internacional do Algarve -- Grand Prix",
-    15: "Circuit de Nevers Magny-Cours -- Grand Prix",
-    16: "Nürburgring Grand-Prix-Strecke - Grand Prix",
-    17: "Circuit de Lédenon -- Grand Prix",
-    18: "Circuit of the Americas -- Grand Prix",
-    19: "Autódromo Hermanos Rodríguez -- Grand Prix",
-    20: "Autódromo José Carlos Pace -- Grand Prix",
+    12: "Circuit Park Zandvoort — Grand Prix",
+    13: "Autodromo Nazionale Monza — Grand Prix",
+    14: "Autódromo Internacional do Algarve — Grand Prix",
+    15: "Circuit de Nevers Magny-Cours — Grand Prix",
+    16: "Nürburgring Grand-Prix-Strecke — Grand Prix",
+    17: "Circuit de Lédenon — Grand Prix",
+    18: "Circuit of the Americas — Grand Prix",
+    19: "Autódromo Hermanos Rodríguez — Grand Prix",
+    20: "Autódromo José Carlos Pace — Grand Prix",
     21: "Qualcomm Circuit (Naval Base Coronado)",
-    22: "Road America -- Full Course",
-    23: "Daytona International Speedway -- Road Course",
+    22: "Road America — Full Course",
+    23: "Daytona International Speedway — Road Course",
 }
 
 
@@ -122,17 +123,42 @@ def _thursday_before(race_dt: datetime) -> date:
     return race_dt.date() - timedelta(days=days_since_thursday)
 
 
+def _split_track_name(iracing_track: str | None) -> tuple[str, str]:
+    """"Circuit Park Zandvoort — Grand Prix" -> ("Circuit Park Zandvoort",
+    "Grand Prix") — the track itself vs. which layout/config a round uses.
+    One track image covers every config, so only the first half matters
+    there; the session detail popout shows both halves separately."""
+    if iracing_track and " — " in iracing_track:
+        track_name, track_config = iracing_track.split(" — ", 1)
+    else:
+        track_name, track_config = (iracing_track or "—"), "—"
+    return track_name, track_config
+
+
+def track_image_url(iracing_track: str | None) -> str | None:
+    if not iracing_track:
+        return None
+    track_name, _ = _split_track_name(iracing_track)
+    return f"/static/img/tracks/{slugify_name(track_name)}.png"
+
+
 def _format_race(race: dict, race_dt: datetime) -> dict:
     circuit = race["Circuit"]
     location = circuit["Location"]
+    round_number = int(race["round"])
+    sim_date = _thursday_before(race_dt)
+    iracing_track = IRACING_TRACK_BY_ROUND.get(round_number)
     return {
-        "round_number": int(race["round"]),
+        "round_number": round_number,
         "race_name": race["raceName"],
         "circuit_name": circuit["circuitName"],
         "location": f"{location['locality']}, {location['country']}",
         "race_datetime": race_dt,
         "race_date": f"{race_dt:%b} {race_dt.day}, {race_dt:%Y}",
         "race_date_iso": f"{race_dt:%Y-%m-%d}",
+        "iracing_track": iracing_track,
+        "track_image_url": track_image_url(iracing_track),
+        "sim_date": f"{sim_date:%b} {sim_date.day}, {sim_date:%Y}",
     }
 
 
@@ -186,10 +212,7 @@ def _session_detail(
     weather/results-derived fields are real. "—" marks fields we don't
     track at all (session/subsession/DB IDs, timestamps, etc.).
     """
-    if iracing_track and " -- " in iracing_track:
-        track_name, track_config = iracing_track.split(" -- ", 1)
-    else:
-        track_name, track_config = (iracing_track or "—"), "—"
+    track_name, track_config = _split_track_name(iracing_track)
 
     f1_laps = F1_LAPS_BY_ROUND.get(round_number)
     if f1_laps:
@@ -286,15 +309,12 @@ def _merge_schedule_with_results(
             results_by_round.get(formatted["round_number"], []) if is_past else None
         )
 
-        sim_date = _thursday_before(race_dt)
-        formatted["sim_date"] = f"{sim_date:%b} {sim_date.day}, {sim_date:%Y}"
         formatted["sim_temperature_f"] = SIM_TEMPERATURE_BY_ROUND.get(
             formatted["round_number"], SIM_TEMPERATURE_F
         )
         formatted["sim_conditions"] = SIM_CONDITIONS_BY_ROUND.get(
             formatted["round_number"], SIM_CONDITIONS
         )
-        formatted["iracing_track"] = IRACING_TRACK_BY_ROUND.get(formatted["round_number"])
 
         formatted["session_detail"] = _session_detail(
             round_number=formatted["round_number"],

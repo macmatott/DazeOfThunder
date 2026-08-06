@@ -3,6 +3,7 @@
    this fragment self-contained (no base.html deps). Covers 4 live states:
    pairing in progress, pairing complete (awaiting naming launch), naming
    in progress, naming complete (final results). #}
+{% from "_macros.html" import role_badge %}
 <div
   id="draft-turn-marker"
   data-on-the-clock="{{ 'true' if (phase == 'pairing' and pairing.viewer_is_on_the_clock) or (phase == 'naming' and naming.viewer_is_on_the_clock) else 'false' }}"
@@ -42,7 +43,7 @@
       <div class="draft-pool">
         {% for p in pairing.available_partners %}
           <div class="draft-pick-btn draft-pick-btn--simple">
-            <span class="draft-pick-btn__header"><span>{{ p.display_name }}</span></span>
+            <span class="draft-pick-btn__header"><span>{{ p.display_name }}{{ role_badge(p.role) }}</span></span>
             <button
               type="button"
               class="draft-pick-btn__action"
@@ -61,7 +62,7 @@
         Waiting for {{ pairing.on_the_clock_name }} to pick a teammate...
       </div>
     {% endif %}
-  {% elif phase == 'pairing' and is_admin %}
+  {% elif phase == 'pairing' and is_owner %}
     <div class="tower__empty">
       <form method="post" action="/formula-fantasy/constructor-draft/launch-naming">
         <button type="submit" class="form-submit">Launch Naming Draft</button>
@@ -111,7 +112,9 @@
       <div class="draft-pick-row draft-pick-row--no-photo">
         <div class="tower__pos">{{ row.pick_number }}</div>
         <div>
-          <div class="tower__name">{{ row.member_names }}</div>
+          <div class="tower__name">
+            {% for m in row.members %}{{ m.display_name }}{{ role_badge(m.role) }}{% if not loop.last %} &amp; {% endif %}{% endfor %}
+          </div>
           {% if row.name %}
             <div class="draft-pick-btn__header">
               {% if row.logo_url %}

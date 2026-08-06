@@ -26,8 +26,8 @@ def dashboard(request: Request):
         request,
         "dashboard.html",
         {
-            "overall_leader": overall_standings[0]["display_name"] if overall_standings else None,
-            "fantasy_leader": fantasy_standings[0]["display_name"] if fantasy_standings else None,
+            "overall_leader": overall_standings[0] if overall_standings else None,
+            "fantasy_leader": fantasy_standings[0] if fantasy_standings else None,
             "sim_racing_leader": None,  # TODO once sim racing scoring exists
             "constructor_leader": None,  # TODO once constructor pairing/scoring exists
             "next_race": upcoming_races[0] if upcoming_races else None,
@@ -37,10 +37,7 @@ def dashboard(request: Request):
 
 @router.get("/formula-fantasy")
 def formula_fantasy_landing(request: Request):
-    races = get_upcoming_races(CURRENT_SEASON)
-    return templates.TemplateResponse(
-        request, "formula_fantasy.html", {"races": races}
-    )
+    return templates.TemplateResponse(request, "formula_fantasy.html", {})
 
 
 @router.get("/formula-fantasy/schedule")

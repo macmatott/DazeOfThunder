@@ -17,12 +17,12 @@ from collections import defaultdict
 from app.db.supabase_client import public_client
 
 
-def _get_participant_names(client) -> dict[str, str]:
-    participants = client.table("participants").select("id, display_name").execute()
-    return {p["id"]: p["display_name"] for p in participants.data}
+def _get_participants(client) -> dict[str, dict]:
+    participants = client.table("participants").select("id, display_name, role").execute()
+    return {p["id"]: p for p in participants.data}
 
 
-def _build_standings(rows_by_source: list[list[dict]], names: dict[str, str]) -> list[dict]:
+def _build_standings(rows_by_source: list[list[dict]], participants: dict[str, dict]) -> list[dict]:
     """Sums points across however many raw point-row lists are given (each
     row has participant_id, points), one participant per output row,
     sorted descending."""
@@ -31,8 +31,13 @@ def _build_standings(rows_by_source: list[list[dict]], names: dict[str, str]) ->
         for row in rows:
             totals[row["participant_id"]] += row["points"]
 
+    unknown = {"display_name": "Unknown", "role": "member"}
     standings = [
-        {"display_name": names.get(pid, "Unknown"), "points": round(points, 1)}
+        {
+            "display_name": participants.get(pid, unknown)["display_name"],
+            "role": participants.get(pid, unknown)["role"],
+            "points": round(points, 1),
+        }
         for pid, points in totals.items()
     ]
     standings.sort(key=lambda row: row["points"], reverse=True)
@@ -46,7 +51,7 @@ def get_formula_fantasy_standings(season_id: str | None = None) -> list[dict]:
     Empty list if there's no season yet or nothing has been scored.
     """
     client = public_client()
-    names = _get_participant_names(client)
+    participants = _get_participants(client)
 
     sim_query = client.table("sim_points_awarded").select("participant_id, points")
     fantasy_query = client.table("fantasy_points_awarded").select("participant_id, points")
@@ -58,17 +63,17 @@ def get_formula_fantasy_standings(season_id: str | None = None) -> list[dict]:
         fantasy_query = fantasy_query.eq("season_id", season_id)
 
     return _build_standings(
-        [sim_query.execute().data, fantasy_query.execute().data], names
+        [sim_query.execute().data, fantasy_query.execute().data], participants
     )
 
 
 def get_fantasy_only_standings(season_id: str | None = None) -> list[dict]:
     """Fantasy Championship — fantasy_points_awarded only, no sim racing."""
     client = public_client()
-    names = _get_participant_names(client)
+    participants = _get_participants(client)
 
     fantasy_query = client.table("fantasy_points_awarded").select("participant_id, points")
     if season_id:
         fantasy_query = fantasy_query.eq("season_id", season_id)
 
-    return _build_standings([fantasy_query.execute().data], names)
+    return _build_standings([fantasy_query.execute().data], participants)

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Schedule — Daze of Thunder{% endblock %}
+{% block main_class %}main--wide{% endblock %}
 {% block content %}
   {% set completed = races | selectattr("is_past") | list | length %}
   <div class="schedule-header">
@@ -37,10 +38,15 @@
             <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
             <span class="tower__pos">{{ race.round_number }}</span>
             <span class="race-track">
-              <span class="tower__name">{{ race.race_name }}</span>
-              {% if race.iracing_track %}
-                <span class="tower__meta">{{ race.iracing_track }}</span>
+              {% if race.track_image_url %}
+                <span class="race-track__image" style="background-image: url('{{ race.track_image_url }}')"></span>
               {% endif %}
+              <span class="race-track__info">
+                <span class="tower__name">{{ race.race_name }}</span>
+                {% if race.iracing_track %}
+                  <span class="tower__meta">{{ race.iracing_track }}</span>
+                {% endif %}
+              </span>
             </span>
             <span class="tower__points">{{ race.sim_date }}</span>
             <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }} &nbsp;·&nbsp; 📅 {{ race.race_date_iso }}</span>
