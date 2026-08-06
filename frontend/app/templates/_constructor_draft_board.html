@@ -1,0 +1,132 @@
+{# Rendered on full-page load (via include), by /partials/constructor-draft-board
+   on every HTMX poll, and by the pick-teammate/pick-name POST routes — keep
+   this fragment self-contained (no base.html deps). Covers 4 live states:
+   pairing in progress, pairing complete (awaiting naming launch), naming
+   in progress, naming complete (final results). #}
+<div
+  id="draft-turn-marker"
+  data-on-the-clock="{{ 'true' if (phase == 'pairing' and pairing.viewer_is_on_the_clock) or (phase == 'naming' and naming.viewer_is_on_the_clock) else 'false' }}"
+  data-pick-number="{{ pairing.status.next_pick_number if phase == 'pairing' and pairing.status.next_pick_number else (naming.status.current_naming_pick_number if phase == 'naming' and naming.status.current_naming_pick_number else '') }}"
+  data-seconds-remaining="{{ pairing.seconds_remaining if phase == 'pairing' and pairing.seconds_remaining is not none else (naming.seconds_remaining if phase == 'naming' and naming.seconds_remaining is not none else '') }}"
+  hidden
+></div>
+
+<div class="tower">
+  <div class="tower__header">
+    <span class="pulse" aria-hidden="true"></span>
+    {% if phase == 'pairing' and not pairing.status.is_complete %}
+      On the clock: {{ pairing.on_the_clock_name }}
+      (Pair {{ pairing.status.next_pick_number }} of 5)
+      {% if pairing.seconds_remaining is not none %}
+        <span class="draft-timer{% if pairing.seconds_remaining <= 10 %} draft-timer--low{% endif %}">
+          {{ pairing.seconds_remaining }}s left
+        </span>
+      {% endif %}
+    {% elif phase == 'pairing' %}
+      All 5 pairs are set — waiting on an admin to launch the naming draft
+    {% elif phase == 'naming' and not naming.status.is_complete %}
+      On the clock: {{ naming.on_the_clock_team_label }}
+      (Pick {{ naming.status.current_naming_pick_number }} of 5)
+      {% if naming.seconds_remaining is not none %}
+        <span class="draft-timer{% if naming.seconds_remaining <= 10 %} draft-timer--low{% endif %}">
+          {{ naming.seconds_remaining }}s left
+        </span>
+      {% endif %}
+    {% else %}
+      Constructor Draft complete
+    {% endif %}
+  </div>
+
+  {% if phase == 'pairing' and not pairing.status.is_complete %}
+    {% if pairing.viewer_is_on_the_clock %}
+      <div class="draft-pool">
+        {% for p in pairing.available_partners %}
+          <div class="draft-pick-btn draft-pick-btn--simple">
+            <span class="draft-pick-btn__header"><span>{{ p.display_name }}</span></span>
+            <button
+              type="button"
+              class="draft-pick-btn__action"
+              hx-post="/formula-fantasy/constructor-draft/pick-teammate"
+              hx-vals='{"partner_participant_id": "{{ p.id }}"}'
+              hx-target="#draft-board"
+              hx-swap="innerHTML"
+            >
+              Pick as Teammate
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="tower__empty">
+        Waiting for {{ pairing.on_the_clock_name }} to pick a teammate...
+      </div>
+    {% endif %}
+  {% elif phase == 'pairing' and is_admin %}
+    <div class="tower__empty">
+      <form method="post" action="/formula-fantasy/constructor-draft/launch-naming">
+        <button type="submit" class="form-submit">Launch Naming Draft</button>
+      </form>
+    </div>
+  {% endif %}
+
+  {% if phase == 'naming' and not naming.status.is_complete %}
+    {% if naming.viewer_is_on_the_clock %}
+      <div class="draft-pool">
+        {% for c in naming.available_names %}
+          <div class="draft-pick-btn draft-pick-btn--simple">
+            <span class="draft-pick-btn__header">
+              {% if c.logo_url %}
+                <img src="{{ c.logo_url }}" alt="" class="draft-pick-btn__logo draft-pick-btn__logo--lg">
+              {% endif %}
+              <span>{{ c.name }}</span>
+            </span>
+            <button
+              type="button"
+              class="draft-pick-btn__action"
+              hx-post="/formula-fantasy/constructor-draft/pick-name"
+              hx-vals='{"name": "{{ c.name }}"}'
+              hx-target="#draft-board"
+              hx-swap="innerHTML"
+            >
+              Claim Team
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="tower__empty">
+        Waiting for {{ naming.on_the_clock_team_label }} to pick a team...
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="tower draft-picks-list">
+  <div class="tower__header">
+    {% if phase == 'naming' %}Teams{% else %}Pairs so far{% endif %}
+  </div>
+  {% set rows = naming.teams | reverse | list if phase == 'naming' else pairing.pairs %}
+  {% if rows %}
+    {% for row in rows %}
+      <div class="draft-pick-row draft-pick-row--no-photo">
+        <div class="tower__pos">{{ row.pick_number }}</div>
+        <div>
+          <div class="tower__name">{{ row.member_names }}</div>
+          {% if row.name %}
+            <div class="draft-pick-btn__header">
+              {% if row.logo_url %}
+                <img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo draft-pick-row__logo--lg">
+              {% endif %}
+              <span class="tower__meta">{{ row.name }}</span>
+            </div>
+          {% else %}
+            <div class="tower__meta">No team name yet</div>
+          {% endif %}
+        </div>
+        <div class="tower__points"></div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="tower__empty">No pairs yet.</div>
+  {% endif %}
+</div>

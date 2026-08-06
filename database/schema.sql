@@ -222,21 +222,58 @@ create table public.fantasy_points_awarded (
 -- Constructors' Championship
 -- ============================================================
 
+-- `name` is nullable: a pair exists (formed by the pairing draft) before
+-- it has a real F1 team name (assigned by the naming draft that follows
+-- it). `pick_number`/`paired_at` record pairing-draft formation order
+-- (mirrors draft_picks.pick_number/picked_at); `named_at` records when
+-- the naming draft pick was made. unique(season_id, name) is race-safe
+-- with a nullable column — Postgres treats NULLs as distinct for
+-- uniqueness, so multiple not-yet-named rows coexist fine, only real
+-- duplicate name claims get blocked (same pattern as draft_picks'
+-- unique(season_id, f1_driver_id)). unique(season_id, pick_number) is
+-- the same race-safety idea applied to pairing-draft formation order.
 create table public.constructors (
     id uuid primary key default gen_random_uuid(),
     season_id uuid not null references public.seasons(id),
-    name text not null                  -- e.g. "McLaren"
+    name text,                          -- e.g. "McLaren" — set once claimed
+    pick_number int,
+    paired_at timestamptz,
+    named_at timestamptz,
+    unique (season_id, name),
+    unique (season_id, pick_number)
 );
 
--- Join table rather than a fixed 2-column pairing on `constructors` —
--- league size (11) doesn't split evenly into pairs, so team size is
--- validated at the application/admin layer, not constrained to exactly 2
--- in the schema. Once the pairing rule is decided, add a check there.
+-- Join table rather than a fixed 2-column pairing on `constructors` — kept
+-- general even though the league's pairing draft always forms exactly
+-- 2-person teams (10 active members, 5 clean pairs), so team size stays
+-- an application-layer rule (see app/services/constructor_draft.py), not
+-- a schema constraint. `season_id` is denormalized here (constructors
+-- already carries it) specifically so "each participant is in at most
+-- one pair per season" can be a real DB constraint rather than requiring
+-- a join to enforce.
 create table public.constructor_members (
     constructor_id uuid not null references public.constructors(id) on delete cascade,
     participant_id uuid not null references public.participants(id),
+    season_id uuid not null references public.seasons(id),
     primary key (constructor_id, participant_id),
-    unique (constructor_id, participant_id)
+    unique (constructor_id, participant_id),
+    unique (season_id, participant_id)
+);
+
+-- Live pairing-draft session state — separate from draft_state (the
+-- driver draft) because draft_state.season_id is unique (one row per
+-- season, already spoken for). Whose turn it is in either phase is
+-- *computed* (see compute_pairing_status/compute_naming_status), never
+-- stored — phase only tracks the coarse not_started/pairing/naming state.
+create table public.constructor_draft_state (
+    id uuid primary key default gen_random_uuid(),
+    season_id uuid not null unique references public.seasons(id),
+    phase text not null default 'not_started'
+        check (phase in ('not_started', 'pairing', 'naming')),
+    pairing_order uuid[] not null default '{}',
+    pairing_launched_at timestamptz,
+    naming_launched_at timestamptz,
+    launched_by uuid references public.participants(id)
 );
 
 -- ============================================================
@@ -272,6 +309,7 @@ alter table public.f1_race_results enable row level security;
 alter table public.fantasy_points_awarded enable row level security;
 alter table public.constructors enable row level security;
 alter table public.constructor_members enable row level security;
+alter table public.constructor_draft_state enable row level security;
 alter table public.scoring_rules enable row level security;
 
 -- Policies intentionally not defined yet — public vs. private page split

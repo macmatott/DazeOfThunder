@@ -8,6 +8,7 @@ swaps in whatever comes back.
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
+from app.services.constructor_draft import build_constructor_draft_context
 from app.services.draft import build_draft_board_context, get_season_id
 
 router = APIRouter(prefix="/partials")
@@ -24,3 +25,17 @@ def draft_board(request: Request):
     season_id = get_season_id(DRAFT_SEASON)
     board = build_draft_board_context(season_id, participant_id)
     return templates.TemplateResponse(request, "_draft_board.html", {"board": board})
+
+
+@router.get("/constructor-draft-board")
+def constructor_draft_board(request: Request):
+    participant_id = None
+    is_admin = False
+    if request.state.current_user:
+        participant_id = request.state.current_user["participant_id"]
+        is_admin = request.state.current_user.get("is_admin", False)
+    season_id = get_season_id(DRAFT_SEASON)
+    context = build_constructor_draft_context(season_id, participant_id)
+    return templates.TemplateResponse(
+        request, "_constructor_draft_board.html", {**context, "is_admin": is_admin}
+    )

@@ -903,6 +903,11 @@ dialog.session-modal::backdrop {
   flex-shrink: 0;
 }
 
+.draft-pick-btn__logo--lg {
+  width: 96px;
+  height: 96px;
+}
+
 .draft-pick-btn__points {
   font-family: var(--font-data);
   font-size: 1.05rem;
@@ -951,4 +956,23 @@ dialog.session-modal::backdrop {
   object-fit: contain;
   border-radius: 3px;
   flex-shrink: 0;
+}
+
+.draft-pick-row__logo--lg {
+  width: 64px;
+  height: 64px;
+}
+
+/* ── Constructor draft (pairing / naming) ───────────────────── */
+
+/* Simpler row shape than the driver pool's 6-column grid — no rank,
+   photo, or FPTS columns, just a label and an action. */
+.draft-pick-btn--simple {
+  grid-template-columns: 1fr 6rem;
+}
+
+/* Pairs/teams have no single driver photo to show, so the 90px middle
+   column .draft-pick-row normally reserves for one is dead space here. */
+.draft-pick-row--no-photo {
+  grid-template-columns: 3rem 1fr auto;
 }

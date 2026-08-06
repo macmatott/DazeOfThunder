@@ -15,7 +15,7 @@
         Set the pick order for everyone currently signed in. Each round is
         one pick per person; round 2 snakes back in reverse order.
       </p>
-      <form method="post" action="/formula-fantasy/draft/launch">
+      <form method="post" action="/formula-fantasy/draft/launch" class="form">
         {% for i in range(participants | length) %}
           <div class="form-field">
             <label for="order-{{ i }}">Pick {{ i + 1 }}</label>
