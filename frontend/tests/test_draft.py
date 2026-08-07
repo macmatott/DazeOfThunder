@@ -246,22 +246,22 @@ def test_celebration_seconds_for_last_pick_is_zero_when_empty():
 
 
 def test_celebration_seconds_for_last_pick_is_zero_for_other_drivers():
-    picks = [_pick("Carlos Sainz"), _pick("George Russell")]
+    picks = [_pick("Alexander Albon"), _pick("Esteban Ocon")]
     assert celebration_seconds_for_last_pick(picks) == 0
 
 
 def test_celebration_seconds_for_last_pick_only_looks_at_the_most_recent_pick():
-    picks = [_pick("Max Verstappen"), _pick("Carlos Sainz")]
+    picks = [_pick("Max Verstappen"), _pick("Alexander Albon")]
     assert celebration_seconds_for_last_pick(picks) == 0
 
 
 def test_celebration_seconds_for_last_pick_fires_on_verstappen():
-    picks = [_pick("Carlos Sainz"), _pick("Max Verstappen")]
+    picks = [_pick("Alexander Albon"), _pick("Max Verstappen")]
     assert celebration_seconds_for_last_pick(picks) == VERSTAPPEN_CELEBRATION_SECONDS
 
 
 def test_celebration_seconds_for_last_pick_fires_on_leclerc():
-    picks = [_pick("Carlos Sainz"), _pick("Charles Leclerc")]
+    picks = [_pick("Alexander Albon"), _pick("Charles Leclerc")]
     assert celebration_seconds_for_last_pick(picks) == EASTER_EGG_CELEBRATIONS["Charles Leclerc"]
 
 
@@ -275,10 +275,17 @@ def test_celebration_seconds_for_last_pick_fires_on_leclerc():
         "Sergio Pérez",
         "Oscar Piastri",
         "Lance Stroll",
+        "Andrea Kimi Antonelli",
+        "George Russell",
+        "Liam Lawson",
+        "Isack Hadjar",
+        "Carlos Sainz",
+        "Valtteri Bottas",
+        "Oliver Bearman",
     ],
 )
 def test_celebration_seconds_for_last_pick_fires_on_every_easter_egg_driver(driver_name):
-    picks = [_pick("Carlos Sainz"), _pick(driver_name)]
+    picks = [_pick("Alexander Albon"), _pick(driver_name)]
     assert celebration_seconds_for_last_pick(picks) == EASTER_EGG_CELEBRATIONS[driver_name]
 
 
@@ -291,7 +298,7 @@ def test_get_celebration_progress_counts_down():
 
 
 def test_get_celebration_progress_is_zero_for_other_drivers():
-    picks = [_pick("Carlos Sainz")]
+    picks = [_pick("Alexander Albon")]
     now = datetime(2026, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
     assert get_celebration_progress(picks, now) == (0.0, 0.0)
 

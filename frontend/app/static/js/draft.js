@@ -35,6 +35,30 @@ document.addEventListener("DOMContentLoaded", function () {
     "Sergio Pérez": "draft-perez-sound",
     "Oscar Piastri": "draft-piastri-sound",
     "Lance Stroll": "draft-stroll-sound",
+    "Andrea Kimi Antonelli": "draft-antonelli-sound",
+    "George Russell": "draft-russell-sound",
+    "Liam Lawson": "draft-lawson-sound",
+    "Isack Hadjar": "draft-hadjar-sound",
+    "Carlos Sainz": "draft-sainz-sound",
+    "Valtteri Bottas": "draft-bottas-sound",
+    "Oliver Bearman": "draft-bearman-sound",
+  };
+  // Same idea as EASTER_EGG_SOUNDS, but for the Constructor Draft's
+  // naming phase — keyed by constructor name instead of driver name.
+  // Seven teams share one generic "team claimed" clip (no dedicated
+  // recording for those yet).
+  var CONSTRUCTOR_EASTER_EGG_SOUNDS = {
+    "Ferrari": "draft-ferrari-sound",
+    "McLaren": "draft-mclaren-sound",
+    "Mercedes": "draft-mercedes-sound",
+    "Red Bull": "draft-red-bull-sound",
+    "Alpine F1 Team": "draft-constructor-generic-sound",
+    "Aston Martin": "draft-constructor-generic-sound",
+    "Audi": "draft-constructor-generic-sound",
+    "Cadillac F1 Team": "draft-constructor-generic-sound",
+    "Haas F1 Team": "draft-constructor-generic-sound",
+    "RB F1 Team": "draft-constructor-generic-sound",
+    "Williams": "draft-constructor-generic-sound",
   };
 
   // Every poll swaps in a fresh #draft-turn-marker regardless of whether
@@ -46,6 +70,9 @@ document.addEventListener("DOMContentLoaded", function () {
   var lastChimedPickNumber = null;
   var lastTickedPickNumber = null;
   var lastAnnouncedPickNumber = null;
+  var lastAnnouncedNamingPickNumber = null;
+  var lastAnnouncedPairingMarker = null;
+  var lastAnnouncedFinaleMarker = null;
 
   board.addEventListener("htmx:afterSwap", function () {
     var marker = document.getElementById("draft-turn-marker");
@@ -86,6 +113,48 @@ document.addEventListener("DOMContentLoaded", function () {
         easterEggSound.play().catch(function () {});
       }
       lastAnnouncedPickNumber = lastPickNumber;
+    }
+
+    // Same broadcast idea for the Constructor Draft's naming phase.
+    var lastNamedPickNumber = marker.dataset.lastNamedPickNumber;
+    var namingSoundId = CONSTRUCTOR_EASTER_EGG_SOUNDS[marker.dataset.lastNamedTeam];
+    if (namingSoundId && lastNamedPickNumber && lastNamedPickNumber !== lastAnnouncedNamingPickNumber) {
+      var namingEasterEggSound = document.getElementById(namingSoundId);
+      if (namingEasterEggSound) {
+        namingEasterEggSound.currentTime = 0;
+        namingEasterEggSound.play().catch(function () {});
+      }
+      lastAnnouncedNamingPickNumber = lastNamedPickNumber;
+    }
+
+    // Every teammate pairing (not just special ones) gets a broadcast
+    // celebration, randomly picked from a fixed set of clips — the
+    // server picks the clip (deterministically, keyed by the pair's own
+    // id) so every viewer plays the same one; this just reads which
+    // index it chose.
+    var pairingMarker = marker.dataset.pairingCelebrationMarker;
+    var pairingClipIndex = marker.dataset.pairingCelebrationClipIndex;
+    if (pairingClipIndex && pairingMarker && pairingMarker !== lastAnnouncedPairingMarker) {
+      var pairingSound = document.getElementById("draft-pairing-clip-" + pairingClipIndex);
+      if (pairingSound) {
+        pairingSound.currentTime = 0;
+        pairingSound.play().catch(function () {});
+      }
+      lastAnnouncedPairingMarker = pairingMarker;
+    }
+
+    // Plays once, for everyone watching live, the moment the entire
+    // draft (both phases) finishes — server bounds this to a short
+    // window after completion so it doesn't replay for someone loading
+    // the already-finished results page later.
+    var finaleMarker = marker.dataset.draftFinaleMarker;
+    if (finaleMarker && finaleMarker !== lastAnnouncedFinaleMarker) {
+      var finaleSound = document.getElementById("draft-finale-sound");
+      if (finaleSound) {
+        finaleSound.currentTime = 0;
+        finaleSound.play().catch(function () {});
+      }
+      lastAnnouncedFinaleMarker = finaleMarker;
     }
 
     // The intro video sits behind hx-preserve, so this element is the

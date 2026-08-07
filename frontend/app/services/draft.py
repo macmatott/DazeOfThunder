@@ -52,7 +52,14 @@ EASTER_EGG_CELEBRATIONS = {
     "Lando Norris": 8,  # 7.63s, VBR
     "Sergio Pérez": 10,  # 9.53s, VBR
     "Oscar Piastri": 9,  # 8.57s, VBR
-    "Lance Stroll": 5,  # 4.21s
+    "Lance Stroll": 18,  # 17.57s, .m4a
+    "Andrea Kimi Antonelli": 10,  # 9.89s, .m4a
+    "George Russell": 9,  # 8.21s, .m4a
+    "Liam Lawson": 17,  # 16.14s
+    "Isack Hadjar": 10,  # 9.40s, .m4a
+    "Carlos Sainz": 8,  # 7.12s, .m4a
+    "Valtteri Bottas": 10,  # 9.49s, .m4a
+    "Oliver Bearman": 13,  # 12.17s, .m4a
 }
 VERSTAPPEN_CELEBRATION_SECONDS = EASTER_EGG_CELEBRATIONS["Max Verstappen"]
 

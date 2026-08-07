@@ -54,9 +54,5 @@ can be swapped later without touching the fantasy scoring engine.
 
 ## Still open (see /areas/formula-fantasy.md and the original design doc)
 
-- Frontend framework
-- Draft order mechanism (reverse skill ranking / lottery / etc.)
-- Formula Fantasy combined-championship weighting (iRacing pts vs. fantasy pts)
-- Authentication provider details (Supabase Auth is assumed but not confirmed)
 - Public vs. private page split
 - iRacing race format, car (F4 vs F3), race length

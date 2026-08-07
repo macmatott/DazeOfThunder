@@ -10,13 +10,21 @@
   data-on-the-clock="{{ 'true' if (phase == 'pairing' and pairing.viewer_is_on_the_clock) or (phase == 'naming' and naming.viewer_is_on_the_clock) else 'false' }}"
   data-pick-number="{{ pairing.status.next_pick_number if phase == 'pairing' and pairing.status.next_pick_number else (naming.status.current_naming_pick_number if phase == 'naming' and naming.status.current_naming_pick_number else '') }}"
   data-seconds-remaining="{{ pairing.seconds_remaining if phase == 'pairing' and pairing.seconds_remaining is not none else (naming.seconds_remaining if phase == 'naming' and naming.seconds_remaining is not none else '') }}"
+  data-last-named-team="{{ naming.last_named_team_name if phase == 'naming' and naming.last_named_team_name else '' }}"
+  data-last-named-pick-number="{{ naming.named_count if phase == 'naming' and naming.named_count else '' }}"
+  data-pairing-celebration-clip-index="{{ pairing.celebration_clip_index if phase == 'pairing' and pairing.in_celebration else '' }}"
+  data-pairing-celebration-marker="{{ pairing.status.pairs_formed if phase == 'pairing' and pairing.in_celebration else '' }}"
+  data-draft-finale-marker="{{ naming.named_count if phase == 'naming' and naming.finale_seconds_remaining is not none else '' }}"
   hidden
 ></div>
 
 <div class="tower">
   <div class="tower__header">
     <span class="pulse" aria-hidden="true"></span>
-    {% if phase == 'pairing' and not pairing.status.is_complete %}
+    {% if phase == 'pairing' and pairing.in_celebration %}
+      🤝 New pair formed!
+      <span class="draft-timer">{{ pairing.celebration_seconds_remaining }}s</span>
+    {% elif phase == 'pairing' and not pairing.status.is_complete %}
       On the clock: {{ pairing.on_the_clock_name }}
       (Pair {{ pairing.status.next_pick_number }} of 5)
       {% if pairing.seconds_remaining is not none %}
@@ -26,6 +34,9 @@
       {% endif %}
     {% elif phase == 'pairing' %}
       All 5 pairs are set — waiting on an admin to launch the naming draft
+    {% elif phase == 'naming' and naming.in_celebration %}
+      🏆 {{ naming.last_named_team_name }}!
+      <span class="draft-timer">{{ naming.celebration_seconds_remaining }}s</span>
     {% elif phase == 'naming' and not naming.status.is_complete %}
       On the clock: {{ naming.on_the_clock_team_label }}
       (Pick {{ naming.status.current_naming_pick_number }} of 5)
@@ -40,7 +51,11 @@
   </div>
 
   {% if phase == 'pairing' and not pairing.status.is_complete %}
-    {% if pairing.viewer_is_on_the_clock %}
+    {% if pairing.in_celebration %}
+      <div class="tower__empty">
+        Nice pick! Next captain's up shortly...
+      </div>
+    {% elif pairing.viewer_is_on_the_clock %}
       <div class="draft-pool">
         {% for p in pairing.available_partners %}
           <div class="draft-pick-btn draft-pick-btn--simple">
@@ -72,7 +87,11 @@
   {% endif %}
 
   {% if phase == 'naming' and not naming.status.is_complete %}
-    {% if naming.viewer_is_on_the_clock %}
+    {% if naming.in_celebration %}
+      <div class="tower__empty">
+        Let that sink in for a second...
+      </div>
+    {% elif naming.viewer_is_on_the_clock %}
       <div class="draft-pool">
         {% for c in naming.available_names %}
           <div class="draft-pick-btn draft-pick-btn--simple">

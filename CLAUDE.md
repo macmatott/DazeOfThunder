@@ -18,9 +18,12 @@ Discord Bot (Python, read-only client) ─────────────�
   relational integrity. See `docs/architecture.md`.
 - **FastAPI + Jinja2 + HTMX, not React/Next.js**: nobody on the team knows
   JS. HTMX handles live-updating pages (standings polling, tab switching)
-  via server-rendered HTML fragments — no client-side JS is written
-  anywhere in this codebase, and new work should keep it that way unless
-  explicitly decided otherwise.
+  via server-rendered HTML fragments — hand-written JS is the exception,
+  not the default, and today is limited to `schedule.js` and `draft.js`
+  (page-specific behavior HTMX attributes alone can't express, e.g.
+  syncing the draft intro video/audio across polls). New work should stay
+  HTMX-first and reach for hand-written JS only when there's no
+  declarative way to do it.
 - **Discord bot holds no scoring logic.** It reads Supabase and posts
   formatted messages. All scoring/business logic lives in the
   website/backend against the same Supabase project.
@@ -30,12 +33,7 @@ Discord Bot (Python, read-only client) ─────────────�
 
 ## Still open / unresolved
 
-- **Formula Fantasy combined-championship weighting**: currently direct
-  addition of sim + fantasy points (`app/services/standings.py` in
-  frontend) as a placeholder. Doc leaves open whether this should be
-  normalized/percentage-based instead.
-- Frontend framework, draft order mechanism, auth/admin roles, public vs.
-  private page split, iRacing car/format (F4 vs F3) — see
+- Public vs. private page split, iRacing car/format (F4 vs F3) — see
   `docs/architecture.md` "Still open" section for the full list.
 
 ## Data source notes
@@ -59,7 +57,17 @@ never commit them.
 
 ## Current status
 
-Frontend runs locally (dashboard, standings with 4 championship tabs,
-results page). No real season/race data yet — everything shows empty
-states, which is correct, not a bug. Discord bot scaffolded but the bot
-token hasn't been created yet. Domain registered. Schema applied to Supabase.
+Live in production at dazeofthunder.com (Fly.io), backed by the real
+Supabase project. The 5 real league members are registered (Discord
+OAuth sign-in is decoupled from league signup — an explicit "Sign Up for
+the League" action creates the participant row, not just signing in).
+
+Built and deployed: dashboard; 4-tab standings; the merged, live
+turn-based Driver + Constructor Draft (pick timers, an intro video, and
+per-driver easter-egg celebration audio); F1 real-world results import
+from Jolpica-F1 (single round or backfill-all); iRacing CSV race-results
+upload; the full point-structure scoring page; and a member role
+hierarchy (Owner/Admin/Daze of Thunder Member/Member) with an admin hub.
+
+Discord bot is still just scaffolded — no bot token created, not
+deployed.

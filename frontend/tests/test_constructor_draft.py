@@ -1,10 +1,19 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from app.services.constructor_draft import (
+    CONSTRUCTOR_EASTER_EGG_CELEBRATIONS,
     auto_pick_constructor_name,
     auto_pick_teammate,
+    celebration_clip_index_for_pair,
+    celebration_seconds_for_last_named,
+    celebration_seconds_for_last_pair,
     compute_naming_status,
     compute_pairing_status,
+    get_draft_finale_progress,
+    get_naming_celebration_progress,
+    get_pairing_celebration_progress,
     validate_captain_order,
     validate_constructor_choice,
 )
@@ -130,3 +139,175 @@ def test_validate_constructor_choice_accepts_available_real_team():
 
 def test_auto_pick_constructor_name_is_alphabetically_first_available():
     assert auto_pick_constructor_name(["Williams", "Ferrari", "McLaren"]) == "Ferrari"
+
+
+def _named(name, named_at="2026-01-01T12:00:00+00:00"):
+    return {"name": name, "named_at": named_at}
+
+
+def test_celebration_seconds_for_last_named_is_zero_when_empty():
+    assert celebration_seconds_for_last_named([]) == 0
+
+
+def test_celebration_seconds_for_last_named_is_zero_for_an_unconfigured_name():
+    # Not a real constructor name, so it can never collide with a future
+    # real entry in CONSTRUCTOR_EASTER_EGG_CELEBRATIONS — proves the
+    # mechanism doesn't false-positive on an unconfigured team.
+    assert celebration_seconds_for_last_named([_named("Some Other Team")]) == 0
+
+
+def test_celebration_seconds_for_last_named_fires_once_configured(monkeypatch):
+    monkeypatch.setitem(CONSTRUCTOR_EASTER_EGG_CELEBRATIONS, "Ferrari", 7)
+    named = [_named("Williams"), _named("Ferrari")]
+    assert celebration_seconds_for_last_named(named) == 7
+
+
+def test_celebration_seconds_for_last_named_only_looks_at_the_most_recent(monkeypatch):
+    monkeypatch.setitem(CONSTRUCTOR_EASTER_EGG_CELEBRATIONS, "Ferrari", 7)
+    named = [_named("Ferrari"), _named("Some Other Team")]
+    assert celebration_seconds_for_last_named(named) == 0
+
+
+@pytest.mark.parametrize(
+    "team_name",
+    [
+        "Ferrari",
+        "McLaren",
+        "Mercedes",
+        "Red Bull",
+        "Alpine F1 Team",
+        "Aston Martin",
+        "Audi",
+        "Cadillac F1 Team",
+        "Haas F1 Team",
+        "RB F1 Team",
+        "Williams",
+    ],
+)
+def test_celebration_seconds_for_last_named_fires_on_every_easter_egg_team(team_name):
+    named = [_named("Some Other Team"), _named(team_name)]
+    assert celebration_seconds_for_last_named(named) == CONSTRUCTOR_EASTER_EGG_CELEBRATIONS[team_name]
+
+
+def test_get_naming_celebration_progress_counts_down(monkeypatch):
+    monkeypatch.setitem(CONSTRUCTOR_EASTER_EGG_CELEBRATIONS, "Ferrari", 7)
+    named = [_named("Ferrari", named_at="2026-01-01T12:00:00+00:00")]
+    now = datetime(2026, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    elapsed, remaining = get_naming_celebration_progress(named, now)
+    assert elapsed == 3
+    assert remaining == 4
+
+
+def test_get_naming_celebration_progress_is_zero_without_easter_egg():
+    named = [_named("Some Other Team")]
+    now = datetime(2026, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    assert get_naming_celebration_progress(named, now) == (0.0, 0.0)
+
+
+def _pair(pair_id, paired_at="2026-01-01T12:00:00+00:00"):
+    return {"id": pair_id, "paired_at": paired_at}
+
+
+def test_celebration_seconds_for_last_pair_is_zero_when_empty():
+    assert celebration_seconds_for_last_pair([]) == 0
+
+
+def test_celebration_seconds_for_last_pair_is_zero_with_no_clips_configured(monkeypatch):
+    monkeypatch.setattr("app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [])
+    assert celebration_seconds_for_last_pair([_pair("pair-1")]) == 0
+
+
+def test_celebration_seconds_for_last_pair_uses_the_real_configured_clips():
+    # PAIRING_CELEBRATION_CLIP_DURATIONS is populated now (5 real clips) —
+    # every pair should get a real, in-range duration, not 0.
+    duration = celebration_seconds_for_last_pair([_pair("some-real-pair-id")])
+    assert duration > 0
+
+
+def test_celebration_clip_index_for_pair_is_deterministic(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [5, 6, 7, 8, 9]
+    )
+    first = celebration_clip_index_for_pair("some-pair-uuid")
+    second = celebration_clip_index_for_pair("some-pair-uuid")
+    assert first == second
+    assert 0 <= first < 5
+
+
+def test_celebration_clip_index_for_pair_varies_by_pair_id(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [5, 6, 7, 8, 9]
+    )
+    indexes = {celebration_clip_index_for_pair(f"pair-{i}") for i in range(20)}
+    # Not a strict guarantee with only 20 samples across 5 buckets, but
+    # overwhelmingly likely to land in more than one bucket if the hash
+    # is actually varying, not just returning a constant.
+    assert len(indexes) > 1
+
+
+def test_celebration_seconds_for_last_pair_uses_the_selected_clips_duration(monkeypatch):
+    durations = [5, 6, 7, 8, 9]
+    monkeypatch.setattr(
+        "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", durations
+    )
+    pair_id = "some-pair-uuid"
+    expected_index = celebration_clip_index_for_pair(pair_id)
+    assert celebration_seconds_for_last_pair([_pair(pair_id)]) == durations[expected_index]
+
+
+def test_get_pairing_celebration_progress_counts_down(monkeypatch):
+    monkeypatch.setattr("app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [10])
+    pairs = [_pair("pair-1", paired_at="2026-01-01T12:00:00+00:00")]
+    now = datetime(2026, 1, 1, 12, 0, 4, tzinfo=timezone.utc)
+    elapsed, remaining = get_pairing_celebration_progress(pairs, now)
+    assert elapsed == 4
+    assert remaining == 6
+
+
+def test_get_pairing_celebration_progress_is_zero_without_clips_configured(monkeypatch):
+    monkeypatch.setattr("app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [])
+    pairs = [_pair("pair-1")]
+    now = datetime(2026, 1, 1, 12, 0, 4, tzinfo=timezone.utc)
+    assert get_pairing_celebration_progress(pairs, now) == (0.0, 0.0)
+
+
+def test_get_draft_finale_progress_is_zero_when_not_complete(monkeypatch):
+    monkeypatch.setattr("app.services.constructor_draft.DRAFT_FINALE_DURATION_SECONDS", 10)
+    named = [_named("Ferrari")]
+    now = datetime(2026, 1, 1, 12, 0, 4, tzinfo=timezone.utc)
+    assert get_draft_finale_progress(named, False, now) == (0.0, 0.0)
+
+
+def test_get_draft_finale_progress_is_zero_without_a_clip_configured(monkeypatch):
+    monkeypatch.setattr("app.services.constructor_draft.DRAFT_FINALE_DURATION_SECONDS", 0)
+    named = [_named("Ferrari")]
+    now = datetime(2026, 1, 1, 12, 0, 4, tzinfo=timezone.utc)
+    assert get_draft_finale_progress(named, True, now) == (0.0, 0.0)
+
+
+def test_get_draft_finale_progress_uses_the_real_configured_duration():
+    # DRAFT_FINALE_DURATION_SECONDS is populated now (a real clip) — a
+    # draft that just finished should get a real, in-range countdown.
+    named = [_named("Ferrari", named_at="2026-01-01T12:00:00+00:00")]
+    now = datetime(2026, 1, 1, 12, 0, 1, tzinfo=timezone.utc)
+    elapsed, remaining = get_draft_finale_progress(named, True, now)
+    assert elapsed == 1
+    assert remaining > 0
+
+
+def test_get_draft_finale_progress_counts_down(monkeypatch):
+    monkeypatch.setattr("app.services.constructor_draft.DRAFT_FINALE_DURATION_SECONDS", 10)
+    named = [_named("Ferrari", named_at="2026-01-01T12:00:00+00:00")]
+    now = datetime(2026, 1, 1, 12, 0, 4, tzinfo=timezone.utc)
+    elapsed, remaining = get_draft_finale_progress(named, True, now)
+    assert elapsed == 4
+    assert remaining == 6
+
+
+def test_get_draft_finale_progress_is_zero_once_the_window_passes(monkeypatch):
+    monkeypatch.setattr("app.services.constructor_draft.DRAFT_FINALE_DURATION_SECONDS", 10)
+    named = [_named("Ferrari", named_at="2026-01-01T12:00:00+00:00")]
+    now = datetime(2026, 1, 1, 12, 5, 0, tzinfo=timezone.utc)
+    elapsed, remaining = get_draft_finale_progress(named, True, now)
+    assert elapsed == 10
+    assert remaining == 0

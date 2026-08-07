@@ -1131,3 +1131,125 @@ dialog.session-modal::backdrop {
 .draft-pick-row--no-photo {
   grid-template-columns: 3rem 1fr auto;
 }
+
+/* ── Mobile (phone / tablet-portrait) ─────────────────────────
+   Everything below is additive — only activates at <=768px, so
+   desktop/tablet-landscape CSS above is completely untouched. Ordered
+   critical -> high -> medium per the mobile-responsiveness audit. */
+
+@media (max-width: 768px) {
+  /* Critical: driver-pick grid needs ~700-760px of fixed columns —
+     clipped by the parent .tower's overflow:hidden. Column labels lose
+     meaning once rows reflow, so just drop them; let each pick's
+     contents wrap instead of grid-clipping. */
+  .draft-pool-header {
+    display: none;
+  }
+
+  .draft-pick-btn {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .draft-pick-btn__action {
+    width: 100%;
+    justify-self: auto;
+    margin-top: var(--space-2);
+  }
+
+  /* Critical: hard 2-column grids with no fallback — stack instead. */
+  .draft-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .scoring-columns {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  /* High: topbar has no wrap; brand + nav + avatar need far more width
+     than a phone has. Let nav drop to its own line instead of
+     overlapping/overflowing. */
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  .topbar__brand-logo {
+    height: 40px;
+  }
+
+  .topbar__nav {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  /* High: the "Formula Fantasy" trigger is a real navigating link, so
+     tapping it on touch navigates instead of revealing the submenu —
+     there's no other mobile path to the Draft page. Force its menu
+     permanently open as a normal wrapped row instead of a hover
+     popup. The account dropdown (avatar menu) is untouched — its
+     href="#" trigger doesn't navigate away, so tap + :focus-within
+     already reveals it fine. */
+  .nav-dropdown--site-menu .nav-dropdown__menu {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+
+  .nav-dropdown--site-menu .nav-dropdown__menu a {
+    padding: var(--space-1) var(--space-2);
+  }
+
+  /* High: 4 tabs, no wrap — let them wrap to two rows instead of
+     forcing page-wide horizontal scroll. */
+  .standings-tabs {
+    flex-wrap: wrap;
+  }
+
+  /* Medium: every schedule row needs ~630px+ of fixed columns, so it
+     requires horizontal scrolling to read even though it doesn't
+     clip. Drop the two least-essential columns — weather/date detail
+     and the track thumbnail — full detail is still one tap away via
+     the existing session-detail modal. */
+  .race-detail-strip,
+  .race-track__image {
+    display: none;
+  }
+
+  .schedule-row {
+    grid-template-columns: 1.5rem 1.75rem 1fr auto 1.75rem;
+  }
+
+  /* Medium: forced 2-column grid leaves ~55px of content width per
+     card at phone width. */
+  .trophy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Medium: touch targets under the ~44px comfortable tap size. */
+  .nav-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .race-info-btn {
+    padding: var(--space-2);
+  }
+
+  .session-modal__close {
+    padding: var(--space-2);
+  }
+
+  /* Medium: 40px of page padding on each side eats ~21% of a 375px
+     viewport before any content starts, compounding every fix above. */
+  main {
+    padding: var(--space-3);
+  }
+}

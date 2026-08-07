@@ -23,6 +23,7 @@ derived from compute_pairing_status/compute_naming_status.
 
 from __future__ import annotations
 
+import zlib
 from datetime import datetime, timezone
 
 from postgrest.exceptions import APIError
@@ -70,6 +71,44 @@ def compute_pairing_status(captain_order: list[str], pairs: list[dict]) -> dict:
     }
 
 
+# Every teammate pairing (not just special ones) gets a celebration clip
+# broadcast to every viewer, randomly picked from this list — unlike the
+# driver/constructor-name easter eggs, this isn't tied to who was picked.
+# Each value is a clip's measured duration (seconds), rounded up for a
+# small safety margin — index-aligned with the draft-pairing-clip-N audio
+# tags in _draft_content.html (teammate-1.mp3 -> index 0, etc.).
+PAIRING_CELEBRATION_CLIP_DURATIONS: list[int] = [2, 11, 7, 5, 5]
+
+
+def celebration_clip_index_for_pair(pair_id: str) -> int:
+    """Deterministic-but-effectively-random pick of one of the configured
+    clips, keyed by the pair's own (UUID) id — every viewer's poll agrees
+    on the same clip/duration for the same pair this way, with no extra
+    storage needed. crc32 (not Python's built-in hash()) because it's
+    stable across processes/restarts, not randomized per-run."""
+    return zlib.crc32(pair_id.encode()) % len(PAIRING_CELEBRATION_CLIP_DURATIONS)
+
+
+def celebration_seconds_for_last_pair(pairs: list[dict]) -> int:
+    """The randomly-selected clip's duration for the most recently formed
+    pair — 0 if no pairs yet or no clips configured."""
+    if not pairs or not PAIRING_CELEBRATION_CLIP_DURATIONS:
+        return 0
+    index = celebration_clip_index_for_pair(pairs[-1]["id"])
+    return PAIRING_CELEBRATION_CLIP_DURATIONS[index]
+
+
+def get_pairing_celebration_progress(pairs: list[dict], now: datetime) -> tuple[float, float]:
+    """(elapsed_seconds, remaining_seconds) since the most recently
+    formed pair — both 0 if no celebration is in progress."""
+    celebration_seconds = celebration_seconds_for_last_pair(pairs)
+    if not celebration_seconds:
+        return 0.0, 0.0
+    last_paired_at = datetime.fromisoformat(pairs[-1]["paired_at"])
+    elapsed = min(celebration_seconds, max(0.0, (now - last_paired_at).total_seconds()))
+    return elapsed, celebration_seconds - elapsed
+
+
 def validate_captain_order(submitted_ids: list[str], valid_ids: set[str]) -> None:
     """Captains must be a duplicate-free subset of the active roster, and
     there must be exactly half as many captains as active participants —
@@ -104,6 +143,73 @@ def compute_naming_status(constructors_desc_by_pick_number: list[dict]) -> dict:
         "on_the_clock_constructor_id": None,
         "current_naming_pick_number": None,
     }
+
+
+# Easter eggs: whoever claims one of these constructor names during the
+# naming draft gets a celebration clip broadcast to every viewer — same
+# mechanism as the driver draft's per-driver celebrations
+# (app/services/draft.py::EASTER_EGG_CELEBRATIONS), just keyed by
+# constructor name instead of driver name. Values are each clip's
+# measured duration (seconds), rounded up for a small safety margin —
+# not a guess, re-measure if a file changes. Seven teams share one
+# generic "team claimed" clip (no dedicated recording for those yet).
+CONSTRUCTOR_EASTER_EGG_CELEBRATIONS: dict[str, int] = {
+    "Ferrari": 11,  # 10.16s, VBR
+    "McLaren": 6,  # 5.67s, VBR
+    "Mercedes": 4,  # 3.53s, VBR
+    "Red Bull": 4,  # 3.45s
+    "Alpine F1 Team": 4,  # 3.27s, VBR — shared generic clip
+    "Aston Martin": 4,  # shared generic clip
+    "Audi": 4,  # shared generic clip
+    "Cadillac F1 Team": 4,  # shared generic clip
+    "Haas F1 Team": 4,  # shared generic clip
+    "RB F1 Team": 4,  # shared generic clip
+    "Williams": 4,  # shared generic clip
+}
+
+
+def celebration_seconds_for_last_named(named: list[dict]) -> int:
+    """CONSTRUCTOR_EASTER_EGG_CELEBRATIONS[name] if the most recently
+    named constructor is one of the easter-egg teams, else 0 — 0 if
+    nothing's been named yet. `named` must already be sorted so the
+    most recently named team is last (constructors_desc filtered to
+    named-only, i.e. get_constructors_desc_by_pick_number's output,
+    satisfies this — same shape used everywhere else in this module)."""
+    if not named:
+        return 0
+    return CONSTRUCTOR_EASTER_EGG_CELEBRATIONS.get(named[-1]["name"], 0)
+
+
+def get_naming_celebration_progress(named: list[dict], now: datetime) -> tuple[float, float]:
+    """(elapsed_seconds, remaining_seconds) since the most recently
+    named constructor, if it was an easter-egg team — both 0 otherwise."""
+    celebration_seconds = celebration_seconds_for_last_named(named)
+    if not celebration_seconds:
+        return 0.0, 0.0
+    last_named_at = datetime.fromisoformat(named[-1]["named_at"])
+    elapsed = min(celebration_seconds, max(0.0, (now - last_named_at).total_seconds()))
+    return elapsed, celebration_seconds - elapsed
+
+
+# Plays once, broadcast to every viewer, the moment the ENTIRE draft
+# (Driver Draft + both Constructor Draft phases) finishes. Unlike the
+# other celebrations, nothing needs to pause afterward — there's no next
+# pick to hold off, since the draft is fully done. The only job this
+# does is bound the effect to a short window matching the clip's own
+# length, so someone opening the finished results page next week doesn't
+# hear it replay — 0 means "not configured yet."
+DRAFT_FINALE_DURATION_SECONDS: int = 12  # 11.34s, VBR
+
+
+def get_draft_finale_progress(named: list[dict], is_complete: bool, now: datetime) -> tuple[float, float]:
+    """(elapsed_seconds, remaining_seconds) since the whole draft
+    finished — both 0 unless it just finished (within
+    DRAFT_FINALE_DURATION_SECONDS) and a clip is configured."""
+    if not is_complete or not named or not DRAFT_FINALE_DURATION_SECONDS:
+        return 0.0, 0.0
+    finished_at = datetime.fromisoformat(named[-1]["named_at"])
+    elapsed = min(DRAFT_FINALE_DURATION_SECONDS, max(0.0, (now - finished_at).total_seconds()))
+    return elapsed, DRAFT_FINALE_DURATION_SECONDS - elapsed
 
 
 def auto_pick_teammate(
@@ -273,6 +379,11 @@ def make_pairing_pick(season_id: str, captain_participant_id: str, partner_parti
 
     if status["is_complete"]:
         raise DraftCompleteError("Pairing is already complete.")
+
+    _, remaining = get_pairing_celebration_progress(pairs, datetime.now(timezone.utc))
+    if remaining > 0:
+        raise DraftNotLiveError("Still celebrating that pair — hang tight.")
+
     if status["on_the_clock_participant_id"] != captain_participant_id:
         raise NotYourTurnError("It's not your turn.")
     if partner_participant_id == captain_participant_id:
@@ -325,6 +436,11 @@ def make_naming_pick(season_id: str, participant_id: str, name: str) -> dict:
     if status["is_complete"]:
         raise DraftCompleteError("Naming is already complete.")
 
+    named = [c for c in constructors_desc if c["name"] is not None]
+    _, remaining = get_naming_celebration_progress(named, datetime.now(timezone.utc))
+    if remaining > 0:
+        raise DraftNotLiveError("Still celebrating that pick — hang tight.")
+
     on_the_clock = next(
         c for c in constructors_desc if c["id"] == status["on_the_clock_constructor_id"]
     )
@@ -361,7 +477,9 @@ def maybe_auto_pick_pairing(season_id: str) -> bool:
         return False
 
     turn_started_at = get_turn_started_at(
-        {"launched_at": state["pairing_launched_at"]}, _as_timer_picks(pairs, "paired_at")
+        {"launched_at": state["pairing_launched_at"]},
+        _as_timer_picks(pairs, "paired_at"),
+        celebration_seconds=celebration_seconds_for_last_pair(pairs),
     )
     if not is_pick_expired(turn_started_at, datetime.now(timezone.utc)):
         return False
@@ -391,7 +509,9 @@ def maybe_auto_pick_naming(season_id: str) -> bool:
 
     named = [c for c in constructors_desc if c["name"] is not None]
     turn_started_at = get_turn_started_at(
-        {"launched_at": state["naming_launched_at"]}, _as_timer_picks(named, "named_at")
+        {"launched_at": state["naming_launched_at"]},
+        _as_timer_picks(named, "named_at"),
+        celebration_seconds=celebration_seconds_for_last_named(named),
     )
     if not is_pick_expired(turn_started_at, datetime.now(timezone.utc)):
         return False
@@ -440,6 +560,17 @@ def build_pairing_board_context(season_id: str, viewer_participant_id: str | Non
     state = get_constructor_draft_state(season_id)
     pairs = get_pairs(season_id)
     status = compute_pairing_status(state["pairing_order"], pairs)
+    now = datetime.now(timezone.utc)
+
+    in_celebration = False
+    celebration_seconds_remaining = None
+    celebration_clip_index = None
+    if pairs and not status["is_complete"]:
+        _, remaining = get_pairing_celebration_progress(pairs, now)
+        if remaining > 0:
+            in_celebration = True
+            celebration_seconds_remaining = round(remaining)
+            celebration_clip_index = celebration_clip_index_for_pair(pairs[-1]["id"])
 
     captain_ids = set(state["pairing_order"])
     available_partners = get_available_partners(season_id, captain_ids)
@@ -450,13 +581,13 @@ def build_pairing_board_context(season_id: str, viewer_participant_id: str | Non
         on_the_clock_name = names.get(status["on_the_clock_participant_id"])
 
     seconds_remaining = None
-    if not status["is_complete"]:
+    if not status["is_complete"] and not in_celebration:
         turn_started_at = get_turn_started_at(
-            {"launched_at": state["pairing_launched_at"]}, _as_timer_picks(pairs, "paired_at")
+            {"launched_at": state["pairing_launched_at"]},
+            _as_timer_picks(pairs, "paired_at"),
+            celebration_seconds=celebration_seconds_for_last_pair(pairs),
         )
-        seconds_remaining = round(
-            compute_seconds_remaining(turn_started_at, datetime.now(timezone.utc))
-        )
+        seconds_remaining = round(compute_seconds_remaining(turn_started_at, now))
 
     return {
         "status": status,
@@ -464,10 +595,14 @@ def build_pairing_board_context(season_id: str, viewer_participant_id: str | Non
         "available_partners": available_partners,
         "on_the_clock_name": on_the_clock_name,
         "viewer_is_on_the_clock": (
-            viewer_participant_id is not None
+            not in_celebration
+            and viewer_participant_id is not None
             and status["on_the_clock_participant_id"] == viewer_participant_id
         ),
         "seconds_remaining": seconds_remaining,
+        "in_celebration": in_celebration,
+        "celebration_seconds_remaining": celebration_seconds_remaining,
+        "celebration_clip_index": celebration_clip_index,
     }
 
 
@@ -477,6 +612,23 @@ def build_naming_board_context(season_id: str, viewer_participant_id: str | None
     state = get_constructor_draft_state(season_id)
     constructors_desc = get_constructors_desc_by_pick_number(season_id)
     status = compute_naming_status(constructors_desc)
+    now = datetime.now(timezone.utc)
+
+    named = [c for c in constructors_desc if c["name"] is not None]
+
+    in_celebration = False
+    celebration_seconds_remaining = None
+    if named and not status["is_complete"]:
+        _, remaining = get_naming_celebration_progress(named, now)
+        if remaining > 0:
+            in_celebration = True
+            celebration_seconds_remaining = round(remaining)
+
+    finale_seconds_remaining = None
+    if status["is_complete"]:
+        _, remaining = get_draft_finale_progress(named, status["is_complete"], now)
+        if remaining > 0:
+            finale_seconds_remaining = round(remaining)
 
     taken_names = {c["name"] for c in constructors_desc if c["name"] is not None}
     available_names = [
@@ -493,18 +645,19 @@ def build_naming_board_context(season_id: str, viewer_participant_id: str | None
         )
         member_ids = {m["participant_id"] for m in on_the_clock_team["constructor_members"]}
         viewer_is_on_the_clock = (
-            viewer_participant_id is not None and viewer_participant_id in member_ids
+            not in_celebration
+            and viewer_participant_id is not None
+            and viewer_participant_id in member_ids
         )
 
     seconds_remaining = None
-    if not status["is_complete"]:
-        named = [c for c in constructors_desc if c["name"] is not None]
+    if not status["is_complete"] and not in_celebration:
         turn_started_at = get_turn_started_at(
-            {"launched_at": state["naming_launched_at"]}, _as_timer_picks(named, "named_at")
+            {"launched_at": state["naming_launched_at"]},
+            _as_timer_picks(named, "named_at"),
+            celebration_seconds=celebration_seconds_for_last_named(named),
         )
-        seconds_remaining = round(
-            compute_seconds_remaining(turn_started_at, datetime.now(timezone.utc))
-        )
+        seconds_remaining = round(compute_seconds_remaining(turn_started_at, now))
 
     return {
         "status": status,
@@ -513,6 +666,11 @@ def build_naming_board_context(season_id: str, viewer_participant_id: str | None
         "on_the_clock_team_label": on_the_clock_team["member_names"] if on_the_clock_team else None,
         "viewer_is_on_the_clock": viewer_is_on_the_clock,
         "seconds_remaining": seconds_remaining,
+        "in_celebration": in_celebration,
+        "celebration_seconds_remaining": celebration_seconds_remaining,
+        "last_named_team_name": named[-1]["name"] if named else None,
+        "named_count": len(named),
+        "finale_seconds_remaining": finale_seconds_remaining,
     }
 
 
