@@ -25,6 +25,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var TICK_THRESHOLD_SECONDS = 8;
   var DEFAULT_INTRO_VOLUME = 0.3;
+  var EASTER_EGG_SOUNDS = {
+    "Max Verstappen": "draft-verstappen-sound",
+    "Charles Leclerc": "draft-leclerc-sound",
+    "Fernando Alonso": "draft-alonso-sound",
+    "Lewis Hamilton": "draft-hamilton-sound",
+    "Nico Hülkenberg": "draft-hulkenberg-sound",
+    "Lando Norris": "draft-norris-sound",
+    "Sergio Pérez": "draft-perez-sound",
+    "Oscar Piastri": "draft-piastri-sound",
+    "Lance Stroll": "draft-stroll-sound",
+  };
 
   // Every poll swaps in a fresh #draft-turn-marker regardless of whether
   // anything changed, so track which pick we last chimed/ticked for.
@@ -34,6 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // never toggles off in between and a boolean flip would miss it.
   var lastChimedPickNumber = null;
   var lastTickedPickNumber = null;
+  var lastAnnouncedPickNumber = null;
 
   board.addEventListener("htmx:afterSwap", function () {
     var marker = document.getElementById("draft-turn-marker");
@@ -60,6 +72,20 @@ document.addEventListener("DOMContentLoaded", function () {
         tick.play().catch(function () {});
         lastTickedPickNumber = pickNumber;
       }
+    }
+
+    // Broadcast to everyone watching, not just whoever's on the clock —
+    // driven purely by "what was the most recent pick", so it fires the
+    // same way for every viewer's own poll regardless of who made it.
+    var lastPickNumber = marker.dataset.lastPickNumber;
+    var soundId = EASTER_EGG_SOUNDS[marker.dataset.lastPickDriver];
+    if (soundId && lastPickNumber && lastPickNumber !== lastAnnouncedPickNumber) {
+      var easterEggSound = document.getElementById(soundId);
+      if (easterEggSound) {
+        easterEggSound.currentTime = 0;
+        easterEggSound.play().catch(function () {});
+      }
+      lastAnnouncedPickNumber = lastPickNumber;
     }
 
     // The intro video sits behind hx-preserve, so this element is the

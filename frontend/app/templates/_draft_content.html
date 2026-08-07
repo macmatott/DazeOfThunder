@@ -44,8 +44,17 @@
       </div>
     </div>
   {% else %}
-    <audio id="draft-turn-chime" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
-    <audio id="draft-tick-sound" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
+    <audio id="draft-turn-chime" hx-preserve="true" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
+    <audio id="draft-tick-sound" hx-preserve="true" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
+    <audio id="draft-verstappen-sound" hx-preserve="true" src="/static/audio/verstappen.mp3" preload="auto"></audio>
+    <audio id="draft-leclerc-sound" hx-preserve="true" src="/static/audio/leclerc.mp3" preload="auto"></audio>
+    <audio id="draft-alonso-sound" hx-preserve="true" src="/static/audio/alonso.mp3" preload="auto"></audio>
+    <audio id="draft-hamilton-sound" hx-preserve="true" src="/static/audio/hamilton.mp3" preload="auto"></audio>
+    <audio id="draft-hulkenberg-sound" hx-preserve="true" src="/static/audio/hulkenberg.mp3" preload="auto"></audio>
+    <audio id="draft-norris-sound" hx-preserve="true" src="/static/audio/norris.mp3" preload="auto"></audio>
+    <audio id="draft-perez-sound" hx-preserve="true" src="/static/audio/perez.mp3" preload="auto"></audio>
+    <audio id="draft-piastri-sound" hx-preserve="true" src="/static/audio/piastri.mp3" preload="auto"></audio>
+    <audio id="draft-stroll-sound" hx-preserve="true" src="/static/audio/stroll.mp3" preload="auto"></audio>
     {% include "_draft_board.html" %}
   {% endif %}
 {% else %}
@@ -120,8 +129,8 @@
           </div>
         </div>
       {% else %}
-        <audio id="draft-turn-chime" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
-        <audio id="draft-tick-sound" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
+        <audio id="draft-turn-chime" hx-preserve="true" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
+        <audio id="draft-tick-sound" hx-preserve="true" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
         {% include "_constructor_draft_board.html" %}
       {% endif %}
     </div>

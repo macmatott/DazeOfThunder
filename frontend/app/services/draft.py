@@ -38,6 +38,24 @@ PICK_TIMER_SECONDS = 30
 # stays in sync regardless of whether their video loaded or is playing.
 INTRO_DURATION_SECONDS = 60
 
+# Easter eggs: whoever picks one of these drivers gets a celebration clip
+# that plays for every viewer, not just the drafter — the next turn's
+# clock is held off until it's had time to finish. Each value is the
+# actual clip's measured duration (seconds), rounded up for a small
+# safety margin — not a guess, re-measure if the file changes.
+EASTER_EGG_CELEBRATIONS = {
+    "Max Verstappen": 8,  # 7.68s at 192kbps/44100Hz CBR
+    "Charles Leclerc": 6,  # 5.90s, VBR
+    "Fernando Alonso": 12,  # 11.45s
+    "Lewis Hamilton": 11,  # 10.46s, VBR
+    "Nico Hülkenberg": 3,  # 2.02s
+    "Lando Norris": 8,  # 7.63s, VBR
+    "Sergio Pérez": 10,  # 9.53s, VBR
+    "Oscar Piastri": 9,  # 8.57s, VBR
+    "Lance Stroll": 5,  # 4.21s
+}
+VERSTAPPEN_CELEBRATION_SECONDS = EASTER_EGG_CELEBRATIONS["Max Verstappen"]
+
 # team_name (as stored on f1_drivers, from Jolpica's Constructor.name) ->
 # logo filename under app/static/img/constructors/.
 CONSTRUCTOR_LOGOS = {
@@ -258,18 +276,24 @@ def get_available_drivers(season_id: str) -> list[dict]:
     return [d for d in get_ranked_drivers(season_id) if d["id"] not in picked_ids]
 
 
-def get_turn_started_at(draft_state: dict, picks: list[dict], intro_seconds: int = 0) -> datetime:
-    """The current turn's clock starts when the previous pick landed, or
-    when the draft was launched (plus any intro delay) if no picks have
-    been made yet — reusing existing timestamps rather than storing a
-    redundant 'turn started' column that could drift out of sync.
-    `intro_seconds` only matters for the very first turn; the constructor
-    pairing/naming phases reuse this function via the same {"launched_at":
-    ...} shape and never pass it, so they're unaffected."""
+def get_turn_started_at(
+    draft_state: dict,
+    picks: list[dict],
+    intro_seconds: int = 0,
+    celebration_seconds: int = 0,
+) -> datetime:
+    """The current turn's clock starts when the previous pick landed
+    (plus any celebration delay), or when the draft was launched (plus
+    any intro delay) if no picks have been made yet — reusing existing
+    timestamps rather than storing a redundant 'turn started' column
+    that could drift out of sync. Both delay params only matter for the
+    driver draft; the constructor pairing/naming phases reuse this
+    function via the same {"launched_at": ...} shape and never pass
+    them, so they're unaffected."""
     if not picks:
         launched_at = datetime.fromisoformat(draft_state["launched_at"])
         return launched_at + timedelta(seconds=intro_seconds)
-    return datetime.fromisoformat(picks[-1]["picked_at"])
+    return datetime.fromisoformat(picks[-1]["picked_at"]) + timedelta(seconds=celebration_seconds)
 
 
 def compute_seconds_remaining(turn_started_at: datetime, now: datetime) -> float:
@@ -290,6 +314,26 @@ def get_intro_progress(draft_state: dict, now: datetime) -> tuple[float, float]:
     return elapsed, INTRO_DURATION_SECONDS - elapsed
 
 
+def celebration_seconds_for_last_pick(picks: list[dict]) -> int:
+    """EASTER_EGG_CELEBRATIONS[driver] if the most recent pick was one of
+    the easter-egg drivers, else 0 — 0 for an empty picks list too
+    (nothing to celebrate before the first pick)."""
+    if not picks:
+        return 0
+    return EASTER_EGG_CELEBRATIONS.get(picks[-1]["f1_drivers"]["full_name"], 0)
+
+
+def get_celebration_progress(picks: list[dict], now: datetime) -> tuple[float, float]:
+    """(elapsed_seconds, remaining_seconds) since the most recent pick,
+    if it was the easter-egg driver — both 0 otherwise."""
+    celebration_seconds = celebration_seconds_for_last_pick(picks)
+    if not celebration_seconds:
+        return 0.0, 0.0
+    last_picked_at = datetime.fromisoformat(picks[-1]["picked_at"])
+    elapsed = min(celebration_seconds, max(0.0, (now - last_picked_at).total_seconds()))
+    return elapsed, celebration_seconds - elapsed
+
+
 def maybe_auto_pick(season_id: str) -> bool:
     """If whoever's on the clock has run out of time, pick the best
     remaining driver (by 2025 fantasy points — same order as the pool)
@@ -306,7 +350,12 @@ def maybe_auto_pick(season_id: str) -> bool:
     if status["is_complete"]:
         return False
 
-    turn_started_at = get_turn_started_at(state, picks, intro_seconds=INTRO_DURATION_SECONDS)
+    turn_started_at = get_turn_started_at(
+        state,
+        picks,
+        intro_seconds=INTRO_DURATION_SECONDS,
+        celebration_seconds=celebration_seconds_for_last_pick(picks),
+    )
     if not is_pick_expired(turn_started_at, datetime.now(timezone.utc)):
         return False
 
@@ -355,10 +404,15 @@ def make_pick(season_id: str, participant_id: str, f1_driver_id: str) -> dict:
         raise DraftNotLiveError("The draft isn't live.")
 
     picks = get_draft_picks(season_id)
+    now = datetime.now(timezone.utc)
     if not picks:
-        _, remaining = get_intro_progress(state, datetime.now(timezone.utc))
+        _, remaining = get_intro_progress(state, now)
         if remaining > 0:
             raise DraftNotLiveError("The draft intro is still playing.")
+    else:
+        _, remaining = get_celebration_progress(picks, now)
+        if remaining > 0:
+            raise DraftNotLiveError("Still celebrating that pick — hang tight.")
 
     status = compute_draft_status(state["draft_order"], state["total_rounds"], picks)
 
@@ -418,6 +472,8 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
             "in_intro": False,
             "intro_seconds_remaining": None,
             "intro_elapsed_seconds": None,
+            "in_celebration": False,
+            "celebration_seconds_remaining": None,
         }
 
     status = compute_draft_status(state["draft_order"], state["total_rounds"], picks)
@@ -433,14 +489,27 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
             intro_seconds_remaining = round(remaining)
             intro_elapsed_seconds = round(elapsed)
 
+    in_celebration = False
+    celebration_seconds_remaining = None
+    if picks and not status["is_complete"]:
+        _, remaining = get_celebration_progress(picks, now)
+        if remaining > 0:
+            in_celebration = True
+            celebration_seconds_remaining = round(remaining)
+
     on_the_clock_name = None
     if status["on_the_clock_participant_id"]:
         names = {p["id"]: p["display_name"] for p in list_participants()}
         on_the_clock_name = names.get(status["on_the_clock_participant_id"])
 
     seconds_remaining = None
-    if not status["is_complete"] and not in_intro:
-        turn_started_at = get_turn_started_at(state, picks, intro_seconds=INTRO_DURATION_SECONDS)
+    if not status["is_complete"] and not in_intro and not in_celebration:
+        turn_started_at = get_turn_started_at(
+            state,
+            picks,
+            intro_seconds=INTRO_DURATION_SECONDS,
+            celebration_seconds=celebration_seconds_for_last_pick(picks),
+        )
         seconds_remaining = round(compute_seconds_remaining(turn_started_at, now))
 
     return {
@@ -451,6 +520,7 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
         "on_the_clock_name": on_the_clock_name,
         "viewer_is_on_the_clock": (
             not in_intro
+            and not in_celebration
             and viewer_participant_id is not None
             and status["on_the_clock_participant_id"] == viewer_participant_id
         ),
@@ -458,4 +528,6 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
         "in_intro": in_intro,
         "intro_seconds_remaining": intro_seconds_remaining,
         "intro_elapsed_seconds": intro_elapsed_seconds,
+        "in_celebration": in_celebration,
+        "celebration_seconds_remaining": celebration_seconds_remaining,
     }

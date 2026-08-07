@@ -10,6 +10,8 @@
   data-seconds-remaining="{{ board.seconds_remaining if board.seconds_remaining is not none else '' }}"
   data-in-intro="{{ 'true' if board.in_intro else 'false' }}"
   data-intro-elapsed-seconds="{{ board.intro_elapsed_seconds if board.intro_elapsed_seconds is not none else '' }}"
+  data-last-pick-driver="{{ board.picks[-1].f1_drivers.full_name if board.picks else '' }}"
+  data-last-pick-number="{{ board.picks[-1].pick_number if board.picks else '' }}"
   hidden
 ></div>
 
@@ -21,6 +23,9 @@
       <span class="draft-timer{% if board.intro_seconds_remaining <= 10 %} draft-timer--low{% endif %}">
         {{ board.intro_seconds_remaining }}s
       </span>
+    {% elif board.in_celebration %}
+      🏆 {{ board.picks[-1].f1_drivers.full_name }}!
+      <span class="draft-timer">{{ board.celebration_seconds_remaining }}s</span>
     {% elif board.status.is_complete %}
       Draft complete
     {% elif board.on_the_clock_name %}
@@ -71,6 +76,10 @@
           aria-label="Intro video volume"
         >
       </div>
+    </div>
+  {% elif board.in_celebration %}
+    <div class="tower__empty">
+      Let that sink in for a second...
     </div>
   {% elif board.viewer_is_on_the_clock %}
     <div class="draft-pool">

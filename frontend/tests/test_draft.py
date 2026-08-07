@@ -3,11 +3,15 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.services.draft import (
+    EASTER_EGG_CELEBRATIONS,
     INTRO_DURATION_SECONDS,
     PICK_TIMER_SECONDS,
+    VERSTAPPEN_CELEBRATION_SECONDS,
     _sort_by_fantasy_points,
+    celebration_seconds_for_last_pick,
     compute_draft_status,
     compute_seconds_remaining,
+    get_celebration_progress,
     get_intro_progress,
     get_turn_started_at,
     is_pick_expired,
@@ -231,3 +235,70 @@ def test_get_intro_progress_clamps_to_the_intro_window():
     elapsed, remaining = get_intro_progress(state, now)
     assert elapsed == INTRO_DURATION_SECONDS
     assert remaining == 0
+
+
+def _pick(driver_name, picked_at="2026-01-01T12:00:00+00:00"):
+    return {"picked_at": picked_at, "f1_drivers": {"full_name": driver_name}}
+
+
+def test_celebration_seconds_for_last_pick_is_zero_when_empty():
+    assert celebration_seconds_for_last_pick([]) == 0
+
+
+def test_celebration_seconds_for_last_pick_is_zero_for_other_drivers():
+    picks = [_pick("Carlos Sainz"), _pick("George Russell")]
+    assert celebration_seconds_for_last_pick(picks) == 0
+
+
+def test_celebration_seconds_for_last_pick_only_looks_at_the_most_recent_pick():
+    picks = [_pick("Max Verstappen"), _pick("Carlos Sainz")]
+    assert celebration_seconds_for_last_pick(picks) == 0
+
+
+def test_celebration_seconds_for_last_pick_fires_on_verstappen():
+    picks = [_pick("Carlos Sainz"), _pick("Max Verstappen")]
+    assert celebration_seconds_for_last_pick(picks) == VERSTAPPEN_CELEBRATION_SECONDS
+
+
+def test_celebration_seconds_for_last_pick_fires_on_leclerc():
+    picks = [_pick("Carlos Sainz"), _pick("Charles Leclerc")]
+    assert celebration_seconds_for_last_pick(picks) == EASTER_EGG_CELEBRATIONS["Charles Leclerc"]
+
+
+@pytest.mark.parametrize(
+    "driver_name",
+    [
+        "Fernando Alonso",
+        "Lewis Hamilton",
+        "Nico Hülkenberg",
+        "Lando Norris",
+        "Sergio Pérez",
+        "Oscar Piastri",
+        "Lance Stroll",
+    ],
+)
+def test_celebration_seconds_for_last_pick_fires_on_every_easter_egg_driver(driver_name):
+    picks = [_pick("Carlos Sainz"), _pick(driver_name)]
+    assert celebration_seconds_for_last_pick(picks) == EASTER_EGG_CELEBRATIONS[driver_name]
+
+
+def test_get_celebration_progress_counts_down():
+    picks = [_pick("Max Verstappen", picked_at="2026-01-01T12:00:00+00:00")]
+    now = datetime(2026, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    elapsed, remaining = get_celebration_progress(picks, now)
+    assert elapsed == 3
+    assert remaining == VERSTAPPEN_CELEBRATION_SECONDS - 3
+
+
+def test_get_celebration_progress_is_zero_for_other_drivers():
+    picks = [_pick("Carlos Sainz")]
+    now = datetime(2026, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
+    assert get_celebration_progress(picks, now) == (0.0, 0.0)
+
+
+def test_get_turn_started_at_offsets_by_celebration_seconds():
+    state = {"launched_at": "2026-01-01T12:00:00+00:00"}
+    picks = [_pick("Max Verstappen", picked_at="2026-01-01T12:00:05+00:00")]
+    assert get_turn_started_at(state, picks, celebration_seconds=8) == datetime(
+        2026, 1, 1, 12, 0, 13, tzinfo=timezone.utc
+    )
