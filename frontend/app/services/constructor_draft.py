@@ -34,7 +34,9 @@ from app.services.draft import (
     DraftError,
     DraftNotLiveError,
     NotYourTurnError,
+    build_draft_board_context,
     compute_seconds_remaining,
+    get_driver_draft_summary,
     get_turn_started_at,
     is_pick_expired,
     list_active_participants,
@@ -204,6 +206,13 @@ def get_constructors_desc_by_pick_number(season_id: str) -> list[dict]:
 
 
 def launch_pairing_draft(season_id: str, ordered_captain_ids: list[str], launched_by: str) -> dict:
+    # Server-side enforcement of the one-page sequential flow (Driver Draft
+    # must finish before Constructor Pairing can start) — not just hidden
+    # UI, since a crafted direct POST could otherwise bypass it.
+    driver_summary = get_driver_draft_summary(season_id)
+    if driver_summary["phase"] != "complete":
+        raise ValueError("Complete the Driver Draft before launching the Constructor Draft.")
+
     valid_ids = {p["id"] for p in list_active_participants()}
     validate_captain_order(ordered_captain_ids, valid_ids)
 
@@ -525,3 +534,15 @@ def build_constructor_draft_context(season_id: str, viewer_participant_id: str |
         naming_ctx = build_naming_board_context(season_id, viewer_participant_id)
 
     return {"phase": phase, "pairing": pairing_ctx, "naming": naming_ctx}
+
+
+def build_combined_draft_context(season_id: str, viewer_participant_id: str | None) -> dict:
+    """Everything /formula-fantasy/draft needs to render both halves of
+    the merged Driver + Constructor draft flow in one call — used by
+    both the page route and its polling partial so the "Driver Draft
+    finished, reveal the Constructor Draft" transition updates live for
+    everyone watching instead of needing a manual refresh."""
+    return {
+        "board": build_draft_board_context(season_id, viewer_participant_id),
+        **build_constructor_draft_context(season_id, viewer_participant_id),
+    }

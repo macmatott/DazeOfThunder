@@ -8,8 +8,9 @@ swaps in whatever comes back.
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
-from app.services.constructor_draft import build_constructor_draft_context
-from app.services.draft import build_draft_board_context, get_season_id
+from app.services.constructor_draft import build_combined_draft_context
+from app.services.draft import get_season_id, list_active_participants
+from app.services.standings import STANDINGS_TABS, TAB_EMPTY_COPY, get_standings_rows
 
 router = APIRouter(prefix="/partials")
 templates = Jinja2Templates(directory="app/templates")
@@ -17,25 +18,30 @@ templates = Jinja2Templates(directory="app/templates")
 DRAFT_SEASON = "2026"
 
 
-@router.get("/draft-board")
-def draft_board(request: Request):
-    participant_id = None
-    if request.state.current_user:
-        participant_id = request.state.current_user["participant_id"]
-    season_id = get_season_id(DRAFT_SEASON)
-    board = build_draft_board_context(season_id, participant_id)
-    return templates.TemplateResponse(request, "_draft_board.html", {"board": board})
-
-
-@router.get("/constructor-draft-board")
-def constructor_draft_board(request: Request):
+@router.get("/draft-content")
+def draft_content(request: Request):
     participant_id = None
     is_owner = False
     if request.state.current_user:
         participant_id = request.state.current_user["participant_id"]
         is_owner = request.state.current_user.get("is_owner", False)
     season_id = get_season_id(DRAFT_SEASON)
-    context = build_constructor_draft_context(season_id, participant_id)
+    context = build_combined_draft_context(season_id, participant_id)
     return templates.TemplateResponse(
-        request, "_constructor_draft_board.html", {**context, "is_owner": is_owner}
+        request,
+        "_draft_content.html",
+        {**context, "is_owner": is_owner, "participants": list_active_participants()},
+    )
+
+
+@router.get("/standings-tab")
+def standings_tab(request: Request, tab: str = "overall"):
+    if tab not in STANDINGS_TABS:
+        tab = "overall"
+    season_id = get_season_id(DRAFT_SEASON)
+    rows = get_standings_rows(tab, season_id)
+    return templates.TemplateResponse(
+        request,
+        "_standings_tab.html",
+        {"active_tab": tab, "rows": rows, "empty_copy": TAB_EMPTY_COPY[tab]},
     )

@@ -1,6 +1,6 @@
 # Formula Fantasy — Project Context
 
-Private F1-themed fantasy sports + iRacing league for friends (max 11
+Private F1-themed fantasy sports + iRacing league for friends (max 10
 members), hosted at dazeofthunder.com ("Daze of Thunder").
 
 ## Architecture
@@ -30,10 +30,6 @@ Discord Bot (Python, read-only client) ─────────────�
 
 ## Still open / unresolved
 
-- **Constructors' Championship pairing**: league size is 11 (odd), can't
-  split evenly into 2-person teams. `constructor_members` is a join table
-  (not fixed to 2) specifically so this doesn't block schema work, but the
-  actual pairing rule is undecided.
 - **Formula Fantasy combined-championship weighting**: currently direct
   addition of sim + fantasy points (`app/services/standings.py` in
   frontend) as a placeholder. Doc leaves open whether this should be

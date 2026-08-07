@@ -1,10 +1,17 @@
+import httpx
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.constructor_draft import get_constructor_draft_summary
 from app.services.draft import get_driver_draft_summary, get_season_id
+from app.services.f1_ingest import import_season
 from app.services.f1_schedule import get_season_timeline
+from app.services.fantasy_scoring import (
+    MultipleActiveScoringRuleVersionsError,
+    ScoringRulesNotSeededError,
+    score_season,
+)
 from app.services.iracing_ingest import (
     CsvParseError,
     DuplicateEventError,
@@ -43,6 +50,7 @@ def _build_hub_context(request: Request) -> dict:
         "viewer_participant_id": request.state.current_user["participant_id"],
         "admin_action_error": None,
         "upload_success": None,
+        "f1_import_success": None,
     }
 
 
@@ -150,4 +158,60 @@ def upload_race_results(
 
     context = _build_hub_context(request)
     context["upload_success"] = summary
+    return templates.TemplateResponse(request, "admin_hub.html", context)
+
+
+@router.post("/f1-results/import")
+def import_f1_results(request: Request, round_number: int = Form(...)):
+    if not request.state.current_user:
+        return RedirectResponse("/auth/login")
+    if not request.state.current_user.get("is_admin"):  # Owner or Admin, both allowed
+        return RedirectResponse("/")
+
+    try:
+        summaries = import_season(int(CURRENT_SEASON), round_number=round_number)
+        season_id = get_season_id(CURRENT_SEASON)
+        scored = score_season(season_id, round_number=round_number) if season_id else []
+    except (httpx.HTTPError, ScoringRulesNotSeededError, MultipleActiveScoringRuleVersionsError) as exc:
+        context = _build_hub_context(request)
+        context["admin_action_error"] = f"Couldn't import F1 results: {exc}"
+        return templates.TemplateResponse(request, "admin_hub.html", context)
+
+    summary = summaries[0] if summaries else {"race_rows": 0, "sprint_rows": 0}
+    context = _build_hub_context(request)
+    context["f1_import_success"] = {
+        "race_rows": summary["race_rows"],
+        "sprint_rows": summary["sprint_rows"],
+        "scored_count": len(scored),
+    }
+    return templates.TemplateResponse(request, "admin_hub.html", context)
+
+
+@router.post("/f1-results/import-all")
+def import_all_f1_results(request: Request):
+    """One-click backfill — every completed round on the calendar, in one
+    go, then scores Fantasy F1 for all of them. For this beta season,
+    fantasy scoring is deliberately allowed to apply retroactively (see
+    conversation) rather than being scoped to rounds after the draft."""
+    if not request.state.current_user:
+        return RedirectResponse("/auth/login")
+    if not request.state.current_user.get("is_admin"):  # Owner or Admin, both allowed
+        return RedirectResponse("/")
+
+    try:
+        summaries = import_season(int(CURRENT_SEASON))
+        season_id = get_season_id(CURRENT_SEASON)
+        scored = score_season(season_id) if season_id else []
+    except (httpx.HTTPError, ScoringRulesNotSeededError, MultipleActiveScoringRuleVersionsError) as exc:
+        context = _build_hub_context(request)
+        context["admin_action_error"] = f"Couldn't import F1 results: {exc}"
+        return templates.TemplateResponse(request, "admin_hub.html", context)
+
+    context = _build_hub_context(request)
+    context["f1_import_success"] = {
+        "race_rows": sum(s["race_rows"] for s in summaries),
+        "sprint_rows": sum(s["sprint_rows"] for s in summaries),
+        "rounds_with_data": sum(1 for s in summaries if s["race_rows"] or s["sprint_rows"]),
+        "scored_count": len(scored),
+    }
     return templates.TemplateResponse(request, "admin_hub.html", context)

@@ -1,1 +1,12 @@
 {% macro role_badge(role) %}{% if role == "owner" %}<img src="/static/img/roles/owner.svg" alt="Owner" title="Owner" class="role-badge">{% elif role == "admin" %}<img src="/static/img/roles/admin.svg" alt="Admin" title="Admin" class="role-badge">{% endif %}{% if role in ("owner", "admin", "dot_member") %}<img src="/static/img/roles/dot-member.png" alt="Daze of Thunder Member" title="Daze of Thunder Member" class="role-badge">{% elif role == "member" %}<img src="/static/img/roles/member.png" alt="Member" title="Member" class="role-badge">{% endif %}{% endmacro %}
+
+{% macro medal_row(color, label) %}
+  <span class="medal-row">
+    <svg class="medal-icon medal-icon--{{ color }}" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
+      <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
+      <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
+    </svg>
+    <span>{{ label }}</span>
+  </span>
+{% endmacro %}

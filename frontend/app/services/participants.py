@@ -32,17 +32,23 @@ def get_participant(participant_id: str) -> dict:
     return result.data[0]
 
 
-def get_or_create_participant(auth_user_id: str, default_display_name: str) -> dict:
+def get_participant_by_auth_user_id(auth_user_id: str) -> dict | None:
     client = admin_client()
-    existing = (
+    result = (
         client.table("participants")
         .select("*")
         .eq("auth_user_id", auth_user_id)
         .execute()
     )
-    if existing.data:
-        return existing.data[0]
+    return result.data[0] if result.data else None
 
+
+def get_or_create_participant(auth_user_id: str, default_display_name: str) -> dict:
+    existing = get_participant_by_auth_user_id(auth_user_id)
+    if existing:
+        return existing
+
+    client = admin_client()
     # New sign-ups land pending (is_active=False) until an admin approves
     # them — anyone with a Discord account can sign in, but that shouldn't
     # instantly make them a full league participant.

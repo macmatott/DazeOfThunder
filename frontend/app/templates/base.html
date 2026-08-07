@@ -28,8 +28,8 @@
         <div class="nav-dropdown__menu">
           <a href="/formula-fantasy/schedule">Schedule</a>
           <a href="/formula-fantasy/standings">Standings</a>
-          <a href="/formula-fantasy/draft">Driver Draft</a>
-          <a href="/formula-fantasy/constructor-draft">Constructor Draft</a>
+          <a href="/formula-fantasy/scoring">Scoring</a>
+          <a href="/formula-fantasy/draft">Draft</a>
         </div>
       </div>
       {% if request.state.current_user %}
@@ -44,9 +44,15 @@
             {% endif %}
           </a>
           <div class="nav-dropdown__menu nav-dropdown__menu--right">
-            <a href="/profile">Profile Settings</a>
-            {% if request.state.current_user.is_admin %}
-              <a href="/admin">Admin</a>
+            {% if request.state.current_user.participant_id %}
+              <a href="/profile">Profile Settings</a>
+              {% if request.state.current_user.is_admin %}
+                <a href="/admin">Admin</a>
+              {% endif %}
+            {% else %}
+              <form method="post" action="/auth/signup">
+                <button type="submit" class="nav-dropdown__signout">Sign Up for the League</button>
+              </form>
             {% endif %}
             <form method="post" action="/auth/logout">
               <button type="submit" class="nav-dropdown__signout">Sign Out</button>
@@ -60,7 +66,14 @@
   </div>
 
   <main class="{% block main_class %}{% endblock %}">
-    {% if request.state.current_user and not request.state.current_user.is_active %}
+    {% if request.state.current_user and not request.state.current_user.participant_id %}
+      <div class="form-notice form-notice--info">
+        <div>You're signed in with Discord but haven't joined the league yet.</div>
+        <form method="post" action="/auth/signup">
+          <button type="submit" class="form-submit">Sign Up for the League</button>
+        </form>
+      </div>
+    {% elif request.state.current_user and not request.state.current_user.is_active %}
       <div class="form-notice form-notice--info">
         Your account is waiting on admin approval — you can look around,
         but you won't be eligible for the draft until you're approved.

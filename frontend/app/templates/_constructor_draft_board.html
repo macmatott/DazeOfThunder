@@ -1,8 +1,9 @@
-{# Rendered on full-page load (via include), by /partials/constructor-draft-board
-   on every HTMX poll, and by the pick-teammate/pick-name POST routes — keep
-   this fragment self-contained (no base.html deps). Covers 4 live states:
-   pairing in progress, pairing complete (awaiting naming launch), naming
-   in progress, naming complete (final results). #}
+{# Included (via {% include %}) inside _draft_content.html, which is
+   itself rendered on full page load, by /partials/draft-content on
+   every HTMX poll, and by the pick-teammate/pick-name POST routes —
+   keep this fragment self-contained (no base.html deps). Covers 4 live
+   states: pairing in progress, pairing complete (awaiting naming
+   launch), naming in progress, naming complete (final results). #}
 {% from "_macros.html" import role_badge %}
 <div
   id="draft-turn-marker"
@@ -47,7 +48,7 @@
             <button
               type="button"
               class="draft-pick-btn__action"
-              hx-post="/formula-fantasy/constructor-draft/pick-teammate"
+              hx-post="/formula-fantasy/draft/pick-teammate"
               hx-vals='{"partner_participant_id": "{{ p.id }}"}'
               hx-target="#draft-board"
               hx-swap="innerHTML"
@@ -64,7 +65,7 @@
     {% endif %}
   {% elif phase == 'pairing' and is_owner %}
     <div class="tower__empty">
-      <form method="post" action="/formula-fantasy/constructor-draft/launch-naming">
+      <form method="post" action="/formula-fantasy/draft/launch-naming">
         <button type="submit" class="form-submit">Launch Naming Draft</button>
       </form>
     </div>
@@ -84,7 +85,7 @@
             <button
               type="button"
               class="draft-pick-btn__action"
-              hx-post="/formula-fantasy/constructor-draft/pick-name"
+              hx-post="/formula-fantasy/draft/pick-name"
               hx-vals='{"name": "{{ c.name }}"}'
               hx-target="#draft-board"
               hx-swap="innerHTML"

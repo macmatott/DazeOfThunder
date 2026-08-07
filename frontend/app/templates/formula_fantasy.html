@@ -1,15 +1,6 @@
 {% extends "base.html" %}
+{% from "_macros.html" import medal_row %}
 {% block title %}Formula Fantasy — Daze of Thunder{% endblock %}
-{% macro medal_row(color, label) %}
-  <span class="medal-row">
-    <svg class="medal-icon medal-icon--{{ color }}" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-      <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
-      <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
-      <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
-    </svg>
-    <span>{{ label }}</span>
-  </span>
-{% endmacro %}
 {% block content %}
   <h1 class="page-title">Formula Fantasy</h1>
   <p class="page-subtitle">Draft real F1 drivers. Race each other in iRacing. One league, two ways to win.</p>
@@ -48,7 +39,7 @@
         <circle cx="12" cy="12" r="2.5"/>
         <path d="M12 3v6.5M4.8 16.3l5.4-3M19.2 16.3l-5.4-3"/>
       </svg>
-      <div class="trophy-card__title">Driver's Championship</div>
+      <div class="trophy-card__title">Drivers' Championship</div>
       <div class="trophy-card__body">
         Your season Sim Racing points — how you stack up against the whole
         league behind the wheel in iRacing.
@@ -152,6 +143,10 @@
         <div class="tower__points">1 pt</div>
       </div>
     </div>
+  </div>
+
+  <div class="page-cta">
+    <a href="/formula-fantasy/scoring" class="form-submit">See Full Scoring Breakdown</a>
   </div>
 
   <div class="tower">

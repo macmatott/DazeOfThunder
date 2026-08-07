@@ -1,6 +1,7 @@
-{# Rendered on full-page load (via include), by /partials/draft-board on
-   every HTMX poll, and by POST /formula-fantasy/draft/pick — keep this
-   fragment self-contained (no base.html deps). #}
+{# Included (via {% include %}) inside _draft_content.html, which is
+   itself rendered on full page load, by /partials/draft-content on
+   every HTMX poll, and by the pick/pick-teammate/pick-name POST routes
+   — keep this fragment self-contained (no base.html deps). #}
 {% from "_macros.html" import role_badge %}
 <div
   id="draft-turn-marker"

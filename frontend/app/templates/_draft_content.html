@@ -1,0 +1,117 @@
+{# Rendered on full-page load (via include, inside #draft-board in
+   draft.html), by /partials/draft-content on every 2s poll, and by the
+   pick/pick-teammate/pick-name POST routes — this single fragment is
+   the entire dynamic body of the merged draft flow, which is what lets
+   "Driver Draft finishes, Constructor Draft appears" update live for
+   everyone watching instead of needing a manual refresh. Keep this
+   self-contained (no base.html deps). #}
+{% from "_macros.html" import role_badge %}
+
+{% if not (board.status and board.status.is_complete) %}
+  <p class="section-label">1. Driver Draft</p>
+  {% if not board.is_live and is_owner %}
+    <div class="tower form">
+      <div class="session-card__title">Launch the draft</div>
+      <p class="tower__meta">
+        Set the pick order for everyone currently signed in. Each round is
+        one pick per person; round 2 snakes back in reverse order.
+      </p>
+      <form method="post" action="/formula-fantasy/draft/launch" class="form">
+        {% for i in range(participants | length) %}
+          <div class="form-field">
+            <label for="order-{{ i }}">Pick {{ i + 1 }}</label>
+            <select id="order-{{ i }}" name="order" required>
+              <option value="" disabled selected>Choose a member</option>
+              {% for p in participants %}
+                <option value="{{ p.id }}">{{ p.display_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endfor %}
+        <button type="submit" class="form-submit">Launch Draft</button>
+      </form>
+    </div>
+  {% elif not board.is_live %}
+    <div class="tower">
+      <div class="tower__empty">
+        The driver draft hasn't started yet. Check back once the owner launches it.
+      </div>
+    </div>
+  {% else %}
+    <audio id="draft-turn-chime" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
+    <audio id="draft-tick-sound" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
+    {% include "_draft_board.html" %}
+  {% endif %}
+{% else %}
+  <div class="draft-columns">
+    <div>
+      <p class="section-label">1. Driver Draft</p>
+      <div class="tower">
+        <div class="tower__header">Driver Draft complete ✓</div>
+      </div>
+      <div class="tower draft-picks-list">
+        <div class="tower__header">Picks so far</div>
+        {% if board.picks %}
+          {% for pick in board.picks %}
+            <div class="draft-pick-row">
+              <div class="tower__pos">{{ pick.pick_number }}</div>
+              <div class="driver-photo" style="background-image: url('{{ pick.f1_drivers.photo_url }}')"></div>
+              <div>
+                <div class="tower__name">{{ pick.participants.display_name }}{{ role_badge(pick.participants.role) }}</div>
+                <div class="draft-pick-btn__header">
+                  {% if pick.f1_drivers.logo_url %}
+                    <img src="{{ pick.f1_drivers.logo_url }}" alt="" class="draft-pick-row__logo">
+                  {% endif %}
+                  <span class="tower__meta">{{ pick.f1_drivers.full_name }} — {{ pick.f1_drivers.team_name }}</span>
+                </div>
+              </div>
+              <div class="tower__points">R{{ pick.round_number }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="tower__empty">No picks yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <p class="section-label">2. Constructor Draft</p>
+      {% if phase == 'not_started' and is_owner %}
+        <div class="tower form">
+          <div class="session-card__title">Launch the pairing draft</div>
+          <p class="tower__meta">
+            Choose 5 team captains and set their pick order. In that order,
+            each captain picks one of the remaining 5 members as their
+            teammate, forming 5 pairs. Once every pair is formed, you'll
+            separately launch a second draft where pairs claim a real F1 team
+            name — the last pair formed goes first there.
+          </p>
+          <form method="post" action="/formula-fantasy/draft/launch-pairing" class="form">
+            {% for i in range((participants | length) // 2) %}
+              <div class="form-field">
+                <label for="corder-{{ i }}">Captain {{ i + 1 }}</label>
+                <select id="corder-{{ i }}" name="order" required>
+                  <option value="" disabled selected>Choose a member</option>
+                  {% for p in participants %}
+                    <option value="{{ p.id }}">{{ p.display_name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            {% endfor %}
+            <button type="submit" class="form-submit">Launch Pairing Draft</button>
+          </form>
+        </div>
+      {% elif phase == 'not_started' %}
+        <div class="tower">
+          <div class="tower__empty">
+            The constructor draft hasn't started yet. Check back once the owner launches it.
+          </div>
+        </div>
+      {% else %}
+        <audio id="draft-turn-chime" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
+        <audio id="draft-tick-sound" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
+        {% include "_constructor_draft_board.html" %}
+      {% endif %}
+    </div>
+  </div>
+{% endif %}

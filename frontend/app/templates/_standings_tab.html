@@ -1,0 +1,40 @@
+{% from "_macros.html" import role_badge %}
+<div id="standings-wrap">
+  <nav class="standings-tabs">
+    {% for key, label in [
+      ("overall", "Overall Championship"),
+      ("fantasy", "Fantasy Championship"),
+      ("sim", "Drivers' Championship"),
+      ("constructors", "Constructors' Championship"),
+    ] %}
+      <a
+        href="/formula-fantasy/standings?tab={{ key }}"
+        hx-get="/partials/standings-tab?tab={{ key }}"
+        hx-target="#standings-wrap"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        class="standings-tabs__link{% if active_tab == key %} standings-tabs__link--active{% endif %}"
+        {% if active_tab == key %}aria-current="page"{% endif %}
+      >{{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  <div class="tower">
+    {% if rows %}
+      {% for row in rows %}
+        <div class="tower__row">
+          <div class="tower__pos">{{ loop.index }}</div>
+          <div>
+            <div class="tower__name">
+              {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+              {{ row.display_name }}{{ role_badge(row.role) }}
+            </div>
+          </div>
+          <div class="tower__points">{{ row.points }} pts</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="tower__empty">{{ empty_copy }}</div>
+    {% endif %}
+  </div>
+</div>

@@ -20,6 +20,7 @@ AUTH_SESSION_KEYS = (
     "access_token",
     "refresh_token",
     "expires_at",
+    "auth_user_id",
     "participant_id",
     "role",
     "is_active",

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import medal_row %}
+{% block title %}Scoring — Daze of Thunder{% endblock %}
+{% block content %}
+  <h1 class="page-title">Scoring</h1>
+  <p class="page-subtitle">Full point structure for Fantasy F1 and Sim Racing</p>
+
+  <div class="scoring-columns">
+    <p class="section-label">Fantasy F1 Scoring</p>
+    <p class="section-label">Sim Racing Scoring</p>
+
+    <p class="ff-intro">
+      Every classified finisher scores under our own NASCAR-inspired
+      scale — no cutoff at 10th like real F1. The win is worth the full
+      grid size, then points drop by one per position, down to 1 point
+      for last.
+    </p>
+    <p class="ff-intro">
+      Same NASCAR-inspired shape, scaled to our own 10-person grid
+      instead of F1's — every finisher scores, the win is worth 10
+      points, and points drop by one per position after a small bonus
+      over 2nd place.
+    </p>
+
+    <div class="tower">
+      {% if fantasy_points %}
+        {% for position, points in fantasy_points %}
+          <div class="tower__row">
+            <div class="tower__pos">{{ position }}</div>
+            <div>
+              <div class="tower__name">
+                {% if position == 1 %}{{ medal_row('gold', 'Race winner') }}
+                {% elif position == 2 %}{{ medal_row('silver', 'Runner-up') }}
+                {% elif position == 3 %}{{ medal_row('bronze', 'Podium') }}
+                {% elif loop.last %}Last-place finisher — still on the board
+                {% endif %}
+              </div>
+            </div>
+            <div class="tower__points">{{ points | int }} pts</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="tower__empty">Scoring rules haven't been set up yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="tower">
+      {% if sim_points %}
+        {% for position, points in sim_points %}
+          <div class="tower__row">
+            <div class="tower__pos">{{ position }}</div>
+            <div>
+              <div class="tower__name">
+                {% if position == 1 %}{{ medal_row('gold', 'Race winner') }}
+                {% elif position == 2 %}{{ medal_row('silver', 'Runner-up') }}
+                {% elif position == 3 %}{{ medal_row('bronze', 'Podium') }}
+                {% elif loop.last %}Last-place finisher — still on the board
+                {% endif %}
+              </div>
+            </div>
+            <div class="tower__points">{{ points | int }} pts</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="tower__empty">Scoring rules haven't been set up yet.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
