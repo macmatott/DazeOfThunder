@@ -10,7 +10,7 @@ cookie, same pattern as app/services/participants.py.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from postgrest.exceptions import APIError
@@ -31,6 +31,12 @@ PREVIOUS_SEASON_FOR_DRAFT_ORDER = 2025
 # driver (by previous-season points, same order as the pool) is auto-picked
 # for them.
 PICK_TIMER_SECONDS = 30
+
+# Seconds the intro video plays for once the owner launches the draft,
+# before the first pick's clock starts — a fixed wall-clock window (not
+# tied to the video's actual "ended" event) so every viewer's pick timer
+# stays in sync regardless of whether their video loaded or is playing.
+INTRO_DURATION_SECONDS = 60
 
 # team_name (as stored on f1_drivers, from Jolpica's Constructor.name) ->
 # logo filename under app/static/img/constructors/.
@@ -252,13 +258,18 @@ def get_available_drivers(season_id: str) -> list[dict]:
     return [d for d in get_ranked_drivers(season_id) if d["id"] not in picked_ids]
 
 
-def get_turn_started_at(draft_state: dict, picks: list[dict]) -> datetime:
+def get_turn_started_at(draft_state: dict, picks: list[dict], intro_seconds: int = 0) -> datetime:
     """The current turn's clock starts when the previous pick landed, or
-    when the draft was launched if no picks have been made yet — reusing
-    existing timestamps rather than storing a redundant 'turn started'
-    column that could drift out of sync."""
-    raw = picks[-1]["picked_at"] if picks else draft_state["launched_at"]
-    return datetime.fromisoformat(raw)
+    when the draft was launched (plus any intro delay) if no picks have
+    been made yet — reusing existing timestamps rather than storing a
+    redundant 'turn started' column that could drift out of sync.
+    `intro_seconds` only matters for the very first turn; the constructor
+    pairing/naming phases reuse this function via the same {"launched_at":
+    ...} shape and never pass it, so they're unaffected."""
+    if not picks:
+        launched_at = datetime.fromisoformat(draft_state["launched_at"])
+        return launched_at + timedelta(seconds=intro_seconds)
+    return datetime.fromisoformat(picks[-1]["picked_at"])
 
 
 def compute_seconds_remaining(turn_started_at: datetime, now: datetime) -> float:
@@ -268,6 +279,15 @@ def compute_seconds_remaining(turn_started_at: datetime, now: datetime) -> float
 
 def is_pick_expired(turn_started_at: datetime, now: datetime) -> bool:
     return compute_seconds_remaining(turn_started_at, now) <= 0
+
+
+def get_intro_progress(draft_state: dict, now: datetime) -> tuple[float, float]:
+    """(elapsed_seconds, remaining_seconds) into the intro video window,
+    both clamped to [0, INTRO_DURATION_SECONDS] — only meaningful before
+    the first pick of the Driver Draft."""
+    launched_at = datetime.fromisoformat(draft_state["launched_at"])
+    elapsed = min(INTRO_DURATION_SECONDS, max(0.0, (now - launched_at).total_seconds()))
+    return elapsed, INTRO_DURATION_SECONDS - elapsed
 
 
 def maybe_auto_pick(season_id: str) -> bool:
@@ -286,7 +306,7 @@ def maybe_auto_pick(season_id: str) -> bool:
     if status["is_complete"]:
         return False
 
-    turn_started_at = get_turn_started_at(state, picks)
+    turn_started_at = get_turn_started_at(state, picks, intro_seconds=INTRO_DURATION_SECONDS)
     if not is_pick_expired(turn_started_at, datetime.now(timezone.utc)):
         return False
 
@@ -335,6 +355,11 @@ def make_pick(season_id: str, participant_id: str, f1_driver_id: str) -> dict:
         raise DraftNotLiveError("The draft isn't live.")
 
     picks = get_draft_picks(season_id)
+    if not picks:
+        _, remaining = get_intro_progress(state, datetime.now(timezone.utc))
+        if remaining > 0:
+            raise DraftNotLiveError("The draft intro is still playing.")
+
     status = compute_draft_status(state["draft_order"], state["total_rounds"], picks)
 
     if status["is_complete"]:
@@ -390,9 +415,23 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
             "on_the_clock_name": None,
             "viewer_is_on_the_clock": False,
             "seconds_remaining": None,
+            "in_intro": False,
+            "intro_seconds_remaining": None,
+            "intro_elapsed_seconds": None,
         }
 
     status = compute_draft_status(state["draft_order"], state["total_rounds"], picks)
+    now = datetime.now(timezone.utc)
+
+    in_intro = False
+    intro_seconds_remaining = None
+    intro_elapsed_seconds = None
+    if not picks and not status["is_complete"]:
+        elapsed, remaining = get_intro_progress(state, now)
+        if remaining > 0:
+            in_intro = True
+            intro_seconds_remaining = round(remaining)
+            intro_elapsed_seconds = round(elapsed)
 
     on_the_clock_name = None
     if status["on_the_clock_participant_id"]:
@@ -400,11 +439,9 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
         on_the_clock_name = names.get(status["on_the_clock_participant_id"])
 
     seconds_remaining = None
-    if not status["is_complete"]:
-        turn_started_at = get_turn_started_at(state, picks)
-        seconds_remaining = round(
-            compute_seconds_remaining(turn_started_at, datetime.now(timezone.utc))
-        )
+    if not status["is_complete"] and not in_intro:
+        turn_started_at = get_turn_started_at(state, picks, intro_seconds=INTRO_DURATION_SECONDS)
+        seconds_remaining = round(compute_seconds_remaining(turn_started_at, now))
 
     return {
         "is_live": True,
@@ -413,8 +450,12 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
         "available_drivers": available,
         "on_the_clock_name": on_the_clock_name,
         "viewer_is_on_the_clock": (
-            viewer_participant_id is not None
+            not in_intro
+            and viewer_participant_id is not None
             and status["on_the_clock_participant_id"] == viewer_participant_id
         ),
         "seconds_remaining": seconds_remaining,
+        "in_intro": in_intro,
+        "intro_seconds_remaining": intro_seconds_remaining,
+        "intro_elapsed_seconds": intro_elapsed_seconds,
     }

@@ -16,7 +16,13 @@
         Set the pick order for everyone currently signed in. Each round is
         one pick per person; round 2 snakes back in reverse order.
       </p>
-      <form method="post" action="/formula-fantasy/draft/launch" class="form">
+      <form
+        method="post"
+        action="/formula-fantasy/draft/launch"
+        class="form"
+        id="launch-draft-form"
+        hx-preserve="true"
+      >
         {% for i in range(participants | length) %}
           <div class="form-field">
             <label for="order-{{ i }}">Pick {{ i + 1 }}</label>
@@ -86,7 +92,13 @@
             separately launch a second draft where pairs claim a real F1 team
             name — the last pair formed goes first there.
           </p>
-          <form method="post" action="/formula-fantasy/draft/launch-pairing" class="form">
+          <form
+            method="post"
+            action="/formula-fantasy/draft/launch-pairing"
+            class="form"
+            id="launch-pairing-form"
+            hx-preserve="true"
+          >
             {% for i in range((participants | length) // 2) %}
               <div class="form-field">
                 <label for="corder-{{ i }}">Captain {{ i + 1 }}</label>

@@ -12,14 +12,12 @@
   <div
     id="draft-board"
     hx-get="/partials/draft-content"
-    hx-trigger="load, every 2s"
+    hx-trigger="load, every 2s [draftBoardShouldPoll()]"
     hx-swap="innerHTML"
   >
     {% include "_draft_content.html" %}
   </div>
 {% endblock %}
 {% block scripts %}
-  {% if (board.is_live and not (board.status and board.status.is_complete)) or phase in ('pairing', 'naming') %}
-    <script src="/static/js/draft.js"></script>
-  {% endif %}
+  <script src="/static/js/draft.js"></script>
 {% endblock %}

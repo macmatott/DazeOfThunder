@@ -3,10 +3,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.services.draft import (
+    INTRO_DURATION_SECONDS,
     PICK_TIMER_SECONDS,
     _sort_by_fantasy_points,
     compute_draft_status,
     compute_seconds_remaining,
+    get_intro_progress,
     get_turn_started_at,
     is_pick_expired,
     logo_url_for_team,
@@ -198,3 +200,34 @@ def test_get_turn_started_at_uses_most_recent_pick():
     assert get_turn_started_at(state, picks) == datetime(
         2026, 1, 1, 12, 0, 40, tzinfo=timezone.utc
     )
+
+
+def test_get_turn_started_at_offsets_first_pick_by_intro_seconds():
+    state = {"launched_at": "2026-01-01T12:00:00+00:00"}
+    assert get_turn_started_at(state, [], intro_seconds=60) == datetime(
+        2026, 1, 1, 12, 1, 0, tzinfo=timezone.utc
+    )
+
+
+def test_get_turn_started_at_ignores_intro_seconds_once_picks_exist():
+    state = {"launched_at": "2026-01-01T12:00:00+00:00"}
+    picks = [{"picked_at": "2026-01-01T12:00:05+00:00"}]
+    assert get_turn_started_at(state, picks, intro_seconds=60) == datetime(
+        2026, 1, 1, 12, 0, 5, tzinfo=timezone.utc
+    )
+
+
+def test_get_intro_progress_counts_down():
+    state = {"launched_at": "2026-01-01T12:00:00+00:00"}
+    now = datetime(2026, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+    elapsed, remaining = get_intro_progress(state, now)
+    assert elapsed == 10
+    assert remaining == INTRO_DURATION_SECONDS - 10
+
+
+def test_get_intro_progress_clamps_to_the_intro_window():
+    state = {"launched_at": "2026-01-01T12:00:00+00:00"}
+    now = datetime(2026, 1, 1, 12, 5, 0, tzinfo=timezone.utc)
+    elapsed, remaining = get_intro_progress(state, now)
+    assert elapsed == INTRO_DURATION_SECONDS
+    assert remaining == 0

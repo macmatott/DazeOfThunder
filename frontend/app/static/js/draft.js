@@ -1,12 +1,30 @@
 document.addEventListener("DOMContentLoaded", function () {
   var board = document.getElementById("draft-board");
+  if (!board) {
+    return;
+  }
+
+  // The board polls every 2s, which would otherwise force-close an open
+  // native <select> popup mid-choice (moving a form control's DOM
+  // position — even back to an equivalent spot via hx-preserve — closes
+  // any dropdown it has open). Skip a poll tick while one's focused,
+  // covering both the driver-order and captain-order launch forms since
+  // both live inside #draft-board. Defined before the chime/tick lookup
+  // below so it's active even pre-launch, when neither audio tag exists
+  // yet — draft.js now always loads on this page for exactly that reason.
+  window.draftBoardShouldPoll = function () {
+    var active = document.activeElement;
+    return !(active && active.tagName === "SELECT" && board.contains(active));
+  };
+
   var chime = document.getElementById("draft-turn-chime");
   var tick = document.getElementById("draft-tick-sound");
-  if (!board || !chime) {
+  if (!chime) {
     return;
   }
 
   var TICK_THRESHOLD_SECONDS = 8;
+  var DEFAULT_INTRO_VOLUME = 0.3;
 
   // Every poll swaps in a fresh #draft-turn-marker regardless of whether
   // anything changed, so track which pick we last chimed/ticked for.
@@ -41,6 +59,82 @@ document.addEventListener("DOMContentLoaded", function () {
         tick.currentTime = 0;
         tick.play().catch(function () {});
         lastTickedPickNumber = pickNumber;
+      }
+    }
+
+    // The intro video sits behind hx-preserve, so this element is the
+    // same DOM node across every 2s poll while the intro is playing —
+    // only seek/play it the first time it shows up (dataset.synced),
+    // otherwise re-seeking would yank playback back every poll.
+    if (marker.dataset.inIntro === "true") {
+      var introVideo = document.getElementById("draft-intro-video");
+      if (introVideo && !introVideo.dataset.synced) {
+        var elapsed = parseFloat(marker.dataset.introElapsedSeconds);
+        if (!isNaN(elapsed) && elapsed > 0) {
+          introVideo.currentTime = elapsed;
+        }
+        introVideo.volume = DEFAULT_INTRO_VOLUME;
+        introVideo.muted = false;
+        introVideo.dataset.synced = "true";
+        introVideo.play().catch(function () {
+          // Autoplay-with-sound blocked by the browser (no prior
+          // interaction on this page) — fall back to a muted autoplay so
+          // the video still plays; the mute-toggle button lets someone
+          // opt in with a real click.
+          introVideo.muted = true;
+          var toggle = document.getElementById("draft-intro-mute-toggle");
+          if (toggle) {
+            setMuteToggleState(toggle, true);
+          }
+          var slider = document.getElementById("draft-intro-volume");
+          if (slider) {
+            slider.value = 0;
+          }
+          introVideo.play().catch(function () {});
+        });
+      }
+    }
+  });
+
+  function setMuteToggleState(toggle, muted) {
+    toggle.dataset.muted = muted ? "true" : "false";
+    toggle.setAttribute("aria-label", muted ? "Unmute" : "Mute");
+  }
+
+  board.addEventListener("click", function (e) {
+    // Clicks on the icon land on the <svg>/<path>, not the button itself.
+    var toggle = e.target.closest && e.target.closest("#draft-intro-mute-toggle");
+    if (!toggle) {
+      return;
+    }
+    var introVideo = document.getElementById("draft-intro-video");
+    if (!introVideo) {
+      return;
+    }
+    introVideo.muted = !introVideo.muted;
+    if (!introVideo.muted && introVideo.volume === 0) {
+      introVideo.volume = DEFAULT_INTRO_VOLUME;
+    }
+    setMuteToggleState(toggle, introVideo.muted);
+    var slider = document.getElementById("draft-intro-volume");
+    if (slider) {
+      slider.value = introVideo.muted ? 0 : Math.round(introVideo.volume * 100);
+    }
+    introVideo.play().catch(function () {});
+  });
+
+  board.addEventListener("input", function (e) {
+    if (e.target && e.target.id === "draft-intro-volume") {
+      var introVideo = document.getElementById("draft-intro-video");
+      if (!introVideo) {
+        return;
+      }
+      var vol = parseInt(e.target.value, 10) / 100;
+      introVideo.volume = vol;
+      introVideo.muted = vol === 0;
+      var toggle = document.getElementById("draft-intro-mute-toggle");
+      if (toggle) {
+        setMuteToggleState(toggle, introVideo.muted);
       }
     }
   });
