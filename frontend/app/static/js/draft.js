@@ -17,6 +17,40 @@ document.addEventListener("DOMContentLoaded", function () {
     return !(active && active.tagName === "SELECT" && board.contains(active));
   };
 
+  // Mobile browsers (notably iOS Safari) only allow an <audio>/<video>
+  // .play() call to succeed when it happens synchronously within a real
+  // user gesture (a tap). A poll picking up someone ELSE's pick has no
+  // such gesture behind it, so without this, celebration/chime audio
+  // would only ever play for whichever pick you personally clicked to
+  // make — matches the reported "I can hear my own picks but not
+  // others'" bug. Fix: the first time each <audio> element is touched
+  // by any click inside the board, play-and-immediately-pause it —
+  // that "unlocks" it for the rest of the page's life, so later
+  // programmatic .play() calls (triggered by polls) go through
+  // normally. Re-checked on every click since new <audio> tags keep
+  // appearing as the draft progresses (driver picks, then constructor
+  // pairing, then naming) — defined before the chime lookup below so
+  // it's active even pre-launch.
+  board.addEventListener("click", function () {
+    board.querySelectorAll("audio").forEach(function (el) {
+      if (el.dataset.unlocked) {
+        return;
+      }
+      el.dataset.unlocked = "true";
+      var playPromise = el.play();
+      if (playPromise && playPromise.then) {
+        playPromise
+          .then(function () {
+            el.pause();
+            el.currentTime = 0;
+          })
+          .catch(function () {
+            delete el.dataset.unlocked;
+          });
+      }
+    });
+  });
+
   var chime = document.getElementById("draft-turn-chime");
   var tick = document.getElementById("draft-tick-sound");
   if (!chime) {
@@ -42,6 +76,12 @@ document.addEventListener("DOMContentLoaded", function () {
     "Carlos Sainz": "draft-sainz-sound",
     "Valtteri Bottas": "draft-bottas-sound",
     "Oliver Bearman": "draft-bearman-sound",
+    "Franco Colapinto": "draft-colapinto-sound",
+    "Arvid Lindblad": "draft-lindblad-sound",
+    "Pierre Gasly": "draft-gasly-sound",
+    "Esteban Ocon": "draft-ocon-sound",
+    "Gabriel Bortoleto": "draft-bortoleto-sound",
+    "Alexander Albon": "draft-albon-sound",
   };
   // Same idea as EASTER_EGG_SOUNDS, but for the Constructor Draft's
   // naming phase — keyed by constructor name instead of driver name.

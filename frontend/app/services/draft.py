@@ -60,6 +60,12 @@ EASTER_EGG_CELEBRATIONS = {
     "Carlos Sainz": 8,  # 7.12s, .m4a
     "Valtteri Bottas": 10,  # 9.49s, .m4a
     "Oliver Bearman": 13,  # 12.17s, .m4a
+    "Franco Colapinto": 17,  # 16.30s, VBR
+    "Arvid Lindblad": 16,  # 15.60s, VBR
+    "Pierre Gasly": 11,  # 10.92s, VBR
+    "Esteban Ocon": 12,  # 11.47s, VBR
+    "Gabriel Bortoleto": 16,  # 15.73s, VBR
+    "Alexander Albon": 12,  # 11.57s, VBR
 }
 VERSTAPPEN_CELEBRATION_SECONDS = EASTER_EGG_CELEBRATIONS["Max Verstappen"]
 
