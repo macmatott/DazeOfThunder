@@ -33,7 +33,7 @@ Discord Bot (Python, read-only client) ─────────────�
 
 ## Still open / unresolved
 
-- Public vs. private page split, iRacing car/format (F4 vs F3) — see
+- Public vs. private page split, iRacing race format/length — see
   `docs/architecture.md` "Still open" section for the full list.
 
 ## Data source notes
@@ -46,6 +46,11 @@ Discord Bot (Python, read-only client) ─────────────�
   per-driver identifier (equals `Team ID` in solo races); display names
   are NOT unique (iRacing appends digits on collision) — always match by
   Cust ID. A real sample is at `discord-bot/tests/fixtures/eventresult_87601875_0.csv`.
+- iRacing has paused acceptance of new API applications, so CSV
+  export/import is the permanent results path here, not a placeholder
+  pending a future live API connection — don't propose building live
+  iRacing API integration.
+- iRacing car class: **F4** (confirmed, not F3).
 
 ## Environment / credentials
 

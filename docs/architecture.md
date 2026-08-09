@@ -55,4 +55,4 @@ can be swapped later without touching the fantasy scoring engine.
 ## Still open (see /areas/formula-fantasy.md and the original design doc)
 
 - Public vs. private page split
-- iRacing race format, car (F4 vs F3), race length
+- iRacing race format, race length
