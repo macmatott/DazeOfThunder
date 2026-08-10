@@ -1,0 +1,120 @@
+{# One event's full card — image, title, date, description, RSVP
+   buttons, and the three status groups. Included (looped) by
+   schedule.html and returned directly by the RSVP POST route
+   (hx-target scoped to #event-{{ event.id }}), so it must stay
+   self-contained (no base.html deps), same rule as the draft partials. #}
+{% from "_macros.html" import role_badge %}
+<div class="event-card{% if event.image_url %} event-card--has-image{% endif %}{% if event.is_next %} event-card--next{% endif %}" id="event-{{ event.id }}"{% if event.image_url %} style="--event-card-bg: url('{{ event.image_url }}')"{% endif %}>
+  <div class="event-card__body">
+    <div class="event-card__header">
+      <div class="event-card__title">{{ event.title }}</div>
+      <div class="event-card__date">{{ event.event_date_display }}</div>
+    </div>
+
+    {% if event.team_result_summary %}
+      <div class="event-card__result-summary">
+        <span class="event-card__result-badge">P{{ event.team_result_summary.finish_position }}</span>
+        {% if event.team_result_summary.car_name %}
+          <span class="tower__meta">{{ event.team_result_summary.car_name }}</span>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if event.track_image_url %}
+      <div class="event-card__track">
+        <span class="race-track__image" style="background-image: url('{{ event.track_image_url }}')"></span>
+        <span class="tower__meta">{{ event.track_name }}</span>
+      </div>
+    {% endif %}
+
+    {% if event.description %}
+      <p class="event-card__description">{{ event.description }}</p>
+    {% endif %}
+
+    {% if event.car_classes %}
+      <div class="event-card__car-classes">
+        {% for car_class in event.car_classes %}
+          <span class="car-class-tag">{{ car_class }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if event.external_link %}
+      <a href="{{ event.external_link }}" target="_blank" rel="noopener noreferrer" class="event-card__link">Event details ↗</a>
+    {% endif %}
+
+    {% if can_rsvp %}
+      <div class="event-card__rsvp-actions">
+        <form hx-post="/schedule/{{ event.id }}/rsvp" hx-target="#event-{{ event.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="status" value="signed_up">
+          <button type="submit" class="event-rsvp-btn event-rsvp-btn--signed-up{% if event.viewer_status == 'signed_up' %} event-rsvp-btn--active{% endif %}">
+            Sign me up!
+          </button>
+        </form>
+        <form hx-post="/schedule/{{ event.id }}/rsvp" hx-target="#event-{{ event.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="status" value="interested">
+          <button type="submit" class="event-rsvp-btn event-rsvp-btn--interested{% if event.viewer_status == 'interested' %} event-rsvp-btn--active{% endif %}">
+            Interested
+          </button>
+        </form>
+        <form hx-post="/schedule/{{ event.id }}/rsvp" hx-target="#event-{{ event.id }}" hx-swap="outerHTML">
+          <input type="hidden" name="status" value="not_interested">
+          <button type="submit" class="event-rsvp-btn event-rsvp-btn--not-interested{% if event.viewer_status == 'not_interested' %} event-rsvp-btn--active{% endif %}">
+            Not Interested
+          </button>
+        </form>
+      </div>
+    {% endif %}
+
+    {% if not is_past %}
+      <div class="event-card__rsvp-groups">
+        <div class="event-rsvp-group">
+          <div class="event-rsvp-group__label">Sign me up! ({{ event.rsvps_by_status.signed_up | length }})</div>
+          {% for p in event.rsvps_by_status.signed_up %}
+            <div class="event-rsvp-group__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+          {% endfor %}
+        </div>
+        <div class="event-rsvp-group">
+          <div class="event-rsvp-group__label">Interested ({{ event.rsvps_by_status.interested | length }})</div>
+          {% for p in event.rsvps_by_status.interested %}
+            <div class="event-rsvp-group__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+          {% endfor %}
+        </div>
+        <div class="event-rsvp-group">
+          <div class="event-rsvp-group__label">Not Interested ({{ event.rsvps_by_status.not_interested | length }})</div>
+          {% for p in event.rsvps_by_status.not_interested %}
+            <div class="event-rsvp-group__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if event.team_results %}
+      <details class="team-results-toggle">
+        <summary>Our Results ({{ event.team_results | length }})</summary>
+        <div class="team-results-wrap">
+          <div class="team-results-row team-results-row--header">
+            <span>Driver</span>
+            <span>Finish</span>
+            <span>Start</span>
+            <span>Laps</span>
+            <span>Inc</span>
+            <span>Fastest Lap</span>
+            <span>Avg Lap</span>
+          </div>
+          {% for r in event.team_results %}
+            <div class="team-results-row">
+              <span>{{ r.participants.display_name }}{{ role_badge(r.participants.role) }}</span>
+              <span>P{{ r.finish_position }}</span>
+              <span>P{{ r.start_position }}</span>
+              <span>{{ r.laps_completed }}</span>
+              <span>{{ r.incidents }}</span>
+              <span>{{ r.fastest_lap_time or "—" }}</span>
+              <span>{{ r.average_lap_time or "—" }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </details>
+    {% endif %}
+  </div>
+</div>

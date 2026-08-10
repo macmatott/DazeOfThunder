@@ -99,11 +99,6 @@ def ff_standings(request: Request, tab: str = "overall"):
     )
 
 
-@router.get("/schedule")
-def schedule_page(request: Request):
-    return templates.TemplateResponse(request, "schedule.html", {})
-
-
 @router.get("/profile")
 def profile_page(request: Request):
     if not request.state.current_user:

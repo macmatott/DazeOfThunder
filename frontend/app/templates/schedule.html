@@ -1,11 +1,41 @@
 {% extends "base.html" %}
-{% block title %}Schedule — Daze of Thunder{% endblock %}
+{% block title %}Team Events — Daze of Thunder{% endblock %}
 {% block content %}
-  <h1 class="page-title">Schedule</h1>
-  <p class="page-subtitle">F1 calendar and Formula Fantasy race dates</p>
-  <div class="tower">
-    <div class="tower__empty">
-      No races scheduled yet. Set up a season to add the calendar.
+  <h1 class="page-title">Team Events</h1>
+  <p class="page-subtitle">Upcoming iRacing special events — let us know if you're in</p>
+
+  {# Jinja's {% if %} doesn't open a new scope, so a {% set %} inside the
+     Past Events block below would otherwise leak forward and affect the
+     upcoming list too — capture the real value and restore it after. #}
+  {% set can_rsvp_for_upcoming = can_rsvp %}
+
+  {% if past_events %}
+    <details class="past-events-toggle">
+      <summary class="section-label">Past Events ({{ past_events | length }})</summary>
+      <div class="event-card-list">
+        {% set can_rsvp = false %}
+        {% set is_past = true %}
+        {% for event in past_events %}
+          {% include "_team_event_card.html" %}
+        {% endfor %}
+      </div>
+    </details>
+  {% endif %}
+
+  {% set can_rsvp = can_rsvp_for_upcoming %}
+  {% set is_past = false %}
+
+  {% if events %}
+    <div class="event-card-list">
+      {% for event in events %}
+        {% include "_team_event_card.html" %}
+      {% endfor %}
     </div>
-  </div>
+  {% else %}
+    <div class="tower">
+      <div class="tower__empty">
+        No upcoming events posted yet.
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}

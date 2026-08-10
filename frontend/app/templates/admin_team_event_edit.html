@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_macros.html" import role_badge %}
+{% block title %}Edit Event — Daze of Thunder{% endblock %}
+{% block content %}
+  <h1 class="page-title">Edit Event</h1>
+  <p class="page-subtitle">{{ event.title }}</p>
+
+  {% if event_action_error %}
+    <div class="form-notice form-notice--error">{{ event_action_error }}</div>
+  {% endif %}
+
+  {% if event.image_url %}
+    <img src="{{ event.image_url }}" alt="" class="admin-event-edit__image-preview">
+  {% endif %}
+
+  {% if event.track_image_url %}
+    <div class="event-card__track">
+      <span class="race-track__image" style="background-image: url('{{ event.track_image_url }}')"></span>
+      <span class="tower__meta">Track art detected: {{ event.track_name }}</span>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/admin/team-events/{{ event.id }}/edit" enctype="multipart/form-data" class="tower form">
+    <div class="form-field">
+      <label for="event-title">Title</label>
+      <input type="text" id="event-title" name="title" value="{{ event.title }}" required>
+    </div>
+    <div class="form-field">
+      <label for="event-start-date">Start Date</label>
+      <input type="date" id="event-start-date" name="start_date" value="{{ event.start_date }}" required>
+    </div>
+    <div class="form-field">
+      <label for="event-end-date">End Date</label>
+      <input type="date" id="event-end-date" name="end_date" value="{{ event.end_date }}" required>
+      <div class="tower__meta">Same as the start date for a single-day event.</div>
+    </div>
+    <div class="form-field">
+      <label for="event-car-classes">Car Classes (optional)</label>
+      <input type="text" id="event-car-classes" name="car_classes" value="{{ event.car_classes | join(', ') if event.car_classes else '' }}" placeholder="GT3, LMP2, GTE">
+      <div class="tower__meta">Comma-separated — any number of classes.</div>
+    </div>
+    <div class="form-field">
+      <label for="event-track-name">Track Name (optional)</label>
+      <input type="text" id="event-track-name" name="track_name" value="{{ event.track_name or '' }}" placeholder="Silverstone Circuit">
+      <div class="tower__meta">If this track already has bundled art and no image is uploaded below, its photo is used automatically.</div>
+    </div>
+    <div class="form-field">
+      <label for="event-description">Description</label>
+      <textarea id="event-description" name="description" rows="3">{{ event.description or '' }}</textarea>
+    </div>
+    <div class="form-field">
+      <label for="event-link">External Link (optional)</label>
+      <input type="url" id="event-link" name="external_link" value="{{ event.external_link or '' }}" placeholder="https://members.iracing.com/...">
+    </div>
+    <div class="form-field">
+      <label for="event-image">Replace Image (optional)</label>
+      <input type="file" id="event-image" name="image" accept="image/*">
+    </div>
+    <button type="submit" class="form-submit">Save Changes</button>
+  </form>
+
+  <p class="section-label">Race Results</p>
+
+  {% if results_action_error %}
+    <div class="form-notice form-notice--error">{{ results_action_error }}</div>
+  {% endif %}
+
+  {% if team_results %}
+    <div class="team-results-wrap">
+      <div class="team-results-row team-results-row--header">
+        <span>Driver</span>
+        <span>Finish</span>
+        <span>Start</span>
+        <span>Laps</span>
+        <span>Inc</span>
+        <span>Fastest Lap</span>
+        <span>Avg Lap</span>
+      </div>
+      {% for r in team_results %}
+        <div class="team-results-row">
+          <span>{{ r.participants.display_name }}{{ role_badge(r.participants.role) }}</span>
+          <span>P{{ r.finish_position }}</span>
+          <span>P{{ r.start_position }}</span>
+          <span>{{ r.laps_completed }}</span>
+          <span>{{ r.incidents }}</span>
+          <span>{{ r.fastest_lap_time or "—" }}</span>
+          <span>{{ r.average_lap_time or "—" }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="tower__empty">No results uploaded yet.</div>
+  {% endif %}
+
+  <form method="post" action="/admin/team-events/{{ event.id }}/results" enctype="multipart/form-data" class="form">
+    <div class="form-field">
+      <label for="results-file">iRacing Results CSV</label>
+      <input type="file" id="results-file" name="file" accept=".csv" required>
+      <div class="tower__meta">Uploading replaces any results already stored for this event. Only rows matching our registered members (by iRacing Cust ID) are kept.</div>
+    </div>
+    <button type="submit" class="form-submit">Upload Results</button>
+  </form>
+{% endblock %}

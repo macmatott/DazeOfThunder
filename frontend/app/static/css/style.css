@@ -830,7 +830,8 @@ dialog.session-modal::backdrop {
   color: var(--color-text-dim);
 }
 
-.form-field input {
+.form-field input,
+.form-field textarea {
   font-family: var(--font-data);
   font-size: 1rem;
   color: var(--color-text);
@@ -840,7 +841,13 @@ dialog.session-modal::backdrop {
   padding: var(--space-2) var(--space-3);
 }
 
-.form-field input:focus-visible {
+.form-field textarea {
+  font-family: var(--font-display);
+  resize: vertical;
+}
+
+.form-field input:focus-visible,
+.form-field textarea:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
@@ -1132,6 +1139,320 @@ dialog.session-modal::backdrop {
   grid-template-columns: 3rem 1fr auto;
 }
 
+/* ── Team Events ─────────────────────────────────────────── */
+
+.event-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.event-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Closest upcoming event — same gold-outline treatment as
+   .race-row--next on the F1 schedule page. box-shadow (not just a
+   border-color swap) so the outline still reads clearly over
+   event-card--has-image's photo background. */
+.event-card--next {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.past-events-toggle {
+  margin-bottom: var(--space-5);
+}
+
+.past-events-toggle > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.past-events-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+
+.past-events-toggle > summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1em;
+  transition: transform 0.15s ease;
+}
+
+.past-events-toggle[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.past-events-toggle .event-card-list {
+  margin-top: var(--space-3);
+}
+
+/* The uploaded photo becomes the card's own background (via the
+   --event-card-bg custom property set inline from image_url) rather
+   than a separate image element, with a dark gradient behind the
+   content so text stays readable over any photo. */
+.event-card--has-image {
+  background-image: linear-gradient(180deg, rgba(10, 12, 18, 0.45), rgba(10, 12, 18, 0.88)), var(--event-card-bg);
+  background-size: cover;
+  background-position: center;
+}
+
+.event-card__body {
+  padding: var(--space-4);
+  min-width: 0;
+}
+
+.event-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.event-card__title {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.event-card__date {
+  font-family: var(--font-data);
+  font-size: 0.85rem;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.event-card__track {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Headline finish/car for a past event, visible without opening the
+   results dropdown below. */
+.event-card__result-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.event-card__result-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-3);
+  background: rgba(232, 163, 61, 0.15);
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  color: var(--color-accent);
+  font-family: var(--font-data);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.event-card__car-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.car-class-tag {
+  padding: 2px var(--space-2);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  color: var(--color-text-dim);
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.event-card__description {
+  color: var(--color-text-dim);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: var(--space-2) 0 0 0;
+}
+
+.event-card__link {
+  display: inline-block;
+  margin-top: var(--space-2);
+  font-size: 0.85rem;
+}
+
+/* Contrast overrides for text/controls sitting on the photo background
+   — the elements below normally use dim/muted colors tuned for the
+   solid --color-surface card background, which don't read well over a
+   photo even with the gradient. */
+.event-card--has-image .event-card__description,
+.event-card--has-image .event-card__track .tower__meta,
+.event-card--has-image .event-rsvp-group__label,
+.event-card--has-image .event-rsvp-group__name {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.event-card--has-image .car-class-tag {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.event-card--has-image .event-rsvp-btn {
+  background: rgba(10, 12, 18, 0.35);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.event-card__rsvp-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.event-card__rsvp-actions form {
+  margin: 0;
+}
+
+.event-rsvp-btn {
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  color: var(--color-text-dim);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.event-rsvp-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.event-rsvp-btn--active.event-rsvp-btn--not-interested {
+  background: rgba(217, 99, 74, 0.15);
+  border-color: var(--color-negative);
+  color: var(--color-negative);
+}
+
+.event-rsvp-btn--active.event-rsvp-btn--interested {
+  background: rgba(232, 163, 61, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.event-rsvp-btn--active.event-rsvp-btn--signed-up {
+  background: rgba(95, 184, 122, 0.15);
+  border-color: var(--color-positive);
+  color: var(--color-positive);
+}
+
+.event-card__rsvp-groups {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+.event-rsvp-group__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-1);
+}
+
+.event-rsvp-group__name {
+  font-size: 0.85rem;
+  padding: 2px 0;
+}
+
+.team-results-toggle {
+  margin-top: var(--space-4);
+}
+
+.team-results-toggle > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+}
+
+.team-results-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+
+.team-results-toggle > summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1em;
+  transition: transform 0.15s ease;
+}
+
+.team-results-toggle[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* Our members' results for a Team Event — same compact-grid pattern as
+   .schedule-row, scrollable on narrow viewports rather than clipping. */
+.team-results-wrap {
+  overflow-x: auto;
+  margin-top: var(--space-2);
+}
+
+.team-results-row {
+  display: grid;
+  grid-template-columns: 1.5fr 3.5rem 3.5rem 3rem 3rem 6rem 6rem;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.team-results-row:last-child {
+  border-bottom: none;
+}
+
+.team-results-row--header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.event-card--has-image .team-results-toggle > summary,
+.event-card--has-image .team-results-row--header {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.event-card--has-image .team-results-row {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.admin-event-edit__image-preview {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  border-radius: 6px;
+  margin-bottom: var(--space-4);
+}
+
 /* ── Mobile (phone / tablet-portrait) ─────────────────────────
    Everything below is additive — only activates at <=768px, so
    desktop/tablet-landscape CSS above is completely untouched. Ordered
@@ -1217,9 +1538,11 @@ dialog.session-modal::backdrop {
      requires horizontal scrolling to read even though it doesn't
      clip. Drop the two least-essential columns — weather/date detail
      and the track thumbnail — full detail is still one tap away via
-     the existing session-detail modal. */
+     the existing session-detail modal. Scoped to .schedule-row so it
+     doesn't also hide the reused .race-track__image on Team Event
+     cards, which have plenty of room for it. */
   .race-detail-strip,
-  .race-track__image {
+  .schedule-row .race-track__image {
     display: none;
   }
 
@@ -1251,5 +1574,12 @@ dialog.session-modal::backdrop {
      viewport before any content starts, compounding every fix above. */
   main {
     padding: var(--space-3);
+  }
+
+  /* Team Events: built mobile-aware from the start (new content, not a
+     retrofit) — RSVP status groups stack instead of squeezing into 3
+     narrow columns. */
+  .event-card__rsvp-groups {
+    grid-template-columns: 1fr;
   }
 }

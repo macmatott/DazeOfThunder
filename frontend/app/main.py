@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.middleware import CurrentUserMiddleware
-from app.routers import admin, auth, draft, pages, partials
+from app.routers import admin, auth, draft, pages, partials, team_events
 
 app = FastAPI(title="Daze of Thunder — Formula Fantasy")
 
@@ -33,3 +33,4 @@ app.include_router(auth.router)
 app.include_router(draft.router)
 app.include_router(pages.router)
 app.include_router(partials.router)
+app.include_router(team_events.router)

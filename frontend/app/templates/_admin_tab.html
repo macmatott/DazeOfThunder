@@ -1,0 +1,282 @@
+{# The admin hub's 3 sections, tab-switched — included (full page load)
+   by admin_hub.html and returned directly by GET /admin/tab (HTMX
+   swap), same pattern as _standings_tab.html. Reuses .standings-tabs
+   styling for the nav so the two tabbed pages look consistent. #}
+{% from "_macros.html" import role_badge %}
+<div id="admin-tab-wrap">
+  <nav class="standings-tabs">
+    {% for key, label in [
+      ("site", "Site Management"),
+      ("league", "League Management"),
+      ("team-events", "Team Event Management"),
+    ] %}
+      <a
+        href="/admin?tab={{ key }}"
+        hx-get="/admin/tab?tab={{ key }}"
+        hx-target="#admin-tab-wrap"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        class="standings-tabs__link{% if active_tab == key %} standings-tabs__link--active{% endif %}"
+        {% if active_tab == key %}aria-current="page"{% endif %}
+      >{{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  {% if admin_action_error %}
+    <div class="form-notice form-notice--error">{{ admin_action_error }}</div>
+  {% endif %}
+
+  {% if active_tab == "site" %}
+    <p class="section-label">Pending Members</p>
+    <div class="tower">
+      {% if pending %}
+        {% for participant in pending %}
+          <div class="tower__row">
+            <div></div>
+            <div>
+              <div class="tower__name">{{ participant.display_name }}{{ role_badge(participant.role) }}</div>
+            </div>
+            <form method="post" action="/admin/members/{{ participant.id }}/approve">
+              <button type="submit" class="form-submit">Approve</button>
+            </form>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="tower__empty">No one's waiting on approval right now.</div>
+      {% endif %}
+    </div>
+
+    <p class="section-label">Admin Access</p>
+    <div class="tower">
+      {% set role_labels = {"owner": "Owner", "admin": "Admin", "dot_member": "Daze of Thunder Member", "member": "Member"} %}
+      {% set viewer_is_owner = request.state.current_user.is_owner %}
+      {% for p in participants %}
+        <div class="tower__row">
+          <div></div>
+          <div>
+            <div class="tower__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+            <div class="tower__meta">{{ role_labels[p.role] }}{{ "" if p.is_active else " · Pending" }}</div>
+          </div>
+          {% if viewer_is_owner and p.role != "owner" %}
+            <form method="post" action="/admin/members/{{ p.id }}/set-role">
+              <select name="role">
+                <option value="member" {{ "selected" if p.role == "member" }}>Member</option>
+                <option value="dot_member" {{ "selected" if p.role == "dot_member" }}>Daze of Thunder Member</option>
+                <option value="admin" {{ "selected" if p.role == "admin" }}>Admin</option>
+              </select>
+              <button type="submit" class="form-submit">Update</button>
+            </form>
+          {% elif not viewer_is_owner and p.role in ("member", "dot_member") %}
+            <form method="post" action="/admin/members/{{ p.id }}/set-role">
+              <select name="role">
+                <option value="member" {{ "selected" if p.role == "member" }}>Member</option>
+                <option value="dot_member" {{ "selected" if p.role == "dot_member" }}>Daze of Thunder Member</option>
+              </select>
+              <button type="submit" class="form-submit">Update</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <p class="section-label">Roadmap — Not Yet Built</p>
+    <div class="tower">
+      <div class="tower__row">
+        <div></div>
+        <div>
+          <div class="tower__name">Season creation & draft lock</div>
+          <div class="tower__meta">Create/activate seasons, toggle seasons.draft_locked.</div>
+        </div>
+        <div class="tower__meta">Not built</div>
+      </div>
+      <div class="tower__row">
+        <div></div>
+        <div>
+          <div class="tower__name">Scoring rules editing</div>
+          <div class="tower__meta">Web UI for scoring_rules (currently CLI-seeded only).</div>
+        </div>
+        <div class="tower__meta">Not built</div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if active_tab == "league" %}
+    <p class="section-label">At a Glance</p>
+    <div class="card-grid">
+      <div class="stat-card">
+        <div class="stat-card__label">Season</div>
+        <div class="stat-card__value">{{ season_name or "No season configured" }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Driver Draft</div>
+        <div class="stat-card__value">{{ driver_draft.phase.replace('_', ' ') | title }}</div>
+        {% if driver_draft.phase == 'live' %}
+          <div class="stat-card__meta">{{ driver_draft.picks_made }}/{{ driver_draft.total_picks }} picks</div>
+        {% endif %}
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Constructor Draft</div>
+        <div class="stat-card__value">{{ constructor_draft.phase.replace('_', ' ') | title }}</div>
+        {% if constructor_draft.detail %}
+          <div class="stat-card__meta">{{ constructor_draft.detail }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <p class="section-label">Import F1 Results</p>
+
+    {% if f1_import_success %}
+      {% if f1_import_success.race_rows == 0 %}
+        <div class="form-notice form-notice--info">
+          No results found yet — those rounds may not have been run.
+        </div>
+      {% else %}
+        <div class="form-notice form-notice--success">
+          Imported {{ f1_import_success.race_rows }} race results
+          {% if f1_import_success.sprint_rows %}+ {{ f1_import_success.sprint_rows }} sprint results{% endif %}
+          {% if f1_import_success.rounds_with_data %}across {{ f1_import_success.rounds_with_data }} rounds{% endif %}
+          — {{ f1_import_success.scored_count }} participants scored.
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <form method="post" action="/admin/f1-results/import-all" class="form">
+      <div class="form-field">
+        <div class="tower__meta">One click — fetches every completed round on the calendar and scores Fantasy F1 for all of them (retroactively counting anything already run, since this beta season's draft happens mid-season). Safe to re-run.</div>
+      </div>
+      <button type="submit" class="form-submit">Import All Rounds So Far</button>
+    </form>
+
+    <form method="post" action="/admin/f1-results/import" class="form">
+      <div class="form-field">
+        <label for="round_number">Or import a single round</label>
+        <select id="round_number" name="round_number" required>
+          {% for race in season_timeline if race.is_past %}
+            <option value="{{ race.round_number }}">Round {{ race.round_number }} — {{ race.race_name }} ({{ race.race_date }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="form-submit">Import Results</button>
+    </form>
+
+    <p class="section-label">Upload Race Results</p>
+
+    {% if upload_success %}
+      <div class="form-notice form-notice--success">
+        Imported {{ upload_success.results_count }} drivers
+        ({{ upload_success.matched_count }} matched to league members,
+        {{ upload_success.unmatched_count }} unmatched) —
+        {{ upload_success.scored_count }} participants scored.
+      </div>
+    {% endif %}
+
+    <form method="post" action="/admin/race-results/upload" enctype="multipart/form-data" class="form">
+      <div class="form-field">
+        <label for="ff_round_number">F1 Round</label>
+        <select id="ff_round_number" name="ff_round_number" required>
+          {% for race in season_timeline %}
+            <option value="{{ race.round_number }}">Round {{ race.round_number }} — {{ race.race_name }} ({{ race.race_date }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="file">iRacing Results CSV</label>
+        <input type="file" id="file" name="file" accept=".csv" required>
+      </div>
+      <div class="form-field">
+        <label><input type="checkbox" name="supersede" value="true"> Replace an existing import for this round</label>
+        <div class="tower__meta">Only check this if the round already has an uploaded race you're intentionally correcting.</div>
+      </div>
+      <button type="submit" class="form-submit">Upload Results</button>
+    </form>
+
+    <p class="section-label">Recent Race Events</p>
+    <div class="tower">
+      {% if recent_race_events %}
+        {% for event in recent_race_events %}
+          <div class="tower__row">
+            <div></div>
+            <div>
+              <div class="tower__name">
+                Round {{ event.ff_round_number }} — {{ event.track }}
+                {% if event.is_superseded %}<span class="tower__meta">(superseded)</span>{% endif %}
+              </div>
+              <div class="tower__meta">{{ event.source_filename }} · {{ event.imported_at }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="tower__empty">No races uploaded yet.</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if active_tab == "team-events" %}
+    {% if event_action_error %}
+      <div class="form-notice form-notice--error">{{ event_action_error }}</div>
+    {% endif %}
+
+    <p class="section-label">Post a Team Event</p>
+    <form method="post" action="/admin/team-events" enctype="multipart/form-data" class="form">
+      <div class="form-field">
+        <label for="event-title">Title</label>
+        <input type="text" id="event-title" name="title" required>
+      </div>
+      <div class="form-field">
+        <label for="event-start-date">Start Date</label>
+        <input type="date" id="event-start-date" name="start_date" required>
+      </div>
+      <div class="form-field">
+        <label for="event-end-date">End Date</label>
+        <input type="date" id="event-end-date" name="end_date" required>
+        <div class="tower__meta">Same as the start date for a single-day event.</div>
+      </div>
+      <div class="form-field">
+        <label for="event-car-classes">Car Classes (optional)</label>
+        <input type="text" id="event-car-classes" name="car_classes" placeholder="GT3, LMP2, GTE">
+        <div class="tower__meta">Comma-separated — any number of classes.</div>
+      </div>
+      <div class="form-field">
+        <label for="event-track-name">Track Name (optional)</label>
+        <input type="text" id="event-track-name" name="track_name" placeholder="Silverstone Circuit">
+        <div class="tower__meta">If this track already has bundled art and no image is uploaded below, its photo is used automatically.</div>
+      </div>
+      <div class="form-field">
+        <label for="event-description">Description</label>
+        <textarea id="event-description" name="description" rows="3"></textarea>
+      </div>
+      <div class="form-field">
+        <label for="event-link">External Link (optional)</label>
+        <input type="url" id="event-link" name="external_link" placeholder="https://members.iracing.com/...">
+      </div>
+      <div class="form-field">
+        <label for="event-image">Image (optional)</label>
+        <input type="file" id="event-image" name="image" accept="image/*">
+      </div>
+      <button type="submit" class="form-submit">Post Event</button>
+    </form>
+
+    <p class="section-label">Posted Events</p>
+    <div class="tower">
+      {% if team_events %}
+        {% for event in team_events %}
+          <div class="tower__row">
+            <div></div>
+            <div>
+              <div class="tower__name">{{ event.title }}</div>
+              <div class="tower__meta">{{ event.event_date_display }}</div>
+            </div>
+            <div class="race-row-actions">
+              <a href="/admin/team-events/{{ event.id }}/edit" class="form-submit">Edit</a>
+              <form method="post" action="/admin/team-events/{{ event.id }}/delete">
+                <button type="submit" class="form-submit">Delete</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="tower__empty">No events posted yet.</div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

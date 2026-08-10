@@ -119,18 +119,28 @@ def _parse_result_row(row: dict) -> dict:
         raise CsvParseError(f"Results row is missing column {exc}.") from exc
 
 
-def parse_event_csv(csv_text: str) -> dict:
-    """{"event": {...}, "results": [...]} — csv.DictReader is column-name
-    keyed throughout, never positional, since real exports don't always
-    keep columns in the same order."""
+def split_event_and_result_blocks(csv_text: str) -> tuple[str, str]:
+    """(event_block_text, result_block_text) — split on the blank line
+    separating the two. Shared by parse_event_csv and any caller that
+    needs a raw CSV column parse_event_csv's typed rows don't carry
+    through (e.g. "Car Class ID", used only for Team Events' per-class
+    standings — race_results, the F1/season pipeline's table, has no
+    use for it)."""
     lines = csv_text.splitlines()
     blank_indexes = [i for i, line in enumerate(lines) if not line.strip()]
     if not blank_indexes:
         raise CsvParseError("Expected a blank line separating event metadata from results.")
     blank_index = blank_indexes[0]
+    return "\n".join(lines[:blank_index]), "\n".join(lines[blank_index + 1 :])
 
-    event_rows = list(csv.DictReader(io.StringIO("\n".join(lines[:blank_index]))))
-    result_rows = list(csv.DictReader(io.StringIO("\n".join(lines[blank_index + 1 :]))))
+
+def parse_event_csv(csv_text: str) -> dict:
+    """{"event": {...}, "results": [...]} — csv.DictReader is column-name
+    keyed throughout, never positional, since real exports don't always
+    keep columns in the same order."""
+    event_text, results_text = split_event_and_result_blocks(csv_text)
+    event_rows = list(csv.DictReader(io.StringIO(event_text)))
+    result_rows = list(csv.DictReader(io.StringIO(results_text)))
 
     if not result_rows:
         raise CsvParseError("No driver result rows found.")

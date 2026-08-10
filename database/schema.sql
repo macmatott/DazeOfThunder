@@ -282,6 +282,68 @@ create table public.constructor_draft_state (
 );
 
 -- ============================================================
+-- Team Events (iRacing special events, RSVP)
+-- ============================================================
+
+-- League-social events (iRacing special/team events), separate from
+-- race_events (imported per-race results) — these are admin-posted
+-- "here's what's coming up" listings members RSVP to, not results.
+-- start_date/end_date are plain dates (no time-of-day) — iRacing special
+-- events typically run over a stretch of days rather than needing a
+-- precise start/end time; equal start/end covers a single-day event.
+create table public.team_events (
+    id uuid primary key default gen_random_uuid(),
+    title text not null,
+    description text,
+    start_date date not null,
+    end_date date not null,
+    car_classes text[],
+    track_name text,
+    image_url text,
+    external_link text,
+    created_by uuid references public.participants(id),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+-- One RSVP row per (event, participant) — upserted when a member
+-- changes their pick, never accumulated as history.
+create table public.event_rsvps (
+    id uuid primary key default gen_random_uuid(),
+    event_id uuid not null references public.team_events(id) on delete cascade,
+    participant_id uuid not null references public.participants(id) on delete cascade,
+    status text not null check (status in ('not_interested', 'interested', 'signed_up')),
+    updated_at timestamptz not null default now(),
+    unique (event_id, participant_id)
+);
+
+-- Race results uploaded for a Team Event, shown on its card. Separate
+-- from race_results (F1-round-linked, feeds sim_points_awarded) —
+-- these are purely informational and only kept for our own registered
+-- members (an unmatched entrant isn't kept; there's no scoring or
+-- audit-trail need here, unlike race_results). A re-upload replaces
+-- the prior rows outright rather than superseding them.
+create table public.team_event_results (
+    id uuid primary key default gen_random_uuid(),
+    team_event_id uuid not null references public.team_events(id) on delete cascade,
+    participant_id uuid not null references public.participants(id),
+
+    finish_position int not null,
+    start_position int not null,
+    car_name text,
+    laps_completed int not null default 0,
+    incidents int not null default 0,
+    average_lap_time text,
+    fastest_lap_time text,
+
+    source_filename text not null,
+    imported_by uuid references public.participants(id),
+    imported_at timestamptz not null default now(),
+
+    unique (team_event_id, participant_id)
+);
+
+-- ============================================================
 -- Scoring configuration
 -- ============================================================
 
@@ -316,6 +378,9 @@ alter table public.constructors enable row level security;
 alter table public.constructor_members enable row level security;
 alter table public.constructor_draft_state enable row level security;
 alter table public.scoring_rules enable row level security;
+alter table public.team_events enable row level security;
+alter table public.event_rsvps enable row level security;
+alter table public.team_event_results enable row level security;
 
 -- Policies intentionally not defined yet — public vs. private page split
 -- (Section 11 of the design doc) is still open. RLS is enabled by default
