@@ -37,9 +37,12 @@
           <div class="schedule-row">
             <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
             <span class="tower__pos">{{ race.round_number }}</span>
-            <span class="race-track">
+            <span
+              class="race-track{% if race.track_background_url %} race-track--has-bg{% endif %}"
+              {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
+            >
               {% if race.track_image_url %}
-                <span class="race-track__image" style="background-image: url('{{ race.track_image_url }}')"></span>
+                <span class="race-track__image{% if race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ race.track_image_url }}')"></span>
               {% endif %}
               <span class="race-track__info">
                 <span class="tower__name">{{ race.race_name }}</span>

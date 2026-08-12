@@ -15,7 +15,7 @@
 
   {% if event.track_image_url %}
     <div class="event-card__track">
-      <span class="race-track__image" style="background-image: url('{{ event.track_image_url }}')"></span>
+      <span class="race-track__image race-track__image--logo-only" style="background-image: url('{{ event.track_image_url }}')"></span>
       <span class="tower__meta">Track art detected: {{ event.track_name }}</span>
     </div>
   {% endif %}

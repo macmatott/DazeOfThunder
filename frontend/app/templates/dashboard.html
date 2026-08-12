@@ -61,7 +61,10 @@
     </div>
   </div>
 
-  <div class="stat-card stat-card--wide">
+  <div
+    class="stat-card stat-card--wide{% if next_race and next_race.track_background_url %} stat-card--has-bg{% endif %}"
+    {% if next_race and next_race.track_background_url %}style="--row-bg: url('{{ next_race.track_background_url }}')"{% endif %}
+  >
     <div>
       <div class="stat-card__label">Next Race</div>
       <div class="stat-card__value">{{ next_race.race_name if next_race else "—" }}</div>
@@ -72,7 +75,7 @@
         <div class="stat-card__meta">{{ next_race.sim_date }}</div>
       </div>
       {% if next_race.track_image_url %}
-        <span class="race-track__image" style="background-image: url('{{ next_race.track_image_url }}')"></span>
+        <span class="race-track__image{% if next_race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_race.track_image_url }}')"></span>
       {% endif %}
     {% endif %}
   </div>

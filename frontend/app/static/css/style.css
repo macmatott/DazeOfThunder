@@ -599,6 +599,41 @@ main.main--wide {
   background: rgba(232, 163, 61, 0.06);
 }
 
+/* Trial: whole row gets the track's blurred background photo (not just
+   the small track-image thumbnail) — dark gradient behind the content
+   for readability, same technique as .event-card--has-image on Team
+   Event cards. The thumbnail becomes a plain floating logo (no border/
+   fill of its own) since the row itself now supplies the photo behind
+   it — see .race-track__image--logo-only below. */
+.race-row--has-bg {
+  background-image: linear-gradient(90deg, rgba(10, 12, 18, 0.55), rgba(10, 12, 18, 0.85)), var(--row-bg);
+  background-size: cover;
+  background-position: center;
+}
+
+/* Trial (v2): scoped to just the Race column (.race-track) instead of
+   the whole row — same gradient-behind-photo technique, just a smaller
+   footprint. Padding + rounded corners so it reads as its own chip
+   within the row rather than bleeding into the other columns. */
+.race-track--has-bg {
+  background-image: linear-gradient(90deg, rgba(10, 12, 18, 0.55), rgba(10, 12, 18, 0.85)), var(--row-bg);
+  background-size: cover;
+  background-position: center;
+  border-radius: 4px;
+  padding: var(--space-2);
+}
+
+.race-track--has-bg .tower__meta {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.race-track__image--logo-only {
+  background-color: transparent;
+  background-size: contain;
+  background-repeat: no-repeat;
+  border: none;
+}
+
 .tower__meta {
   font-size: 0.85rem;
   color: var(--color-text-dim);
@@ -659,6 +694,19 @@ main.main--wide {
 
 .stat-card__details {
   text-align: right;
+}
+
+/* Homepage's Next Race card, same track-background-behind-logo
+   treatment as the Formula Fantasy schedule page's Race column. */
+.stat-card--has-bg {
+  background-image: linear-gradient(90deg, rgba(10, 12, 18, 0.55), rgba(10, 12, 18, 0.85)), var(--row-bg);
+  background-size: cover;
+  background-position: center;
+}
+
+.stat-card--has-bg .stat-card__label,
+.stat-card--has-bg .stat-card__meta {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* ── Session detail popout (Schedule page) ──────────────────

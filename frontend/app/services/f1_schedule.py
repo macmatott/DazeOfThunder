@@ -10,10 +10,13 @@ public-facing data.
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 from app.db.supabase_client import public_client
 from app.services.driver_photos import slugify_name
 from app.services.f1_ingest import JolpicaClient
+
+TRACK_IMAGE_DIR = Path(__file__).resolve().parent.parent / "static" / "img" / "tracks"
 
 # Placeholder sim-session weather, per round — set by league admin as real
 # forecasts/conditions come in. Rounds not yet listed here fall back to the
@@ -136,10 +139,34 @@ def _split_track_name(iracing_track: str | None) -> tuple[str, str]:
 
 
 def track_image_url(iracing_track: str | None) -> str | None:
+    """Existence-checked (like track_background_url below) so a track
+    with a background photo but no logo yet renders as just the photo
+    — no broken/missing thumbnail — rather than a stale or 404'd
+    image."""
     if not iracing_track:
         return None
     track_name, _ = _split_track_name(iracing_track)
-    return f"/static/img/tracks/{slugify_name(track_name)}.png"
+    slug = slugify_name(track_name)
+    if not (TRACK_IMAGE_DIR / f"{slug}.png").is_file():
+        return None
+    return f"/static/img/tracks/{slug}.png"
+
+
+def track_background_url(iracing_track: str | None) -> str | None:
+    """Optional wide/blurred photo, layered *behind* track_image_url's
+    logo on the schedule page — most tracks don't have one yet, this
+    is being trialed one track at a time (currently just Zandvoort).
+    Resolved by the same slug convention (<slug>-bg.jpg), so adding
+    another is just dropping in a file, no code change — but unlike
+    track_image_url, this one is existence-checked since the layered
+    CSS only activates when a background is actually present."""
+    if not iracing_track:
+        return None
+    track_name, _ = _split_track_name(iracing_track)
+    slug = slugify_name(track_name)
+    if not (TRACK_IMAGE_DIR / f"{slug}-bg.jpg").is_file():
+        return None
+    return f"/static/img/tracks/{slug}-bg.jpg"
 
 
 def _format_race(race: dict, race_dt: datetime) -> dict:
@@ -158,6 +185,7 @@ def _format_race(race: dict, race_dt: datetime) -> dict:
         "race_date_iso": f"{race_dt:%Y-%m-%d}",
         "iracing_track": iracing_track,
         "track_image_url": track_image_url(iracing_track),
+        "track_background_url": track_background_url(iracing_track),
         "sim_date": f"{sim_date:%b} {sim_date.day}, {sim_date:%Y}",
     }
 
