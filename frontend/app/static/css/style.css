@@ -735,6 +735,11 @@ main.main--wide {
   color: var(--color-accent);
 }
 
+.inline-info-icon {
+  vertical-align: -2px;
+  margin: 0 2px;
+}
+
 dialog.session-modal {
   width: min(680px, 90vw);
   max-height: 85vh;
