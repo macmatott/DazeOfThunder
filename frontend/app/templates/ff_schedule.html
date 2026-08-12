@@ -1,7 +1,180 @@
 {% extends "base.html" %}
 {% block title %}Schedule — Daze of Thunder{% endblock %}
 {% block main_class %}main--wide{% endblock %}
+
+{% macro race_row(race) %}
+  <div
+    class="race-row{% if race.is_past %} race-row--past{% endif %}{% if race.is_next %} race-row--next{% endif %}"
+    {% if race.is_next %}id="next-race"{% endif %}
+  >
+    <div class="schedule-row">
+      <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
+      <span class="tower__pos">{{ race.round_number }}</span>
+      <span
+        class="race-track{% if race.track_background_url %} race-track--has-bg{% endif %}"
+        {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
+      >
+        {% if race.track_image_url %}
+          <span class="race-track__image{% if race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ race.track_image_url }}')"></span>
+        {% endif %}
+        <span class="race-track__info">
+          <span class="tower__name">{{ race.race_name }}</span>
+          {% if race.iracing_track %}
+            <span class="tower__meta">{{ race.iracing_track }}</span>
+          {% endif %}
+        </span>
+      </span>
+      <span class="tower__points">{{ race.sim_date }}</span>
+      <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }} &nbsp;·&nbsp; {% if race.sim_laps %}🏁 {{ race.sim_laps }} laps &nbsp;·&nbsp; {% endif %}📅 {{ race.race_date_iso }}</span>
+      <span class="race-row-actions">
+        <button
+          type="button"
+          class="race-info-btn"
+          data-modal-target="session-modal-{{ race.round_number }}"
+          aria-label="Session details for week {{ race.round_number }}"
+          title="Session details"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+      </span>
+    </div>
+  </div>
+
+  <dialog id="session-modal-{{ race.round_number }}" class="session-modal">
+    <div class="session-modal__header">
+      <div>
+        <div class="session-modal__title">Session Overview</div>
+        <div class="session-modal__subtitle">
+          Wk {{ race.round_number }} — {{ race.race_name }} ({{ race.session_detail.track.config }})
+        </div>
+      </div>
+      <button type="button" class="session-modal__close" data-modal-close aria-label="Close">×</button>
+    </div>
+
+    <div class="session-modal__body">
+      <div class="session-overview-card">
+        <div>
+          <div class="tower__name">{{ race.session_detail.track.name }}</div>
+          <div class="tower__meta">{{ race.session_detail.track.config }}</div>
+        </div>
+        <div class="session-overview-card__date">
+          <div class="stat-card__label">Race Date</div>
+          <div class="stat-card__value">{{ race.sim_date }}</div>
+          <div class="tower__meta">9:00 PM EST</div>
+        </div>
+      </div>
+
+      <div class="card-grid">
+        <div class="stat-card">
+          <div class="stat-card__label">Practice</div>
+          <div class="stat-card__value">{{ race.session_detail.session_lengths.practice }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Qualifying</div>
+          <div class="stat-card__value">{{ race.session_detail.session_lengths.qualifying }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Race</div>
+          <div class="stat-card__value">{{ race.session_detail.session_lengths.race }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Weather</div>
+          <div class="stat-card__value">{{ race.session_detail.weather.temperature_f }}°F</div>
+        </div>
+      </div>
+
+      <p class="session-modal__note">Placeholder data — no live iRacing API connection yet.</p>
+
+      <div class="session-section-title">iRacing Session Detail</div>
+      <div class="session-card-grid">
+        <div class="session-card">
+          <div class="session-card__title">Track</div>
+          <div class="session-field"><span>Name</span><span>{{ race.session_detail.track.name }}</span></div>
+          <div class="session-field"><span>Config</span><span>{{ race.session_detail.track.config }}</span></div>
+          <div class="session-field"><span>Track ID</span><span>{{ race.session_detail.track.track_id }}</span></div>
+          <div class="session-field"><span>Venue</span><span>{{ race.session_detail.track.venue }}</span></div>
+        </div>
+        <div class="session-card">
+          <div class="session-card__title">Session Meta</div>
+          <div class="session-field"><span>Session ID</span><span>{{ race.session_detail.session_meta.session_id }}</span></div>
+          <div class="session-field"><span>Subsession ID</span><span>{{ race.session_detail.session_meta.subsession_id }}</span></div>
+          <div class="session-field"><span>Status</span><span>{{ race.session_detail.session_meta.status }}</span></div>
+          <div class="session-field"><span>Launch At</span><span>{{ race.session_detail.session_meta.launch_at }}</span></div>
+          <div class="session-field"><span>Has Results</span><span>{{ race.session_detail.session_meta.has_results }}</span></div>
+          <div class="session-field"><span>Password Protected</span><span>{{ race.session_detail.session_meta.password_protected }}</span></div>
+          <div class="session-field"><span>Driver Changes</span><span>{{ race.session_detail.session_meta.driver_changes }}</span></div>
+          <div class="session-field"><span>Lone Qualify</span><span>{{ race.session_detail.session_meta.lone_qualify }}</span></div>
+        </div>
+        <div class="session-card">
+          <div class="session-card__title">Session Lengths</div>
+          <div class="session-field"><span>Practice</span><span>{{ race.session_detail.session_lengths.practice }}</span></div>
+          <div class="session-field"><span>Qualifying</span><span>{{ race.session_detail.session_lengths.qualifying }}</span></div>
+          <div class="session-field"><span>Race</span><span>{{ race.session_detail.session_lengths.race }}</span></div>
+          <div class="session-field"><span>Qualify Laps</span><span>{{ race.session_detail.session_lengths.qualify_laps }}</span></div>
+          <div class="session-field"><span>Race Laps</span><span>{{ race.session_detail.session_lengths.race_laps }}</span></div>
+          <div class="session-field"><span>Total Time Limit</span><span>{{ race.session_detail.session_lengths.total_time_limit }}</span></div>
+        </div>
+        <div class="session-card">
+          <div class="session-card__title">Entries</div>
+          <div class="session-field"><span>Entered</span><span>{{ race.session_detail.entries.entered }}</span></div>
+          <div class="session-field"><span>Team Entries</span><span>{{ race.session_detail.entries.team_entries }}</span></div>
+          <div class="session-field"><span>Max Drivers</span><span>{{ race.session_detail.entries.max_drivers }}</span></div>
+          <div class="session-field"><span>Race Number</span><span>{{ race.session_detail.entries.race_number }}</span></div>
+        </div>
+      </div>
+
+      <div class="session-section-title">Weather Configuration</div>
+      <div class="session-card">
+        <div class="session-field"><span>Temperature</span><span>{{ race.session_detail.weather.temperature_f }}°F</span></div>
+        <div class="session-field"><span>Skies</span><span>{{ race.session_detail.weather.skies }}</span></div>
+        <div class="session-field"><span>Humidity</span><span>{{ race.session_detail.weather.humidity }}</span></div>
+        <div class="session-field"><span>Wind</span><span>{{ race.session_detail.weather.wind }}</span></div>
+        <div class="session-field"><span>Precip Option</span><span>{{ race.session_detail.weather.precip_option }}</span></div>
+        <div class="session-field"><span>Fog</span><span>{{ race.session_detail.weather.fog }}</span></div>
+        <div class="session-field"><span>Allow Fog</span><span>{{ race.session_detail.weather.allow_fog }}</span></div>
+        <div class="session-field"><span>Var Initial</span><span>{{ race.session_detail.weather.var_initial }}</span></div>
+        <div class="session-field"><span>Var Ongoing</span><span>{{ race.session_detail.weather.var_ongoing }}</span></div>
+      </div>
+
+      <div class="session-section-title">Track State</div>
+      <div class="session-card">
+        <div class="session-field"><span>Leave Marbles</span><span>{{ race.session_detail.track_state.leave_marbles }}</span></div>
+        <div class="session-field"><span>Practice Rubber</span><span>{{ race.session_detail.track_state.practice_rubber }}</span></div>
+        <div class="session-field"><span>Qualify Rubber</span><span>{{ race.session_detail.track_state.qualify_rubber }}</span></div>
+        <div class="session-field"><span>Race Rubber</span><span>{{ race.session_detail.track_state.race_rubber }}</span></div>
+      </div>
+
+      <div class="session-section-title">Cars</div>
+      <div class="session-card">
+        <div class="session-field"><span>Class</span><span>FIA F4</span></div>
+      </div>
+
+      <div class="session-section-title">Our Database Fields</div>
+      <div class="session-card">
+        <div class="session-field"><span>DB ID</span><span>{{ race.session_detail.database.db_id }}</span></div>
+        <div class="session-field"><span>Race Name</span><span>{{ race.session_detail.database.race_name }}</span></div>
+        <div class="session-field"><span>Description</span><span>{{ race.session_detail.database.description }}</span></div>
+        <div class="session-field"><span>Series Type</span><span>{{ race.session_detail.database.series_type }}</span></div>
+        <div class="session-field"><span>Race Number</span><span>{{ race.session_detail.database.race_number }}</span></div>
+        <div class="session-field"><span>Race Date (DB)</span><span>{{ race.session_detail.database.race_date_db }}</span></div>
+        <div class="session-field"><span>Signup Deadline</span><span>{{ race.session_detail.database.signup_deadline }}</span></div>
+        <div class="session-field"><span>Auto Signup</span><span>{{ race.session_detail.database.auto_signup }}</span></div>
+        <div class="session-field"><span>Signup Msg ID</span><span>{{ race.session_detail.database.signup_msg_id }}</span></div>
+        <div class="session-field"><span>Selected Track ID</span><span>{{ race.session_detail.database.selected_track_id }}</span></div>
+        <div class="session-field"><span>Selected Car IDs</span><span>{{ race.session_detail.database.selected_car_ids }}</span></div>
+        <div class="session-field"><span>Created At</span><span>{{ race.session_detail.database.created_at }}</span></div>
+        <div class="session-field"><span>Updated At</span><span>{{ race.session_detail.database.updated_at }}</span></div>
+      </div>
+    </div>
+  </dialog>
+{% endmacro %}
+
 {% block content %}
+  {% include "_league_banner.html" %}
   {% set completed = races | selectattr("is_past") | list | length %}
   <div class="schedule-header">
     <div>
@@ -37,176 +210,18 @@
         <div>Sim Details</div>
         <div></div>
       </div>
-      {% for race in races %}
-        <div
-          class="race-row{% if race.is_past %} race-row--past{% endif %}{% if race.is_next %} race-row--next{% endif %}"
-          {% if race.is_next %}id="next-race"{% endif %}
-        >
-          <div class="schedule-row">
-            <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
-            <span class="tower__pos">{{ race.round_number }}</span>
-            <span
-              class="race-track{% if race.track_background_url %} race-track--has-bg{% endif %}"
-              {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
-            >
-              {% if race.track_image_url %}
-                <span class="race-track__image{% if race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ race.track_image_url }}')"></span>
-              {% endif %}
-              <span class="race-track__info">
-                <span class="tower__name">{{ race.race_name }}</span>
-                {% if race.iracing_track %}
-                  <span class="tower__meta">{{ race.iracing_track }}</span>
-                {% endif %}
-              </span>
-            </span>
-            <span class="tower__points">{{ race.sim_date }}</span>
-            <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }} &nbsp;·&nbsp; 📅 {{ race.race_date_iso }}</span>
-            <span class="race-row-actions">
-              <button
-                type="button"
-                class="race-info-btn"
-                data-modal-target="session-modal-{{ race.round_number }}"
-                aria-label="Session details for week {{ race.round_number }}"
-                title="Session details"
-              >
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-              </button>
-            </span>
-          </div>
-        </div>
 
-        <dialog id="session-modal-{{ race.round_number }}" class="session-modal">
-          <div class="session-modal__header">
-            <div>
-              <div class="session-modal__title">Session Overview</div>
-              <div class="session-modal__subtitle">
-                Wk {{ race.round_number }} — {{ race.race_name }} ({{ race.session_detail.track.config }})
-              </div>
-            </div>
-            <button type="button" class="session-modal__close" data-modal-close aria-label="Close">×</button>
-          </div>
+      {% set past_races = races | selectattr("is_past") | list %}
+      {% set upcoming_races = races | rejectattr("is_past") | list %}
 
-          <div class="session-modal__body">
-            <div class="session-overview-card">
-              <div>
-                <div class="tower__name">{{ race.session_detail.track.name }}</div>
-                <div class="tower__meta">{{ race.session_detail.track.config }}</div>
-              </div>
-              <div class="session-overview-card__date">
-                <div class="stat-card__label">Race Date</div>
-                <div class="stat-card__value">{{ race.sim_date }}</div>
-                <div class="tower__meta">9:00 PM EST</div>
-              </div>
-            </div>
+      {% if past_races %}
+        <details class="past-events-toggle">
+          <summary class="section-label">Past Races ({{ past_races | length }})</summary>
+          {% for race in past_races %}{{ race_row(race) }}{% endfor %}
+        </details>
+      {% endif %}
 
-            <div class="card-grid">
-              <div class="stat-card">
-                <div class="stat-card__label">Practice</div>
-                <div class="stat-card__value">{{ race.session_detail.session_lengths.practice }}</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-card__label">Qualifying</div>
-                <div class="stat-card__value">{{ race.session_detail.session_lengths.qualifying }}</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-card__label">Race</div>
-                <div class="stat-card__value">{{ race.session_detail.session_lengths.race }}</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-card__label">Weather</div>
-                <div class="stat-card__value">{{ race.session_detail.weather.temperature_f }}°F</div>
-              </div>
-            </div>
-
-            <p class="session-modal__note">Placeholder data — no live iRacing API connection yet.</p>
-
-            <div class="session-section-title">iRacing Session Detail</div>
-            <div class="session-card-grid">
-              <div class="session-card">
-                <div class="session-card__title">Track</div>
-                <div class="session-field"><span>Name</span><span>{{ race.session_detail.track.name }}</span></div>
-                <div class="session-field"><span>Config</span><span>{{ race.session_detail.track.config }}</span></div>
-                <div class="session-field"><span>Track ID</span><span>{{ race.session_detail.track.track_id }}</span></div>
-                <div class="session-field"><span>Venue</span><span>{{ race.session_detail.track.venue }}</span></div>
-              </div>
-              <div class="session-card">
-                <div class="session-card__title">Session Meta</div>
-                <div class="session-field"><span>Session ID</span><span>{{ race.session_detail.session_meta.session_id }}</span></div>
-                <div class="session-field"><span>Subsession ID</span><span>{{ race.session_detail.session_meta.subsession_id }}</span></div>
-                <div class="session-field"><span>Status</span><span>{{ race.session_detail.session_meta.status }}</span></div>
-                <div class="session-field"><span>Launch At</span><span>{{ race.session_detail.session_meta.launch_at }}</span></div>
-                <div class="session-field"><span>Has Results</span><span>{{ race.session_detail.session_meta.has_results }}</span></div>
-                <div class="session-field"><span>Password Protected</span><span>{{ race.session_detail.session_meta.password_protected }}</span></div>
-                <div class="session-field"><span>Driver Changes</span><span>{{ race.session_detail.session_meta.driver_changes }}</span></div>
-                <div class="session-field"><span>Lone Qualify</span><span>{{ race.session_detail.session_meta.lone_qualify }}</span></div>
-              </div>
-              <div class="session-card">
-                <div class="session-card__title">Session Lengths</div>
-                <div class="session-field"><span>Practice</span><span>{{ race.session_detail.session_lengths.practice }}</span></div>
-                <div class="session-field"><span>Qualifying</span><span>{{ race.session_detail.session_lengths.qualifying }}</span></div>
-                <div class="session-field"><span>Race</span><span>{{ race.session_detail.session_lengths.race }}</span></div>
-                <div class="session-field"><span>Qualify Laps</span><span>{{ race.session_detail.session_lengths.qualify_laps }}</span></div>
-                <div class="session-field"><span>Race Laps</span><span>{{ race.session_detail.session_lengths.race_laps }}</span></div>
-                <div class="session-field"><span>Total Time Limit</span><span>{{ race.session_detail.session_lengths.total_time_limit }}</span></div>
-              </div>
-              <div class="session-card">
-                <div class="session-card__title">Entries</div>
-                <div class="session-field"><span>Entered</span><span>{{ race.session_detail.entries.entered }}</span></div>
-                <div class="session-field"><span>Team Entries</span><span>{{ race.session_detail.entries.team_entries }}</span></div>
-                <div class="session-field"><span>Max Drivers</span><span>{{ race.session_detail.entries.max_drivers }}</span></div>
-                <div class="session-field"><span>Race Number</span><span>{{ race.session_detail.entries.race_number }}</span></div>
-              </div>
-            </div>
-
-            <div class="session-section-title">Weather Configuration</div>
-            <div class="session-card">
-              <div class="session-field"><span>Temperature</span><span>{{ race.session_detail.weather.temperature_f }}°F</span></div>
-              <div class="session-field"><span>Skies</span><span>{{ race.session_detail.weather.skies }}</span></div>
-              <div class="session-field"><span>Humidity</span><span>{{ race.session_detail.weather.humidity }}</span></div>
-              <div class="session-field"><span>Wind</span><span>{{ race.session_detail.weather.wind }}</span></div>
-              <div class="session-field"><span>Precip Option</span><span>{{ race.session_detail.weather.precip_option }}</span></div>
-              <div class="session-field"><span>Fog</span><span>{{ race.session_detail.weather.fog }}</span></div>
-              <div class="session-field"><span>Allow Fog</span><span>{{ race.session_detail.weather.allow_fog }}</span></div>
-              <div class="session-field"><span>Var Initial</span><span>{{ race.session_detail.weather.var_initial }}</span></div>
-              <div class="session-field"><span>Var Ongoing</span><span>{{ race.session_detail.weather.var_ongoing }}</span></div>
-            </div>
-
-            <div class="session-section-title">Track State</div>
-            <div class="session-card">
-              <div class="session-field"><span>Leave Marbles</span><span>{{ race.session_detail.track_state.leave_marbles }}</span></div>
-              <div class="session-field"><span>Practice Rubber</span><span>{{ race.session_detail.track_state.practice_rubber }}</span></div>
-              <div class="session-field"><span>Qualify Rubber</span><span>{{ race.session_detail.track_state.qualify_rubber }}</span></div>
-              <div class="session-field"><span>Race Rubber</span><span>{{ race.session_detail.track_state.race_rubber }}</span></div>
-            </div>
-
-            <div class="session-section-title">Cars</div>
-            <div class="session-card">
-              <div class="session-field"><span>Class</span><span>FIA F4</span></div>
-            </div>
-
-            <div class="session-section-title">Our Database Fields</div>
-            <div class="session-card">
-              <div class="session-field"><span>DB ID</span><span>{{ race.session_detail.database.db_id }}</span></div>
-              <div class="session-field"><span>Race Name</span><span>{{ race.session_detail.database.race_name }}</span></div>
-              <div class="session-field"><span>Description</span><span>{{ race.session_detail.database.description }}</span></div>
-              <div class="session-field"><span>Series Type</span><span>{{ race.session_detail.database.series_type }}</span></div>
-              <div class="session-field"><span>Race Number</span><span>{{ race.session_detail.database.race_number }}</span></div>
-              <div class="session-field"><span>Race Date (DB)</span><span>{{ race.session_detail.database.race_date_db }}</span></div>
-              <div class="session-field"><span>Signup Deadline</span><span>{{ race.session_detail.database.signup_deadline }}</span></div>
-              <div class="session-field"><span>Auto Signup</span><span>{{ race.session_detail.database.auto_signup }}</span></div>
-              <div class="session-field"><span>Signup Msg ID</span><span>{{ race.session_detail.database.signup_msg_id }}</span></div>
-              <div class="session-field"><span>Selected Track ID</span><span>{{ race.session_detail.database.selected_track_id }}</span></div>
-              <div class="session-field"><span>Selected Car IDs</span><span>{{ race.session_detail.database.selected_car_ids }}</span></div>
-              <div class="session-field"><span>Created At</span><span>{{ race.session_detail.database.created_at }}</span></div>
-              <div class="session-field"><span>Updated At</span><span>{{ race.session_detail.database.updated_at }}</span></div>
-            </div>
-          </div>
-        </dialog>
-      {% endfor %}
+      {% for race in upcoming_races %}{{ race_row(race) }}{% endfor %}
     {% else %}
       <div class="tower__empty">No schedule found.</div>
     {% endif %}

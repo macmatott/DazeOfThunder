@@ -246,6 +246,15 @@ main.main--wide {
   max-width: 1300px;
 }
 
+.league-banner {
+  display: block;
+  width: 100%;
+  max-width: 960px;
+  height: auto;
+  margin: 0 auto var(--space-5) auto;
+  border-radius: 6px;
+}
+
 .page-title {
   font-size: 1.75rem;
   font-weight: 700;
@@ -513,7 +522,7 @@ main.main--wide {
 
 .schedule-row {
   display: grid;
-  grid-template-columns: 2rem 2.75rem 1fr 8.5rem 20rem 1.5rem;
+  grid-template-columns: 2rem 2.75rem 1fr 8.5rem 26rem 1.5rem;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
@@ -1242,6 +1251,19 @@ dialog.session-modal::backdrop {
 
 .past-events-toggle .event-card-list {
   margin-top: var(--space-3);
+}
+
+/* Formula Fantasy schedule: the toggle sits inline in a .tower row
+   list rather than as a standalone page section, so it needs the same
+   row padding as .schedule-row instead of the page-level bottom
+   margin used on Team Events. */
+.schedule-table-wrap .past-events-toggle {
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.schedule-table-wrap .past-events-toggle > summary {
+  padding: var(--space-2) var(--space-3);
 }
 
 /* The uploaded photo becomes the card's own background (via the

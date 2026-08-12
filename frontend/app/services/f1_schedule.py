@@ -84,6 +84,12 @@ F1_LAPS_BY_ROUND: dict[int, int] = {
     23: 58,
 }
 
+
+def sim_race_laps(round_number: int) -> int | None:
+    f1_laps = F1_LAPS_BY_ROUND.get(round_number)
+    return f1_laps // 2 if f1_laps else None  # round down for odd F1 lap counts
+
+
 # iRacing track assigned to each round's sim race — set by league admin,
 # not derived from the F1 calendar. Not tied to real-world geography (the
 # sim track doesn't have to match the host country).
@@ -243,8 +249,8 @@ def _session_detail(
     track_name, track_config = _split_track_name(iracing_track)
 
     f1_laps = F1_LAPS_BY_ROUND.get(round_number)
-    if f1_laps:
-        sim_laps = f1_laps // 2  # round down for odd F1 lap counts
+    sim_laps = sim_race_laps(round_number)
+    if sim_laps:
         race_length = f"{sim_laps} laps"
         race_laps_detail = f"{sim_laps} laps (50% of {f1_laps})"
     else:
@@ -343,6 +349,7 @@ def _merge_schedule_with_results(
         formatted["sim_conditions"] = SIM_CONDITIONS_BY_ROUND.get(
             formatted["round_number"], SIM_CONDITIONS
         )
+        formatted["sim_laps"] = sim_race_laps(formatted["round_number"])
 
         formatted["session_detail"] = _session_detail(
             round_number=formatted["round_number"],
