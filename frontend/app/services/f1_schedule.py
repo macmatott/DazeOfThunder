@@ -101,16 +101,16 @@ IRACING_TRACK_BY_ROUND: dict[int, str] = {
     11: "Hungaroring",
     12: "Circuit Park Zandvoort — Grand Prix",
     13: "Autodromo Nazionale Monza — Grand Prix",
-    14: "Autódromo Internacional do Algarve — Grand Prix",
-    15: "Circuit de Nevers Magny-Cours — Grand Prix",
-    16: "Nürburgring Grand-Prix-Strecke — Grand Prix",
+    14: "Circuito de Navarra — Speed Circuit",
+    15: "Summit Point Raceway — Summit Point Raceway",
+    16: "Motorsport Arena Oschersleben — Grand Prix",
     17: "Circuit de Lédenon — Grand Prix",
     18: "Circuit of the Americas — Grand Prix",
     19: "Autódromo Hermanos Rodríguez — Grand Prix",
     20: "Autódromo José Carlos Pace — Grand Prix",
-    21: "Qualcomm Circuit (Naval Base Coronado)",
-    22: "Road America — Full Course",
-    23: "Daytona International Speedway — Road Course",
+    21: "Charlotte Motor Speedway — Roval 2025",
+    22: "Virginia International Raceway — Full Course",
+    23: "Rudskogen Motorsenter",
 }
 
 
