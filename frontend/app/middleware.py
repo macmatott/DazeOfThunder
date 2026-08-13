@@ -14,6 +14,7 @@ import time
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.services.auth import refresh_session
+from app.services.youtube import is_channel_live
 
 
 AUTH_SESSION_KEYS = (
@@ -42,6 +43,11 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
         # session on a failed sign-in, popped here so it survives the
         # redirect to "/" but shows at most once.
         request.state.auth_error = session.pop("auth_error", None)
+
+        # In-memory-cached (see app/services/youtube.py) so this is a no-op
+        # on most requests — only actually hits the YouTube API once per
+        # CACHE_SECONDS. Runs off-thread since it's a blocking httpx call.
+        request.state.youtube_live = await asyncio.to_thread(is_channel_live)
 
         # The Supabase access token itself only lives ~1hr — without this,
         # anyone idle (or asleep) longer than that gets silently signed out

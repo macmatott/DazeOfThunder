@@ -2,35 +2,47 @@
 {% from "_macros.html" import role_badge %}
 {% block title %}Daze of Thunder{% endblock %}
 {% block content %}
-  <h1 class="page-title">Daze of Thunder</h1>
-  <p class="page-subtitle">A team of friends racing iRacing — oval, formula, and sports cars, in whatever format catches our interest.</p>
-
-  <p class="ff-intro">
-    Daze of Thunder is our iRacing team — a crew of personal friends racing
-    everything from ovals to formula cars to sports cars, across all kinds
-    of formats. We come together for endurance races and special events as
-    a team, and stream them for friends and family to watch along.
-  </p>
-
-  <div class="page-cta">
-    <a href="/schedule" class="form-submit">See Upcoming Team Events</a>
+  <div class="home-hero">
+    <img src="/static/img/badge.png" alt="Daze of Thunder" class="home-hero__badge">
+    <h1 class="page-title home-hero__title">Welcome to <span class="home-hero__word--gold">Daze</span> of <span class="home-hero__word--blue">Thunder</span></h1>
+    <p class="ff-intro">
+      Daze of Thunder is our iRacing team — a crew of personal friends racing
+      everything from ovals to formula cars to sports cars, across all kinds
+      of formats. We come together for endurance races and special events as
+      a team, and stream them for friends and family to watch along.
+    </p>
   </div>
 
-  <p class="section-label">Also This Season</p>
-  <div class="trophy-card">
-    <svg class="trophy-card__icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-      <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
-      <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
-      <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
-    </svg>
-    <div class="trophy-card__title">Formula Fantasy</div>
-    <div class="trophy-card__body">
-      Just for fun, some of us also run Formula Fantasy on the side —
-      drafting real F1 drivers and scoring fantasy points as we follow the
-      real F1 season together, with a few friendly championships on the
-      line.
+  <p class="section-label">This Season</p>
+  <div class="trophy-grid">
+    <div class="trophy-card trophy-card--has-bg" style="--row-bg: url('/static/img/team-events-bg.png')">
+      <svg class="trophy-card__icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+        <line x1="4" y1="22" x2="4" y2="15"/>
+      </svg>
+      <div class="trophy-card__title">Team Events</div>
+      <div class="trophy-card__body">
+        We come together for endurance races and special events throughout
+        the season, racing as a team and streaming along the way — RSVP and
+        see who else is in.
+      </div>
+      <a href="/schedule" class="form-submit">See Upcoming Team Events</a>
     </div>
-    <a href="/formula-fantasy" class="form-submit">Explore Formula Fantasy</a>
+    <div class="trophy-card trophy-card--has-bg" style="--row-bg: url('/static/img/formula-fantasy-bg.jpg')">
+      <svg class="trophy-card__icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
+        <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
+        <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
+      </svg>
+      <div class="trophy-card__title">Formula Fantasy</div>
+      <div class="trophy-card__body">
+        Just for fun, some of us also run Formula Fantasy on the side —
+        drafting real F1 drivers and scoring fantasy points as we follow the
+        real F1 season together, with a few friendly championships on the
+        line.
+      </div>
+      <a href="/formula-fantasy/how-it-works" class="form-submit">Explore Formula Fantasy</a>
+    </div>
   </div>
 
   <p class="section-label">Formula Fantasy Standings</p>
@@ -78,5 +90,8 @@
         <span class="race-track__image{% if next_race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_race.track_image_url }}')"></span>
       {% endif %}
     {% endif %}
+    <div class="stat-card__cta">
+      <a href="/formula-fantasy/schedule" class="form-submit">See League Schedule</a>
+    </div>
   </div>
 {% endblock %}

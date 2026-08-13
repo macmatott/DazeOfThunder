@@ -78,6 +78,19 @@ def resolve_track_image_url(track_name: str | None) -> str | None:
     return f"/static/img/tracks/{slug}.png"
 
 
+def resolve_track_background_url(track_name: str | None) -> str | None:
+    """Same slug convention as resolve_track_image_url (<slug>-bg.jpg),
+    mirroring f1_schedule.py's track_background_url — the wide/blurred
+    photo shown behind the card's manually-uploaded image, existence-
+    checked since most tracks don't have one yet."""
+    if not track_name:
+        return None
+    slug = slugify_name(track_name)
+    if not (TRACK_IMAGE_DIR / f"{slug}-bg.jpg").is_file():
+        return None
+    return f"/static/img/tracks/{slug}-bg.jpg"
+
+
 _SELECT_WITH_RSVPS = (
     "id, title, description, start_date, end_date, car_classes, track_name, image_url, "
     "external_link, event_rsvps(status, participant_id, participants(display_name, role))"
@@ -121,6 +134,7 @@ def _enrich_with_rsvps(events: list[dict], viewer_participant_id: str | None) ->
         # A track's bundled art (if any) is shown alongside the manually
         # uploaded photo, not instead of it — both can be present at once.
         event["track_image_url"] = resolve_track_image_url(event.get("track_name"))
+        event["track_background_url"] = resolve_track_background_url(event.get("track_name"))
         grouped: dict[str, list[dict]] = {status: [] for status in VALID_RSVP_STATUSES}
         viewer_status = None
         for rsvp in event["event_rsvps"]:

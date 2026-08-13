@@ -4,7 +4,16 @@
    (hx-target scoped to #event-{{ event.id }}), so it must stay
    self-contained (no base.html deps), same rule as the draft partials. #}
 {% from "_macros.html" import role_badge %}
-<div class="event-card{% if event.image_url %} event-card--has-image{% endif %}{% if event.is_next %} event-card--next{% endif %}" id="event-{{ event.id }}"{% if event.image_url %} style="--event-card-bg: url('{{ event.image_url }}')"{% endif %}>
+<div class="event-card{% if event.image_url or event.track_background_url %} event-card--has-image{% endif %}{% if event.is_next %} event-card--next{% endif %}" id="event-{{ event.id }}">
+  {% if event.track_background_url %}
+    <span class="event-card__track-bg" style="background-image: url('{{ event.track_background_url }}')"></span>
+  {% endif %}
+  {% if event.image_url %}
+    <span class="event-card__uploaded-bg" style="background-image: url('{{ event.image_url }}')"></span>
+  {% endif %}
+  {% if event.image_url or event.track_background_url %}
+    <span class="event-card__scrim"></span>
+  {% endif %}
   <div class="event-card__body">
     <div class="event-card__header">
       <div class="event-card__title">{{ event.title }}</div>

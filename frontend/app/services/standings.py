@@ -125,7 +125,7 @@ def get_sim_only_standings(season_id: str | None = None) -> list[dict]:
 
 def _pair_points(pair: dict, sim_totals: dict[str, float]) -> float:
     """Sum of both members' Sim Racing points — Constructors' scoring is
-    explicitly Sim-Racing-only per formula_fantasy.html's published copy
+    explicitly Sim-Racing-only per ff_how_it_works.html's published copy
     ("Your team's combined Sim Racing results carry the Constructors'
     Championship"), not the Overall sim+fantasy blend."""
     return round(

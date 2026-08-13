@@ -4,16 +4,14 @@
 
 {% macro race_row(race) %}
   <div
-    class="race-row{% if race.is_past %} race-row--past{% endif %}{% if race.is_next %} race-row--next{% endif %}"
+    class="race-row{% if race.is_past %} race-row--past{% endif %}{% if race.is_next %} race-row--next{% endif %}{% if race.track_background_url %} race-row--has-bg{% endif %}"
     {% if race.is_next %}id="next-race"{% endif %}
+    {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
   >
     <div class="schedule-row">
       <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
       <span class="tower__pos">{{ race.round_number }}</span>
-      <span
-        class="race-track{% if race.track_background_url %} race-track--has-bg{% endif %}"
-        {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
-      >
+      <span class="race-track">
         {% if race.track_image_url %}
           <span class="race-track__image{% if race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ race.track_image_url }}')"></span>
         {% endif %}

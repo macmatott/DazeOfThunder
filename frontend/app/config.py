@@ -18,6 +18,12 @@ class Settings(BaseSettings):
 
     f1_data_api_base_url: str = "https://api.jolpi.ca/ergast/f1"
 
+    # YouTube Data API v3 key — powers the "are we live" nav indicator.
+    # Free-tier Google Cloud credential, not a Supabase key. Optional: the
+    # indicator just reports "offline" if this is unset. Set via .env
+    # locally / `fly secrets set` in production; never commit a real value.
+    youtube_api_key: str = ""
+
     # Signs the session cookie (Starlette SessionMiddleware) — a random
     # value, not a Supabase key. Set via .env locally / `fly secrets set`
     # in production; never commit a real value.

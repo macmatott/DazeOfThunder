@@ -54,7 +54,14 @@ def dashboard(request: Request):
 
 @router.get("/formula-fantasy")
 def formula_fantasy_landing(request: Request):
-    return templates.TemplateResponse(request, "formula_fantasy.html", {})
+    # The nav's Formula Fantasy box is a dropdown-only trigger now, but old
+    # links/bookmarks to the bare URL should still land somewhere real.
+    return RedirectResponse("/formula-fantasy/how-it-works")
+
+
+@router.get("/formula-fantasy/how-it-works")
+def formula_fantasy_how_it_works(request: Request):
+    return templates.TemplateResponse(request, "ff_how_it_works.html", {})
 
 
 @router.get("/formula-fantasy/schedule")
