@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Mock Draft — Daze of Thunder{% endblock %}
+{% block main_class %}main--wide{% endblock %}
+{% block content %}
+  {% include "_league_banner.html" %}
+  <div class="mock-draft-intro">
+    <h1 class="page-title">Mock Draft</h1>
+    <p class="page-subtitle">
+      Practice your strategy — draft against auto-picked opponents using real
+      2025 fantasy scoring. Nothing here touches the real draft.
+    </p>
+  </div>
+
+  {# Entirely client-side (see mock_draft.js) — a private scratchpad, not
+     something that needs to be shared/synced, so there's no server round
+     trip per pick and no database involvement at all. #}
+  <script id="mock-draft-drivers" type="application/json">{{ drivers | tojson }}</script>
+  <script id="mock-draft-constructors" type="application/json">{{ constructors | tojson }}</script>
+  <audio id="mock-draft-chime" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
+  <audio id="mock-draft-tick" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
+
+  <div id="mock-draft-setup" class="tower form">
+    <div class="session-card__title">Set up your mock draft</div>
+    <div id="mock-draft-setup-fields">
+      <p class="tower__meta">
+        10-person league, 2 rounds, snake order, then team pairing and
+        naming — same format as the real draft. Picks 1-5 are team captains
+        for the pairing round; picks 6-10 get chosen as teammates.
+        Opponents "think" for 3 seconds before picking the best (or, for
+        pairing/naming, the next available) option; you get 15 seconds per
+        pick before the best/next available option is chosen for you.
+      </p>
+      <div class="form-field">
+        <label for="mock-draft-position">Your pick position</label>
+        <select id="mock-draft-position">
+          <option value="1">Pick 1 (Captain)</option>
+          <option value="2">Pick 2 (Captain)</option>
+          <option value="3">Pick 3 (Captain)</option>
+          <option value="4">Pick 4 (Captain)</option>
+          <option value="5">Pick 5 (Captain)</option>
+          <option value="6">Pick 6</option>
+          <option value="7">Pick 7</option>
+          <option value="8">Pick 8</option>
+          <option value="9">Pick 9</option>
+          <option value="10">Pick 10</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" id="mock-draft-toggle" class="form-submit">Start Mock Draft</button>
+  </div>
+
+  <div id="mock-draft-sim" hidden>
+    <div class="tower">
+      <div class="tower__header" id="mock-draft-status"></div>
+      <div id="mock-draft-pool"></div>
+    </div>
+
+    <div class="draft-columns">
+      <div>
+        <p class="section-label">Your Team</p>
+        <div class="tower draft-picks-list" id="mock-draft-team"></div>
+      </div>
+      <div>
+        <p class="section-label">All Driver Picks</p>
+        <div class="tower draft-picks-list" id="mock-draft-picks"></div>
+      </div>
+    </div>
+
+    <div id="mock-draft-constructor-section" hidden>
+      <p class="section-label">Pairs &amp; Teams</p>
+      <div class="tower draft-picks-list" id="mock-draft-pairs"></div>
+    </div>
+
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script src="/static/js/mock_draft.js"></script>
+{% endblock %}

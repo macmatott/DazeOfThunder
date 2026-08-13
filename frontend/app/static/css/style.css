@@ -433,6 +433,10 @@ main.main--wide {
   text-align: center;
 }
 
+.mock-draft-intro {
+  text-align: center;
+}
+
 /* Homepage hero — centered badge, welcome heading, intro copy. */
 .home-hero {
   text-align: center;
@@ -1525,6 +1529,16 @@ dialog.session-modal::backdrop {
 
 .draft-pick-row:last-child {
   border-bottom: none;
+}
+
+/* Mock draft's "All Picks" list — your own picks stand out from the
+   auto-picked opponent rows. */
+.draft-pick-row--you {
+  background: rgba(232, 220, 59, 0.08);
+}
+
+.draft-pick-row--you .tower__pos {
+  color: var(--color-accent);
 }
 
 .draft-pick-row__logo {
