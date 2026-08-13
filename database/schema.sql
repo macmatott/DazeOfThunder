@@ -52,6 +52,7 @@ create table public.seasons (
     name text not null,                    -- e.g. '2027'
     is_active boolean not null default false,
     draft_locked boolean not null default false,
+    draft_scheduled_at timestamptz,        -- powers the site-wide header countdown banner; null once the draft is launched or unset
     created_at timestamptz not null default now()
 );
 

@@ -4,7 +4,16 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.constructor_draft import get_constructor_draft_summary
-from app.services.draft import get_driver_draft_summary, get_season_id
+from app.services.draft import (
+    format_draft_scheduled_at_local,
+    get_driver_draft_summary,
+    get_season,
+    get_season_id,
+    list_active_participants,
+    parse_draft_scheduled_at,
+    save_draft_order,
+    set_draft_scheduled_at,
+)
 from app.services.f1_ingest import import_season
 from app.services.f1_schedule import get_season_timeline
 from app.services.fantasy_scoring import (
@@ -54,11 +63,16 @@ DEFAULT_ADMIN_TAB = "site"
 
 def _build_hub_context(request: Request, active_tab: str = DEFAULT_ADMIN_TAB) -> dict:
     season_id = get_season_id(CURRENT_SEASON)
+    season = get_season(season_id) if season_id else None
+    scheduled_at = season.get("draft_scheduled_at") if season else None
     return {
         "active_tab": active_tab,
         "season_name": CURRENT_SEASON if season_id else None,
         "driver_draft": get_driver_draft_summary(season_id),
         "constructor_draft": get_constructor_draft_summary(season_id),
+        "draft_scheduled_at_local": format_draft_scheduled_at_local(scheduled_at) if scheduled_at else None,
+        "draft_participants": list_active_participants(),
+        "order_error": None,
         "pending": list_pending_participants(),
         "participants": list_all_participants(),
         "season_timeline": get_season_timeline(int(CURRENT_SEASON)),
@@ -98,6 +112,49 @@ def admin_tab(request: Request, tab: str = DEFAULT_ADMIN_TAB):
     return templates.TemplateResponse(
         request, "_admin_tab.html", _build_hub_context(request, active_tab=tab)
     )
+
+
+@router.post("/draft/schedule")
+def schedule_draft(request: Request, scheduled_at: str = Form(...)):
+    if not request.state.current_user:
+        return RedirectResponse("/auth/login")
+    if not request.state.current_user.get("is_owner"):
+        return RedirectResponse("/admin?tab=league")
+
+    season_id = get_season_id(CURRENT_SEASON)
+    set_draft_scheduled_at(season_id, parse_draft_scheduled_at(scheduled_at))
+    return RedirectResponse("/admin?tab=league", status_code=303)
+
+
+@router.post("/draft/schedule/clear")
+def schedule_draft_clear(request: Request):
+    if not request.state.current_user:
+        return RedirectResponse("/auth/login")
+    if not request.state.current_user.get("is_owner"):
+        return RedirectResponse("/admin?tab=league")
+
+    season_id = get_season_id(CURRENT_SEASON)
+    set_draft_scheduled_at(season_id, None)
+    return RedirectResponse("/admin?tab=league", status_code=303)
+
+
+@router.post("/draft/set-order")
+def set_draft_order(request: Request, order: list[str] = Form(...)):
+    if not request.state.current_user:
+        return RedirectResponse("/auth/login")
+    if not request.state.current_user.get("is_owner"):
+        return RedirectResponse("/admin?tab=league")
+
+    season_id = get_season_id(CURRENT_SEASON)
+
+    try:
+        save_draft_order(season_id, order, request.state.current_user["participant_id"])
+    except ValueError as exc:
+        context = _build_hub_context(request, active_tab="league")
+        context["order_error"] = str(exc)
+        return templates.TemplateResponse(request, "admin_hub.html", context)
+
+    return RedirectResponse("/admin?tab=league", status_code=303)
 
 
 @router.get("/members")

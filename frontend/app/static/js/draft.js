@@ -5,16 +5,21 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // The board polls every 2s, which would otherwise force-close an open
-  // native <select> popup mid-choice (moving a form control's DOM
-  // position — even back to an equivalent spot via hx-preserve — closes
-  // any dropdown it has open). Skip a poll tick while one's focused,
-  // covering both the driver-order and captain-order launch forms since
-  // both live inside #draft-board. Defined before the chime/tick lookup
-  // below so it's active even pre-launch, when neither audio tag exists
-  // yet — draft.js now always loads on this page for exactly that reason.
+  // native <select>/<input> popup mid-choice (moving a form control's
+  // DOM position — even back to an equivalent spot via hx-preserve —
+  // closes any dropdown/picker it has open, e.g. a <select> mid-choice
+  // or a datetime-local's calendar). Skip a poll tick while one's
+  // focused, covering the driver-order/captain-order launch forms and
+  // the schedule-draft datetime field, all inside #draft-board. Defined
+  // before the chime/tick lookup below so it's active even pre-launch,
+  // when neither audio tag exists yet — draft.js now always loads on
+  // this page for exactly that reason.
   window.draftBoardShouldPoll = function () {
     var active = document.activeElement;
-    return !(active && active.tagName === "SELECT" && board.contains(active));
+    if (!active || !board.contains(active)) {
+      return true;
+    }
+    return active.tagName !== "SELECT" && active.tagName !== "INPUT";
   };
 
   // Mobile browsers (notably iOS Safari) only allow an <audio>/<video>

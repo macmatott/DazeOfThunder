@@ -9,35 +9,7 @@
 
 {% if not (board.status and board.status.is_complete) %}
   <p class="section-label">1. Driver Draft</p>
-  {% if not board.is_live and is_owner %}
-    <div class="tower form">
-      <div class="session-card__title">Launch the draft</div>
-      <p class="tower__meta">
-        Set the pick order for everyone currently signed in. Each round is
-        one pick per person; round 2 snakes back in reverse order.
-      </p>
-      <form
-        method="post"
-        action="/formula-fantasy/draft/launch"
-        class="form"
-        id="launch-draft-form"
-        hx-preserve="true"
-      >
-        {% for i in range(participants | length) %}
-          <div class="form-field">
-            <label for="order-{{ i }}">Pick {{ i + 1 }}</label>
-            <select id="order-{{ i }}" name="order" required>
-              <option value="" disabled selected>Choose a member</option>
-              {% for p in participants %}
-                <option value="{{ p.id }}">{{ p.display_name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        {% endfor %}
-        <button type="submit" class="form-submit">Launch Draft</button>
-      </form>
-    </div>
-  {% elif not board.is_live %}
+  {% if not board.is_live %}
     <div class="tower">
       <div class="tower__empty">
         The driver draft hasn't started yet. Check back once the owner launches it.

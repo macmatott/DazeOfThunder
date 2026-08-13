@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 
 from postgrest.exceptions import APIError
 
@@ -21,6 +22,11 @@ from app.services.fantasy_scoring import (
     ScoringRulesNotSeededError,
     get_driver_season_fantasy_stats_by_name,
 )
+
+# The league's home timezone (matches the "9:00 PM EST" sim-session
+# convention in f1_schedule.py) — the draft-scheduling form is entered
+# and displayed in this zone, converted to/from UTC for storage.
+LEAGUE_TIMEZONE = ZoneInfo("America/New_York")
 
 # Order the draft pool by how drivers would have scored under our own
 # fantasy scale in the previous season — real F1 points aren't used
@@ -155,6 +161,77 @@ def get_season_id(name: str) -> str | None:
     client = admin_client()
     result = client.table("seasons").select("id").eq("name", name).execute()
     return result.data[0]["id"] if result.data else None
+
+
+def parse_draft_scheduled_at(local_value: str) -> str:
+    """"2026-03-15T19:00" (a <input type="datetime-local"> value, entered
+    in LEAGUE_TIMEZONE) -> UTC ISO string for storage."""
+    naive = datetime.fromisoformat(local_value)
+    return naive.replace(tzinfo=LEAGUE_TIMEZONE).astimezone(timezone.utc).isoformat()
+
+
+def format_draft_scheduled_at_local(scheduled_at_iso: str) -> str:
+    """Reverse of parse_draft_scheduled_at, for re-populating the form's
+    <input type="datetime-local"> with the currently-set value."""
+    dt = datetime.fromisoformat(scheduled_at_iso).astimezone(LEAGUE_TIMEZONE)
+    return dt.strftime("%Y-%m-%dT%H:%M")
+
+
+def set_draft_scheduled_at(season_id: str, scheduled_at_iso: str | None) -> None:
+    """scheduled_at_iso=None clears it (hides the header countdown
+    without needing to launch the draft)."""
+    client = admin_client()
+    client.table("seasons").update({"draft_scheduled_at": scheduled_at_iso}).eq(
+        "id", season_id
+    ).execute()
+
+
+def get_season(season_id: str) -> dict | None:
+    client = admin_client()
+    result = client.table("seasons").select("*").eq("id", season_id).execute()
+    return result.data[0] if result.data else None
+
+
+def compute_draft_countdown(scheduled_at: datetime, now: datetime) -> dict:
+    """Pure: days/hours/minutes remaining until scheduled_at, clamped at
+    zero once it's passed — the header banner shows "starting any
+    moment" rather than a negative countdown while waiting for the
+    owner to actually launch."""
+    total_seconds = max(0, int((scheduled_at - now).total_seconds()))
+    days, remainder = divmod(total_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes = remainder // 60
+    return {"total_seconds": total_seconds, "days": days, "hours": hours, "minutes": minutes}
+
+
+def get_draft_countdown(season_id: str) -> dict | None:
+    """Drives the site-wide header banner — the draft page's nav link was
+    removed, so this is the only way most members reach it.
+
+    None means show nothing: no draft_scheduled_at set and the draft
+    hasn't been launched. Once launched, the banner just says the draft
+    is live rather than tracking completion across both the driver and
+    constructor draft phases — a stale "still live" is harmless (worst
+    case, clicking through lands on the finished results).
+
+    Also where the auto-launch fires for most viewers, since this is
+    polled site-wide every 60s regardless of which page someone's on —
+    build_draft_board_context checks it too, for anyone actually on the
+    draft page at the scheduled moment."""
+    maybe_auto_launch_draft(season_id)
+    state = get_draft_state(season_id)
+    if state and state["is_live"]:
+        return {"is_live": True}
+
+    season = get_season(season_id)
+    if not season or not season.get("draft_scheduled_at"):
+        return None
+    scheduled_at = datetime.fromisoformat(season["draft_scheduled_at"])
+    return {
+        "is_live": False,
+        "scheduled_at": scheduled_at,
+        **compute_draft_countdown(scheduled_at, datetime.now(timezone.utc)),
+    }
 
 
 def get_draft_state(season_id: str) -> dict | None:
@@ -384,23 +461,25 @@ def maybe_auto_pick(season_id: str) -> bool:
     return True
 
 
-def launch_draft(
+def save_draft_order(
     season_id: str,
     ordered_participant_ids: list[str],
-    launched_by: str,
+    saved_by: str,
     total_rounds: int = 2,
 ) -> dict:
+    """Pre-configures the pick order ahead of time — doesn't go live
+    itself; maybe_auto_launch_draft flips is_live once
+    seasons.draft_scheduled_at passes. Re-saving (e.g. the owner changes
+    their mind on order) just overwrites the same not-yet-live row."""
     valid_ids = {p["id"] for p in list_active_participants()}
     validate_draft_order(ordered_participant_ids, valid_ids)
 
     client = admin_client()
     payload = {
         "season_id": season_id,
-        "is_live": True,
         "draft_order": ordered_participant_ids,
         "total_rounds": total_rounds,
-        "launched_at": datetime.now(timezone.utc).isoformat(),
-        "launched_by": launched_by,
+        "launched_by": saved_by,
     }
 
     existing = get_draft_state(season_id)
@@ -409,6 +488,32 @@ def launch_draft(
     else:
         result = client.table("draft_state").insert(payload).execute()
     return result.data[0]
+
+
+def maybe_auto_launch_draft(season_id: str) -> bool:
+    """Flips draft_state.is_live (and stamps launched_at, which the
+    intro-video timer is measured from) once draft_scheduled_at has
+    passed, provided an order was already saved via save_draft_order.
+    Checked opportunistically wherever the draft state is read — same
+    "no background scheduler in this deployment" reasoning as
+    maybe_auto_pick, just for the launch itself instead of a pick."""
+    state = get_draft_state(season_id)
+    if not state or state["is_live"] or not state["draft_order"]:
+        return False
+
+    season = get_season(season_id)
+    if not season or not season.get("draft_scheduled_at"):
+        return False
+
+    scheduled_at = datetime.fromisoformat(season["draft_scheduled_at"])
+    if datetime.now(timezone.utc) < scheduled_at:
+        return False
+
+    client = admin_client()
+    client.table("draft_state").update(
+        {"is_live": True, "launched_at": datetime.now(timezone.utc).isoformat()}
+    ).eq("id", state["id"]).execute()
+    return True
 
 
 def make_pick(season_id: str, participant_id: str, f1_driver_id: str) -> dict:
@@ -467,6 +572,7 @@ def get_driver_draft_summary(season_id: str | None) -> dict:
 
 
 def build_draft_board_context(season_id: str, viewer_participant_id: str | None) -> dict:
+    maybe_auto_launch_draft(season_id)
     maybe_auto_pick(season_id)
 
     state = get_draft_state(season_id)

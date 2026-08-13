@@ -14,7 +14,6 @@ from app.services.constructor_draft import (
 from app.services.draft import (
     DraftError,
     get_season_id,
-    launch_draft,
     list_active_participants,
     make_pick,
 )
@@ -49,25 +48,6 @@ def constructor_draft_redirect():
     # Retired as a standalone page — the Constructor Draft is now the
     # second half of the combined /formula-fantasy/draft flow.
     return RedirectResponse("/formula-fantasy/draft", status_code=301)
-
-
-@router.post("/formula-fantasy/draft/launch")
-def launch(request: Request, order: list[str] = Form(...)):
-    if not request.state.current_user:
-        return RedirectResponse("/auth/login")
-    if not request.state.current_user.get("is_owner"):
-        return RedirectResponse("/formula-fantasy/draft")
-
-    season_id = get_season_id(CURRENT_SEASON)
-
-    try:
-        launch_draft(season_id, order, request.state.current_user["participant_id"])
-    except ValueError as exc:
-        return templates.TemplateResponse(
-            request, "draft.html", _build_page_context(request, launch_error=str(exc))
-        )
-
-    return RedirectResponse("/formula-fantasy/draft", status_code=303)
 
 
 @router.post("/formula-fantasy/draft/pick")

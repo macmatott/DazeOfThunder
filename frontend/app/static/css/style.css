@@ -110,6 +110,40 @@ button:focus-visible,
   letter-spacing: 0.02em;
 }
 
+/* Site-wide "draft starts in..." banner, polled in from base.html —
+   empty (and collapses to nothing) whenever there's no countdown to
+   show, so it never reserves layout space it isn't using. */
+.draft-countdown-bar {
+  max-width: 1300px;
+  margin: var(--space-3) auto 0 auto;
+  padding: 0 var(--space-5);
+}
+
+.draft-countdown-bar a {
+  display: block;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  background: rgba(232, 220, 59, 0.08);
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.draft-countdown-bar a:hover {
+  background: var(--color-accent);
+  color: #000;
+  text-decoration: none;
+  box-shadow: 0 0 14px rgba(232, 220, 59, 0.5);
+}
+
+.draft-countdown-bar__arrow {
+  margin-left: var(--space-1);
+}
+
 .topbar__brand-link {
   display: inline-flex;
   align-items: center;
@@ -744,10 +778,6 @@ main.main--wide {
 /* ── Schedule header ─────────────────────────────────────── */
 
 .schedule-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3);
   margin-bottom: var(--space-3);
 }
 
@@ -756,17 +786,37 @@ main.main--wide {
   margin-bottom: 0;
 }
 
-.schedule-progress {
-  font-family: var(--font-data);
-  font-size: 0.9rem;
-  color: var(--color-text-dim);
+.schedule-header__titles {
+  text-align: center;
+}
+
+/* Grid (not flex-wrap) so the two rows share column widths and line up
+   — flex-wrap centers each wrapped row independently, which drifted
+   the second row's boxes out of alignment with the first. */
+.schedule-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.schedule-meta-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  padding: var(--space-3) var(--space-5);
+  text-align: center;
+  color: var(--color-text);
+  font-size: 1.05rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
-.schedule-meta {
-  font-size: 0.85rem;
-  color: var(--color-text-dim);
-  margin-bottom: var(--space-4);
+.schedule-meta-card--highlight {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(232, 220, 59, 0.08);
 }
 
 /* ── Race table (Schedule page) ─────────────────────────────
@@ -1040,11 +1090,6 @@ main.main--wide {
   color: var(--color-accent);
 }
 
-.inline-info-icon {
-  vertical-align: -2px;
-  margin: 0 2px;
-}
-
 dialog.session-modal {
   width: min(680px, 90vw);
   max-height: 85vh;
@@ -1228,6 +1273,18 @@ dialog.session-modal::backdrop {
 .form-submit:hover {
   background: var(--color-accent-dim);
   text-decoration: none;
+}
+
+.form-submit--secondary {
+  background: none;
+  color: var(--color-text-dim);
+  border: 1px solid var(--color-rule);
+  margin-left: var(--space-2);
+}
+
+.form-submit--secondary:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
 }
 
 .role-badge {
@@ -1886,6 +1943,14 @@ dialog.session-modal::backdrop {
 }
 
 @media (max-width: 768px) {
+  /* Critical: the fixed 3-column grid doesn't shrink below its
+     content's natural width, so it'd overflow a phone screen — fall
+     back to flex-wrap here, trading row alignment for not overflowing. */
+  .schedule-meta-grid {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
   /* Critical: driver-pick grid needs ~700-760px of fixed columns —
      clipped by the parent .tower's overflow:hidden. Column labels lose
      meaning once rows reflow, so just drop them; let each pick's

@@ -9,13 +9,16 @@ from app.services.draft import (
     VERSTAPPEN_CELEBRATION_SECONDS,
     _sort_by_fantasy_points,
     celebration_seconds_for_last_pick,
+    compute_draft_countdown,
     compute_draft_status,
     compute_seconds_remaining,
+    format_draft_scheduled_at_local,
     get_celebration_progress,
     get_intro_progress,
     get_turn_started_at,
     is_pick_expired,
     logo_url_for_team,
+    parse_draft_scheduled_at,
     validate_draft_order,
 )
 
@@ -309,6 +312,48 @@ def test_get_celebration_progress_is_zero_for_other_drivers():
     picks = [_pick("Nobody Special")]
     now = datetime(2026, 1, 1, 12, 0, 3, tzinfo=timezone.utc)
     assert get_celebration_progress(picks, now) == (0.0, 0.0)
+
+
+def test_compute_draft_countdown_breaks_down_days_hours_minutes():
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    scheduled_at = now + timedelta(days=2, hours=3, minutes=25)
+    assert compute_draft_countdown(scheduled_at, now) == {
+        "total_seconds": (2 * 86400) + (3 * 3600) + (25 * 60),
+        "days": 2,
+        "hours": 3,
+        "minutes": 25,
+    }
+
+
+def test_compute_draft_countdown_under_a_day():
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    scheduled_at = now + timedelta(hours=5, minutes=10)
+    countdown = compute_draft_countdown(scheduled_at, now)
+    assert countdown["days"] == 0
+    assert countdown["hours"] == 5
+    assert countdown["minutes"] == 10
+
+
+def test_compute_draft_countdown_clamps_at_zero_once_passed():
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    scheduled_at = now - timedelta(hours=1)
+    assert compute_draft_countdown(scheduled_at, now) == {
+        "total_seconds": 0,
+        "days": 0,
+        "hours": 0,
+        "minutes": 0,
+    }
+
+
+def test_parse_draft_scheduled_at_converts_eastern_to_utc():
+    # Mid-January — solidly outside any DST transition window, so EST
+    # (UTC-5) applies unambiguously.
+    assert parse_draft_scheduled_at("2026-01-15T19:00") == "2026-01-16T00:00:00+00:00"
+
+
+def test_format_draft_scheduled_at_local_round_trips_parse():
+    local_value = "2026-01-15T19:00"
+    assert format_draft_scheduled_at_local(parse_draft_scheduled_at(local_value)) == local_value
 
 
 def test_get_turn_started_at_offsets_by_celebration_seconds():

@@ -175,27 +175,18 @@
   {% include "_league_banner.html" %}
   {% set completed = races | selectattr("is_past") | list | length %}
   <div class="schedule-header">
-    <div>
-      <h1 class="page-title">Formula Fantasy Schedule</h1>
-      <p class="page-subtitle">
-        2026 season — click
-        <svg class="inline-info-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        for session details
-      </p>
+    <div class="schedule-header__titles">
+      <h1 class="page-title">2026 Season Schedule</h1>
     </div>
-    <div class="schedule-progress">{{ completed }}/{{ races | length }} complete</div>
   </div>
 
-  <div class="schedule-meta">
-    📅 Thursday · 9:00 PM EST &nbsp;·&nbsp;
-    🏁 Race: 50% GP &nbsp;·&nbsp;
-    🏃 Practice: 8:30 PM &nbsp;·&nbsp;
-    ⏱️ Qualifying: 10 minutes &nbsp;·&nbsp;
-    🔧 Fixed Setup
+  <div class="schedule-meta-grid">
+    <div class="schedule-meta-card schedule-meta-card--highlight">🏆 {{ completed }}/{{ races | length }} Complete</div>
+    <div class="schedule-meta-card">📅 Thursdays • 9PM EST</div>
+    <div class="schedule-meta-card">🔧 Fixed Setup</div>
+    <div class="schedule-meta-card">🏃 Practice • 8:30PM EST</div>
+    <div class="schedule-meta-card">⏱️ Qualifying: 10 min</div>
+    <div class="schedule-meta-card">🏁 Race: 50% GP</div>
   </div>
 
   <div class="tower schedule-table-wrap">

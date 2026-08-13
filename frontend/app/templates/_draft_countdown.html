@@ -1,0 +1,27 @@
+{# Site-wide header banner — polled by base.html every 60s via
+   /partials/draft-countdown. The Formula Fantasy dropdown has no
+   "Draft" link, so this is the main way members reach the draft page
+   — it switches from a countdown to a "it's live" link once launched,
+   rather than disappearing, and only renders nothing pre-launch with
+   no scheduled date set. #}
+{% if countdown %}
+  <div class="draft-countdown-bar">
+    <a href="/formula-fantasy/draft">
+      {% if countdown.is_live %}
+        🏁 The draft is live — jump in!
+      {% else %}
+        🏁 Draft starts in
+        {% if countdown.total_seconds <= 0 %}
+          any moment
+        {% elif countdown.days > 0 %}
+          {{ countdown.days }}d {{ countdown.hours }}h
+        {% elif countdown.hours > 0 %}
+          {{ countdown.hours }}h {{ countdown.minutes }}m
+        {% else %}
+          {{ countdown.minutes }}m
+        {% endif %}
+      {% endif %}
+      <span class="draft-countdown-bar__arrow">→</span>
+    </a>
+  </div>
+{% endif %}

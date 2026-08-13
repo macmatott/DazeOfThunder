@@ -39,7 +39,6 @@
         </a>
         <div class="nav-dropdown__menu">
           <a href="/formula-fantasy/how-it-works">How It Works</a>
-          <a href="/formula-fantasy/draft">Draft</a>
           <a href="/formula-fantasy/schedule">Schedule</a>
           <a href="/formula-fantasy/standings">Standings</a>
           <a href="/formula-fantasy/scoring">Scoring</a>
@@ -114,6 +113,8 @@
       {% endif %}
     </nav>
   </div>
+
+  <div id="draft-countdown-bar" hx-get="/partials/draft-countdown" hx-trigger="load, every 60s" hx-swap="innerHTML"></div>
 
   <main class="{% block main_class %}{% endblock %}">
     {% if request.state.auth_error %}

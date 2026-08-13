@@ -9,7 +9,7 @@ from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
 from app.services.constructor_draft import build_combined_draft_context
-from app.services.draft import get_season_id, list_active_participants
+from app.services.draft import get_draft_countdown, get_season_id, list_active_participants
 from app.services.standings import STANDINGS_TABS, TAB_EMPTY_COPY, get_standings_rows
 
 router = APIRouter(prefix="/partials")
@@ -32,6 +32,13 @@ def draft_content(request: Request):
         "_draft_content.html",
         {**context, "is_owner": is_owner, "participants": list_active_participants()},
     )
+
+
+@router.get("/draft-countdown")
+def draft_countdown(request: Request):
+    season_id = get_season_id(DRAFT_SEASON)
+    countdown = get_draft_countdown(season_id) if season_id else None
+    return templates.TemplateResponse(request, "_draft_countdown.html", {"countdown": countdown})
 
 
 @router.get("/standings-tab")

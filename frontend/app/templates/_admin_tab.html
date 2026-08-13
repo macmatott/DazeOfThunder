@@ -123,6 +123,63 @@
       </div>
     </div>
 
+    {% if driver_draft.phase == "not_started" and request.state.current_user.is_owner %}
+      {% if order_error %}
+        <div class="form-notice form-notice--error">{{ order_error }}</div>
+      {% endif %}
+
+      <p class="section-label">Schedule the Draft</p>
+      <div class="tower form">
+        <p class="tower__meta">
+          Shows a "Draft starts in..." countdown in the header on every page,
+          and the draft launches automatically once this time passes —
+          provided a draft order's been saved below. Time is Eastern
+          (matches sim session start times).
+        </p>
+        <form method="post" action="/admin/draft/schedule" class="form">
+          <div class="form-field">
+            <label for="draft-scheduled-at">Draft start</label>
+            <input
+              type="datetime-local"
+              id="draft-scheduled-at"
+              name="scheduled_at"
+              value="{{ draft_scheduled_at_local or '' }}"
+            >
+          </div>
+          <button type="submit" class="form-submit">Save</button>
+          {% if draft_scheduled_at_local %}
+            <button type="submit" formaction="/admin/draft/schedule/clear" class="form-submit form-submit--secondary">
+              Clear
+            </button>
+          {% endif %}
+        </form>
+      </div>
+
+      <p class="section-label">Set Draft Order</p>
+      <div class="tower form">
+        <p class="tower__meta">
+          Set the pick order for everyone currently signed in. Each round is
+          one pick per person; round 2 snakes back in reverse order. The
+          draft launches on its own at the scheduled time above once an
+          order's saved here — no separate launch step.
+        </p>
+        <form method="post" action="/admin/draft/set-order" class="form">
+          {% for i in range(draft_participants | length) %}
+            <div class="form-field">
+              <label for="order-{{ i }}">Pick {{ i + 1 }}</label>
+              <select id="order-{{ i }}" name="order" required>
+                <option value="" disabled selected>Choose a member</option>
+                {% for p in draft_participants %}
+                  <option value="{{ p.id }}">{{ p.display_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+          <button type="submit" class="form-submit">Save Order</button>
+        </form>
+      </div>
+    {% endif %}
+
     <p class="section-label">Import F1 Results</p>
 
     {% if f1_import_success %}
