@@ -393,6 +393,12 @@ main.main--wide {
   margin: 0 0 var(--space-5) 0;
 }
 
+/* How It Works intro — same centered heading/intro treatment as the
+   homepage hero, minus the badge. */
+.how-it-works-intro {
+  text-align: center;
+}
+
 /* Homepage hero — centered badge, welcome heading, intro copy. */
 .home-hero {
   text-align: center;
@@ -449,6 +455,14 @@ main.main--wide {
   margin: 0;
 }
 
+/* .tower + .tower's margin-top (for towers stacked in normal flow
+   elsewhere) also matches here, since the two towers are DOM-adjacent
+   siblings even though the grid places them side by side — that stray
+   margin was pushing the right-hand tower down out of row alignment. */
+.scoring-columns .tower + .tower {
+  margin-top: 0;
+}
+
 .scoring-columns .tower__row {
   min-height: 5.5rem;
 }
@@ -484,6 +498,7 @@ main.main--wide {
 }
 
 .page-cta {
+  text-align: center;
   margin-bottom: var(--space-5);
 }
 
@@ -544,6 +559,68 @@ main.main--wide {
 
 .trophy-card--has-bg .trophy-card__body {
   color: rgba(255, 255, 255, 0.8);
+}
+
+/* How It Works' "The Season, Step by Step" — a vertical timeline
+   instead of another .tower table, so the page's one narrative section
+   reads differently from its data tables. Each step's badge reuses the
+   icon from the matching Four Championships card where one applies, so
+   the same concept always gets the same icon across the page. */
+.timeline {
+  margin-bottom: var(--space-5);
+}
+
+.timeline__step {
+  position: relative;
+  display: flex;
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
+}
+
+.timeline__step:last-child {
+  padding-bottom: 0;
+}
+
+.timeline__step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 48px;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-rule);
+}
+
+.timeline__badge {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+.timeline__content {
+  padding-top: var(--space-1);
+  min-width: 0;
+}
+
+.timeline__title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: var(--space-1);
+}
+
+.timeline__body {
+  color: var(--color-text-dim);
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
 /* ── Timing-tower table (the signature element) ────────────
@@ -844,10 +921,39 @@ main.main--wide {
 }
 
 .stat-card {
+  position: relative;
   background: var(--color-surface);
   border: 1px solid var(--color-rule);
   border-radius: 4px;
   padding: var(--space-4);
+}
+
+.stat-card__icon {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  color: var(--color-text-dim);
+}
+
+.stat-card__icon + .stat-card__label {
+  padding-right: 28px;
+}
+
+/* Homepage standings cards double as links to the full standings page —
+   same scale/glow hover language as the photo cards above them, just
+   without the brightness filter since there's no photo to brighten. */
+.stat-card--clickable {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.stat-card--clickable:hover {
+  transform: scale(1.03);
+  border-color: var(--color-accent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 14px rgba(232, 220, 59, 0.35);
+  text-decoration: none;
 }
 
 .stat-card__label {

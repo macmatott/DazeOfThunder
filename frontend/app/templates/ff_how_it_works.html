@@ -3,15 +3,10 @@
 {% block title %}How It Works — Daze of Thunder{% endblock %}
 {% block content %}
   {% include "_league_banner.html" %}
-  <h1 class="page-title">How It Works</h1>
-  <p class="page-subtitle">Draft real F1 drivers. Race each other in iRacing. One league, two ways to win.</p>
-
-  <p class="ff-intro">
-    Formula Fantasy is Daze of Thunder's season-long competition for our
-    private league, run alongside the real 2026 Formula 1 calendar. Draft
-    real F1 drivers, then rack up points two ways: how they actually finish
-    on Sundays, and how you finish against each other on the sim.
-  </p>
+  <div class="how-it-works-intro">
+    <h1 class="page-title">How It Works</h1>
+    <p class="page-subtitle">Formula Fantasy is Daze of Thunder's season-long competition, run alongside the real 2026 Formula 1 calendar. Here's how it works: draft real F1 drivers, then rack up points two ways — how they actually finish on Sundays, and how you finish against each other on the sim.</p>
+  </div>
 
   <div class="card-grid">
     <div class="stat-card">
@@ -82,6 +77,96 @@
     </div>
   </div>
 
+  <p class="section-label">The Season, Step by Step</p>
+  <div class="timeline">
+    <div class="timeline__step">
+      <div class="timeline__badge">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 6h11M9 12h11M9 18h11"/>
+          <path d="M4 6l1.2 1.2L7.5 5"/>
+          <path d="M4 12l1.2 1.2 2.3-2.2"/>
+          <path d="M4 18l1.2 1.2 2.3-2.2"/>
+        </svg>
+      </div>
+      <div class="timeline__content">
+        <div class="timeline__title">Draft your drivers</div>
+        <div class="timeline__body">
+          At the start of the season, each member drafts 2 real F1 drivers
+          in a live snake-order draft — pick order reverses every round, so
+          nobody drafts twice in a row.
+        </div>
+      </div>
+    </div>
+    <div class="timeline__step">
+      <div class="timeline__badge">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="8.5" cy="8" r="3"/>
+          <circle cx="16" cy="9" r="2.5"/>
+          <path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M13.2 14.4c2.7.3 4.8 2.2 4.8 4.6"/>
+        </svg>
+      </div>
+      <div class="timeline__content">
+        <div class="timeline__title">Draft your teammate as your constructor team</div>
+        <div class="timeline__body">
+          With an even 10-person league, everyone also pairs up with one
+          teammate to form a two-person Constructor team — same idea as a
+          real F1 team fielding two cars. Your team's combined Sim Racing
+          results carry the Constructors' Championship, so who you're
+          paired with matters as much as who you draft.
+        </div>
+      </div>
+    </div>
+    <div class="timeline__step">
+      <div class="timeline__badge">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
+          <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
+          <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
+        </svg>
+      </div>
+      <div class="timeline__content">
+        <div class="timeline__title">Score with Fantasy F1 points</div>
+        <div class="timeline__body">
+          Every real F1 race weekend, your two drafted drivers earn Fantasy
+          F1 points based on how they actually finish — our own
+          NASCAR-inspired scale, where every finisher scores, not just the
+          top 10.
+        </div>
+      </div>
+    </div>
+    <div class="timeline__step">
+      <div class="timeline__badge">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+          <line x1="4" y1="22" x2="4" y2="15"/>
+        </svg>
+      </div>
+      <div class="timeline__content">
+        <div class="timeline__title">Race each other in iRacing</div>
+        <div class="timeline__body">
+          Members also go wheel-to-wheel in iRacing, with each event mapped
+          to a round on the real F1 calendar — your on-track finishes earn
+          Sim Racing points of their own.
+        </div>
+      </div>
+    </div>
+    <div class="timeline__step">
+      <div class="timeline__badge">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 17h16M5 17l-1.5-8L8 12l4-6 4 6 4.5-3L19 17"/>
+        </svg>
+      </div>
+      <div class="timeline__content">
+        <div class="timeline__title">Chase the championship</div>
+        <div class="timeline__body">
+          Fantasy F1 and Sim Racing points combine into one overall Daze of
+          Thunder champion — plus standalone Fantasy, Sim Racing, and
+          Constructors' standings.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="scoring-columns">
     <p class="section-label">Fantasy F1 Scoring</p>
     <p class="section-label">Sim Racing Scoring</p>
@@ -148,72 +233,5 @@
 
   <div class="page-cta">
     <a href="/formula-fantasy/scoring" class="form-submit">See Full Scoring Breakdown</a>
-  </div>
-
-  <div class="tower">
-    <div class="tower__header">How It Works</div>
-    <div class="tower__row">
-      <div class="tower__pos">1</div>
-      <div>
-        <div class="tower__name">Draft your drivers</div>
-        <div class="tower__meta">
-          At the start of the season, each member drafts 2 real F1 drivers
-          in a live snake-order draft — pick order reverses every round, so
-          nobody drafts twice in a row.
-        </div>
-      </div>
-      <div></div>
-    </div>
-    <div class="tower__row">
-      <div class="tower__pos">2</div>
-      <div>
-        <div class="tower__name">Draft your teammate as your constructor team</div>
-        <div class="tower__meta">
-          With an even 10-person league, everyone also pairs up with one
-          teammate to form a two-person Constructor team — same idea as a
-          real F1 team fielding two cars. Your team's combined Sim Racing
-          results carry the Constructors' Championship, so who you're
-          paired with matters as much as who you draft.
-        </div>
-      </div>
-      <div></div>
-    </div>
-    <div class="tower__row">
-      <div class="tower__pos">3</div>
-      <div>
-        <div class="tower__name">Score with Fantasy F1 points</div>
-        <div class="tower__meta">
-          Every real F1 race weekend, your two drafted drivers earn Fantasy
-          F1 points based on how they actually finish — our own
-          NASCAR-inspired scale, where every finisher scores, not just the
-          top 10.
-        </div>
-      </div>
-      <div></div>
-    </div>
-    <div class="tower__row">
-      <div class="tower__pos">4</div>
-      <div>
-        <div class="tower__name">Race each other in iRacing</div>
-        <div class="tower__meta">
-          Members also go wheel-to-wheel in iRacing, with each event mapped
-          to a round on the real F1 calendar — your on-track finishes earn
-          Sim Racing points of their own.
-        </div>
-      </div>
-      <div></div>
-    </div>
-    <div class="tower__row">
-      <div class="tower__pos">5</div>
-      <div>
-        <div class="tower__name">Chase the championship</div>
-        <div class="tower__meta">
-          Fantasy F1 and Sim Racing points combine into one overall Daze of
-          Thunder champion — plus standalone Fantasy, Sim Racing, and
-          Constructors' standings.
-        </div>
-      </div>
-      <div></div>
-    </div>
   </div>
 {% endblock %}

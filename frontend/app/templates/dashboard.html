@@ -47,30 +47,48 @@
 
   <p class="section-label">Formula Fantasy Standings</p>
   <div class="card-grid">
-    <div class="stat-card">
+    <a href="/formula-fantasy/standings?tab=sim" class="stat-card stat-card--clickable">
+      <svg class="stat-card__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <circle cx="12" cy="12" r="2.5"/>
+        <path d="M12 3v6.5M4.8 16.3l5.4-3M19.2 16.3l-5.4-3"/>
+      </svg>
       <div class="stat-card__label">Drivers' Championship</div>
       <div class="stat-card__value">
         {% if sim_racing_leader %}{{ sim_racing_leader.display_name }}{{ role_badge(sim_racing_leader.role) }}{% else %}—{% endif %}
       </div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/formula-fantasy/standings?tab=fantasy" class="stat-card stat-card--clickable">
+      <svg class="stat-card__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
+        <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
+        <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
+      </svg>
       <div class="stat-card__label">Fantasy Championship</div>
       <div class="stat-card__value">
         {% if fantasy_leader %}{{ fantasy_leader.display_name }}{{ role_badge(fantasy_leader.role) }}{% else %}—{% endif %}
       </div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/formula-fantasy/standings?tab=constructors" class="stat-card stat-card--clickable">
+      <svg class="stat-card__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="8.5" cy="8" r="3"/>
+        <circle cx="16" cy="9" r="2.5"/>
+        <path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M13.2 14.4c2.7.3 4.8 2.2 4.8 4.6"/>
+      </svg>
       <div class="stat-card__label">Constructors' Championship</div>
       <div class="stat-card__value">
         {% if constructor_leader %}{{ constructor_leader.display_name }}{% else %}—{% endif %}
       </div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/formula-fantasy/standings?tab=overall" class="stat-card stat-card--clickable">
+      <svg class="stat-card__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M4 17h16M5 17l-1.5-8L8 12l4-6 4 6 4.5-3L19 17"/>
+      </svg>
       <div class="stat-card__label">Overall Championship</div>
       <div class="stat-card__value">
         {% if overall_leader %}{{ overall_leader.display_name }}{{ role_badge(overall_leader.role) }}{% else %}—{% endif %}
       </div>
-    </div>
+    </a>
   </div>
 
   <div
