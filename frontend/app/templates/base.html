@@ -67,6 +67,11 @@
   </div>
 
   <main class="{% block main_class %}{% endblock %}">
+    {% if request.state.auth_error %}
+      <div class="form-notice form-notice--error">
+        Sign-in failed: {{ request.state.auth_error }}
+      </div>
+    {% endif %}
     {% if request.state.current_user and not request.state.current_user.participant_id %}
       <div class="form-notice form-notice--info">
         <div>You're signed in with Discord but haven't joined the league yet.</div>

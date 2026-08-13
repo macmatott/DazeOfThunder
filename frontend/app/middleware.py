@@ -38,6 +38,11 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
         session = request.session
         expires_at = session.get("expires_at")
 
+        # One-shot flash message: /auth/callback stashes this in the
+        # session on a failed sign-in, popped here so it survives the
+        # redirect to "/" but shows at most once.
+        request.state.auth_error = session.pop("auth_error", None)
+
         # The Supabase access token itself only lives ~1hr — without this,
         # anyone idle (or asleep) longer than that gets silently signed out
         # and has to redo Discord OAuth. Swap it for a fresh one via the

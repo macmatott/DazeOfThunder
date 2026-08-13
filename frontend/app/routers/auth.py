@@ -16,9 +16,25 @@ def login(request: Request):
 
 
 @router.get("/callback", name="auth_callback")
-def callback(request: Request, code: str | None = None):
+def callback(
+    request: Request,
+    code: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+):
     verifier = request.session.pop("oauth_verifier", None)
+
+    if error:
+        # Supabase/Discord rejected the exchange server-side (e.g. Discord
+        # returned no email on the account) — surface *why* instead of a
+        # silent bounce to "/" that looks like sign-in just did nothing.
+        request.session["auth_error"] = (error_description or error).replace("+", " ")
+        return RedirectResponse("/")
+
     if not code or not verifier:
+        request.session["auth_error"] = (
+            "Sign-in didn't complete — please try again."
+        )
         return RedirectResponse("/")
 
     session = exchange_code(code, verifier)
