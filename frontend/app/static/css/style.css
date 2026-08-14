@@ -437,6 +437,17 @@ main.main--wide {
   text-align: center;
 }
 
+.team-events-intro {
+  text-align: center;
+}
+
+.standings-intro,
+.scoring-intro,
+.profile-intro,
+.admin-intro {
+  text-align: center;
+}
+
 /* Homepage hero — centered badge, welcome heading, intro copy. */
 .home-hero {
   text-align: center;

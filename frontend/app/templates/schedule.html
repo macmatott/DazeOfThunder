@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Team Events — Daze of Thunder{% endblock %}
 {% block content %}
-  <h1 class="page-title">Team Events</h1>
-  <p class="page-subtitle">Upcoming iRacing special events — let us know if you're in</p>
+  <div class="team-events-intro">
+    <h1 class="page-title">Team Events</h1>
+    <p class="page-subtitle">Upcoming iRacing special events — let us know if you're in</p>
+  </div>
 
   {# Jinja's {% if %} doesn't open a new scope, so a {% set %} inside the
      Past Events block below would otherwise leak forward and affect the
