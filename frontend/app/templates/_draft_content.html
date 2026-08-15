@@ -80,30 +80,14 @@
         <div class="tower form">
           <div class="session-card__title">Launch the pairing draft</div>
           <p class="tower__meta">
-            Choose 5 team captains and set their pick order. In that order,
-            each captain picks one of the remaining 5 members as their
-            teammate, forming 5 pairs. Once every pair is formed, you'll
-            separately launch a second draft where pairs claim a real F1 team
-            name — the last pair formed goes first there.
+            Picks 6 through 10 from the driver draft become team captains,
+            in that same order. Each captain picks one of the remaining 5
+            members as their teammate, forming 5 pairs. Once every pair is
+            formed, you'll separately launch a second draft where pairs
+            claim a real F1 team name — the last pair formed goes first
+            there.
           </p>
-          <form
-            method="post"
-            action="/formula-fantasy/draft/launch-pairing"
-            class="form"
-            id="launch-pairing-form"
-            hx-preserve="true"
-          >
-            {% for i in range((participants | length) // 2) %}
-              <div class="form-field">
-                <label for="corder-{{ i }}">Captain {{ i + 1 }}</label>
-                <select id="corder-{{ i }}" name="order" required>
-                  <option value="" disabled selected>Choose a member</option>
-                  {% for p in participants %}
-                    <option value="{{ p.id }}">{{ p.display_name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            {% endfor %}
+          <form method="post" action="/formula-fantasy/draft/launch-pairing" class="form">
             <button type="submit" class="form-submit">Launch Pairing Draft</button>
           </form>
         </div>

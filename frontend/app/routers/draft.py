@@ -14,7 +14,6 @@ from app.services.constructor_draft import (
 from app.services.draft import (
     DraftError,
     get_season_id,
-    list_active_participants,
     make_pick,
 )
 
@@ -30,7 +29,6 @@ def _build_page_context(request: Request, *, launch_error: str | None = None) ->
     return {
         **build_combined_draft_context(season_id, participant_id),  # board, phase, pairing, naming
         "is_owner": request.state.current_user.get("is_owner", False),
-        "participants": list_active_participants(),
         "launch_error": launch_error,
     }
 
@@ -72,7 +70,7 @@ def pick(request: Request, f1_driver_id: str = Form(...)):
 
 
 @router.post("/formula-fantasy/draft/launch-pairing")
-def launch_pairing(request: Request, order: list[str] = Form(...)):
+def launch_pairing(request: Request):
     if not request.state.current_user:
         return RedirectResponse("/auth/login")
     if not request.state.current_user.get("is_owner"):
@@ -82,7 +80,7 @@ def launch_pairing(request: Request, order: list[str] = Form(...)):
     participant_id = request.state.current_user["participant_id"]
 
     try:
-        launch_pairing_draft(season_id, order, participant_id)
+        launch_pairing_draft(season_id, participant_id)
     except ValueError as exc:
         return templates.TemplateResponse(
             request, "draft.html", _build_page_context(request, launch_error=str(exc))

@@ -8,12 +8,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // native <select>/<input> popup mid-choice (moving a form control's
   // DOM position — even back to an equivalent spot via hx-preserve —
   // closes any dropdown/picker it has open, e.g. a <select> mid-choice
-  // or a datetime-local's calendar). Skip a poll tick while one's
-  // focused, covering the driver-order/captain-order launch forms and
-  // the schedule-draft datetime field, all inside #draft-board. Defined
-  // before the chime/tick lookup below so it's active even pre-launch,
-  // when neither audio tag exists yet — draft.js now always loads on
-  // this page for exactly that reason.
+  // or a datetime-local's calendar). Skip a poll tick while any form
+  // control inside #draft-board is focused. Defined before the
+  // chime/tick lookup below so it's active even pre-launch, when
+  // neither audio tag exists yet — draft.js now always loads on this
+  // page for exactly that reason.
   window.draftBoardShouldPoll = function () {
     var active = document.activeElement;
     if (!active || !board.contains(active)) {

@@ -8,11 +8,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var LEAGUE_SIZE = 10;
   var ROUNDS = 2;
-  var CAPTAIN_SLOTS = [1, 2, 3, 4, 5];
+  var CAPTAIN_SLOTS = [6, 7, 8, 9, 10];
   var BOT_THINK_MS = 3000;
   var YOUR_TURN_SECONDS = 15;
   var TICK_THRESHOLD_SECONDS = 5;
-  var STORAGE_KEY = "ffMockDraftStateV2";
+  var STORAGE_KEY = "ffMockDraftStateV3";
 
   var allDrivers = JSON.parse(document.getElementById("mock-draft-drivers").textContent);
   var allConstructors = JSON.parse(document.getElementById("mock-draft-constructors").textContent);

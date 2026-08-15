@@ -3,10 +3,11 @@ Constructor Draft — two admin-launched phases building on top of the
 driver draft's turn-based/timer machinery (app/services/draft.py), reused
 here rather than reimplemented:
 
-1. Pairing: the admin sets a pick order over exactly 5 "team captains"
-   (half the active roster). In that fixed order, each captain in turn
-   picks one teammate from the remaining non-captains — captains never
-   get skipped or "used up" by someone else's pick, since only
+1. Pairing: the 5 "team captains" are the second half of the driver
+   draft order (picks 6-10 of 10), in that same order — no separate
+   admin choice. In that fixed order, each captain in turn picks one
+   teammate from the remaining non-captains — captains never get
+   skipped or "used up" by someone else's pick, since only
    non-captains are ever pickable; every captain gets exactly one turn.
    5 pairs form this way for a 10-person league.
 2. Naming: order = the 5 pairs, reversed by formation order (last pair
@@ -37,6 +38,7 @@ from app.services.draft import (
     NotYourTurnError,
     build_draft_board_context,
     compute_seconds_remaining,
+    get_draft_state,
     get_driver_draft_summary,
     get_turn_started_at,
     is_pick_expired,
@@ -311,13 +313,20 @@ def get_constructors_desc_by_pick_number(season_id: str) -> list[dict]:
     return list(reversed(get_pairs(season_id)))
 
 
-def launch_pairing_draft(season_id: str, ordered_captain_ids: list[str], launched_by: str) -> dict:
+def launch_pairing_draft(season_id: str, launched_by: str) -> dict:
     # Server-side enforcement of the one-page sequential flow (Driver Draft
     # must finish before Constructor Pairing can start) — not just hidden
     # UI, since a crafted direct POST could otherwise bypass it.
     driver_summary = get_driver_draft_summary(season_id)
     if driver_summary["phase"] != "complete":
         raise ValueError("Complete the Driver Draft before launching the Constructor Draft.")
+
+    # Captains are the second half of the driver draft order (picks 6-10
+    # of 10), in that same order — the last 5 people to pick a driver
+    # facilitate the pairing/naming rounds, rather than an admin choosing
+    # captains by hand.
+    draft_order = get_draft_state(season_id)["draft_order"]
+    ordered_captain_ids = draft_order[len(draft_order) // 2 :]
 
     valid_ids = {p["id"] for p in list_active_participants()}
     validate_captain_order(ordered_captain_ids, valid_ids)
