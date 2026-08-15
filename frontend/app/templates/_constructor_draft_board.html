@@ -26,14 +26,14 @@
       <span class="draft-timer">{{ pairing.celebration_seconds_remaining }}s</span>
     {% elif phase == 'pairing' and not pairing.status.is_complete %}
       On the clock: {{ pairing.on_the_clock_name }}
-      (Pair {{ pairing.status.next_pick_number }} of 5)
+      (Teammate {{ pairing.status.next_pick_number }} of {{ pairing.status.teammates_needed }})
       {% if pairing.seconds_remaining is not none %}
         <span class="draft-timer{% if pairing.seconds_remaining <= 10 %} draft-timer--low{% endif %}">
           {{ pairing.seconds_remaining }}s left
         </span>
       {% endif %}
     {% elif phase == 'pairing' %}
-      All 5 pairs are set — waiting on an admin to launch the naming draft
+      Every team has a teammate — waiting on an admin to launch the naming draft
     {% elif phase == 'naming' and naming.in_celebration %}
       🏆 {{ naming.last_named_team_name }}!
       <span class="draft-timer">{{ naming.celebration_seconds_remaining }}s</span>

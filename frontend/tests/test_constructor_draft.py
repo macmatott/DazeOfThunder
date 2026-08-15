@@ -21,40 +21,63 @@ from app.services.constructor_draft import (
 CAPTAIN_ORDER = ["A", "B", "C", "D", "E"]
 
 
-def _pairs(n):
-    return [{}] * n
+def _pairs(*sizes):
+    """One pair dict per size in `sizes`, each with that many `members`
+    entries — compute_pairing_status only reads len(), values don't
+    matter. E.g. _pairs(2, 2, 3) is two 2-person teams and one 3-person
+    team (the odd-roster "extra teammate" case)."""
+    return [{"members": [None] * size} for size in sizes]
 
 
 def test_first_captain_in_order_is_on_the_clock():
-    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(0))
+    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(), 10)
     assert status == {
         "is_complete": False,
         "on_the_clock_participant_id": "A",
         "pairs_formed": 0,
+        "teammates_needed": 5,
         "next_pick_number": 1,
     }
 
 
 def test_next_captain_is_on_the_clock_after_a_pick():
-    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(2))
+    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(2, 2), 10)
     assert status["on_the_clock_participant_id"] == "C"
     assert status["pairs_formed"] == 2
     assert status["next_pick_number"] == 3
 
 
 def test_pairing_completes_once_every_captain_has_picked():
-    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(5))
+    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(2, 2, 2, 2, 2), 10)
     assert status["is_complete"] is True
     assert status["on_the_clock_participant_id"] is None
 
 
 def test_empty_captain_order_is_immediately_complete():
-    status = compute_pairing_status([], _pairs(0))
+    status = compute_pairing_status([], [], 0)
     assert status["is_complete"] is True
 
 
-def test_validate_captain_order_accepts_half_of_active_roster():
-    validate_captain_order(["A", "B"], {"A", "B", "C", "D"})  # no exception
+def test_last_captain_comes_back_on_the_clock_for_an_odd_roster():
+    # 11 active participants, 5 captains -> 6 teammates needed. Once
+    # every captain has picked once (5 teammates assigned), one person
+    # is still unassigned — the last captain in the order picks again
+    # rather than that person going captain-less.
+    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(2, 2, 2, 2, 2), 11)
+    assert status["is_complete"] is False
+    assert status["on_the_clock_participant_id"] == "E"
+    assert status["teammates_needed"] == 6
+
+
+def test_pairing_completes_after_the_extra_pick_for_an_odd_roster():
+    status = compute_pairing_status(CAPTAIN_ORDER, _pairs(2, 2, 2, 2, 3), 11)
+    assert status["is_complete"] is True
+    assert status["on_the_clock_participant_id"] is None
+
+
+def test_validate_captain_order_accepts_floor_half_of_active_roster():
+    validate_captain_order(["A", "B"], {"A", "B", "C", "D"})  # even roster, no exception
+    validate_captain_order(["A", "B"], {"A", "B", "C", "D", "E"})  # odd roster, floor(5/2)=2
 
 
 def test_validate_captain_order_rejects_duplicates():

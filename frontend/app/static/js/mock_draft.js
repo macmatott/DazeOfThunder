@@ -6,13 +6,19 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
-  var LEAGUE_SIZE = 10;
+  var LEAGUE_SIZE = 11;
   var ROUNDS = 2;
-  var CAPTAIN_SLOTS = [6, 7, 8, 9, 10];
+  // Captains are the back half of the draft order, floor(LEAGUE_SIZE/2)
+  // of them — an odd league size leaves one teammate over once every
+  // captain has picked once, so the last captain (index 4 here) picks
+  // a second time instead of that person going captain-less. Mirrors
+  // launch_pairing_draft/compute_pairing_status in constructor_draft.py.
+  var CAPTAIN_SLOTS = [7, 8, 9, 10, 11];
+  var TEAMMATES_NEEDED = LEAGUE_SIZE - CAPTAIN_SLOTS.length;
   var BOT_THINK_MS = 3000;
   var YOUR_TURN_SECONDS = 15;
   var TICK_THRESHOLD_SECONDS = 5;
-  var STORAGE_KEY = "ffMockDraftStateV3";
+  var STORAGE_KEY = "ffMockDraftStateV4";
 
   var allDrivers = JSON.parse(document.getElementById("mock-draft-drivers").textContent);
   var allConstructors = JSON.parse(document.getElementById("mock-draft-constructors").textContent);
@@ -191,9 +197,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function pairLabel(pair) {
-    var a = pair.captainSlot === state.yourSlot ? "You" : "Pick " + pair.captainSlot;
-    var b = pair.partnerSlot === state.yourSlot ? "You" : "Pick " + pair.partnerSlot;
-    return a + " & " + b;
+    var slots = [pair.captainSlot].concat(pair.partnerSlots);
+    return slots
+      .map(function (slot) { return slot === state.yourSlot ? "You" : "Pick " + slot; })
+      .join(" & ");
   }
 
   function pairRowHtml(pair) {
@@ -223,10 +230,14 @@ document.addEventListener("DOMContentLoaded", function () {
     return CAPTAIN_SLOTS.indexOf(slot) !== -1;
   }
 
+  function partnersAssigned() {
+    return state.pairs.reduce(function (sum, p) { return sum + p.partnerSlots.length; }, 0);
+  }
+
   function remainingPartnerSlots() {
     var paired = {};
     state.pairs.forEach(function (p) {
-      paired[p.partnerSlot] = true;
+      p.partnerSlots.forEach(function (slot) { paired[slot] = true; });
     });
     var out = [];
     for (var s = 1; s <= LEAGUE_SIZE; s++) {
@@ -254,8 +265,19 @@ document.addEventListener("DOMContentLoaded", function () {
       var slot = state.driverOrder[state.driverPicks.length];
       return { phase: "driver", slot: slot, isYou: slot === state.yourSlot };
     }
-    if (state.pairs.length < CAPTAIN_SLOTS.length) {
-      var captainSlot = CAPTAIN_SLOTS[state.pairs.length];
+    var assigned = partnersAssigned();
+    if (assigned < TEAMMATES_NEEDED) {
+      var numCaptains = CAPTAIN_SLOTS.length;
+      var captainSlot;
+      if (assigned < numCaptains) {
+        captainSlot = CAPTAIN_SLOTS[assigned];
+      } else {
+        // Extra picks (teammates left over after everyone's picked once)
+        // go back through captain order from the end, so whoever picked
+        // last in round 1 also picks first for the extras.
+        var extraIndex = numCaptains - 1 - ((assigned - numCaptains) % numCaptains);
+        captainSlot = CAPTAIN_SLOTS[extraIndex];
+      }
       return { phase: "pairing", slot: captainSlot, isYou: captainSlot === state.yourSlot };
     }
     var namedCount = state.pairs.filter(function (p) { return p.constructorName; }).length;
@@ -264,7 +286,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // picks first) — mirror of get_constructors_desc_by_pick_number.
       var namingOrder = state.pairs.slice().reverse();
       var pair = namingOrder[namedCount];
-      var isYou = pair.captainSlot === state.yourSlot || pair.partnerSlot === state.yourSlot;
+      var isYou = pair.captainSlot === state.yourSlot || pair.partnerSlots.indexOf(state.yourSlot) !== -1;
       return { phase: "naming", pair: pair, isYou: isYou };
     }
     return { phase: "complete" };
@@ -285,10 +307,18 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function commitPairingPick(captainSlot, partnerSlot) {
+    // An odd LEAGUE_SIZE brings the last captain back on the clock a
+    // second time (see getCurrentTurn) — that pick joins their existing
+    // team instead of starting a new one.
+    var existing = state.pairs.filter(function (p) { return p.captainSlot === captainSlot; })[0];
+    if (existing) {
+      existing.partnerSlots.push(partnerSlot);
+      return;
+    }
     state.pairs.push({
       pickNumber: state.pairs.length + 1,
       captainSlot: captainSlot,
-      partnerSlot: partnerSlot,
+      partnerSlots: [partnerSlot],
       constructorName: null,
     });
   }
@@ -321,14 +351,14 @@ document.addEventListener("DOMContentLoaded", function () {
       var who = turn.isYou ? "Your pick" : "Pick " + turn.slot + " is drafting";
       statusEl.innerHTML = pulse + who + " — Pick " + pickNumber + ", Round " + round + timerHtml;
     } else if (turn.phase === "pairing") {
-      var pn = state.pairs.length + 1;
+      var pn = partnersAssigned() + 1;
       var whoP = turn.isYou ? "Your pick" : "Pick " + turn.slot + " is picking";
-      statusEl.innerHTML = pulse + whoP + " a teammate — Pair " + pn + " of 5" + timerHtml;
+      statusEl.innerHTML = pulse + whoP + " a teammate — Teammate " + pn + " of " + TEAMMATES_NEEDED + timerHtml;
     } else if (turn.phase === "naming") {
       var pnn = state.pairs.filter(function (p) { return p.constructorName; }).length + 1;
       var label = pairLabel(turn.pair);
       var whoN = turn.isYou ? "Your team" : label + " is naming their team";
-      statusEl.innerHTML = pulse + whoN + " — Naming " + pnn + " of 5" + timerHtml;
+      statusEl.innerHTML = pulse + whoN + " — Naming " + pnn + " of " + CAPTAIN_SLOTS.length + timerHtml;
     }
   }
 

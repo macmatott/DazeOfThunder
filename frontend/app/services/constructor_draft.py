@@ -3,13 +3,19 @@ Constructor Draft — two admin-launched phases building on top of the
 driver draft's turn-based/timer machinery (app/services/draft.py), reused
 here rather than reimplemented:
 
-1. Pairing: the 5 "team captains" are the second half of the driver
-   draft order (picks 6-10 of 10), in that same order — no separate
-   admin choice. In that fixed order, each captain in turn picks one
-   teammate from the remaining non-captains — captains never get
-   skipped or "used up" by someone else's pick, since only
-   non-captains are ever pickable; every captain gets exactly one turn.
-   5 pairs form this way for a 10-person league.
+1. Pairing: the team captains are the back half of the driver draft
+   order — floor(active roster / 2) of them, in that same order — no
+   separate admin choice. In that fixed order, each captain in turn
+   picks one teammate from the remaining non-captains — captains never
+   get skipped or "used up" by someone else's pick, since only
+   non-captains are ever pickable. For an even-sized roster (10
+   people) that's 5 captains each picking once, forming 5 two-person
+   teams. For an odd-sized roster (11 people) there's one teammate left
+   over once every captain has picked once — rather than that person
+   going captain-less, the *last* captain in the order picks a second
+   time, so every team still ends up with a captain and every
+   non-captain still ends up on a team; that captain's team is the odd
+   one out at 3 members. See compute_pairing_status for the turn math.
 2. Naming: order = the 5 pairs, reversed by formation order (last pair
    formed picks first) — each team claims one unclaimed real F1
    constructor name from CONSTRUCTOR_LOGOS.
@@ -47,29 +53,50 @@ from app.services.draft import (
 )
 
 
-def compute_pairing_status(captain_order: list[str], pairs: list[dict]) -> dict:
-    """captain_order is exactly the 5 team captains, fixed at launch —
+def compute_pairing_status(
+    captain_order: list[str], pairs: list[dict], total_active_participants: int
+) -> dict:
+    """captain_order is the fixed team-captain order set at launch —
     unlike a full participant order, captains are never "used up" by
-    someone else's pick, so no skip-logic is needed: the captain on the
-    clock is simply captain_order[len(pairs)]. `pairs` only needs to
-    support len() here (one existing pair = one captain has already
-    picked)."""
-    n = len(captain_order)
-    pairs_formed = len(pairs)
+    someone else's pick, so no skip-logic is needed. Whose turn it is
+    is computed from how many teammates have been assigned so far
+    (partners_assigned — each pair's `members` list minus its captain),
+    not from how many `pairs` rows exist: a roster that doesn't split
+    evenly into 2-person teams (see module docstring) leaves one
+    teammate over after every captain has picked once, and that pick
+    adds to an existing team rather than starting a new one, so
+    `len(pairs)` alone can't tell whose turn it is once that happens.
 
-    if n == 0 or pairs_formed >= n:
+    Round 1: each captain in captain_order picks once, in order. Any
+    leftover teammates go to a second round worked through
+    captain_order from the end backward, so whoever picked last in
+    round 1 also picks first for the extras — that captain's team ends
+    up with 3 members."""
+    num_captains = len(captain_order)
+    teammates_needed = total_active_participants - num_captains
+    partners_assigned = sum(len(pair["members"]) - 1 for pair in pairs)
+
+    if num_captains == 0 or partners_assigned >= teammates_needed:
         return {
             "is_complete": True,
             "on_the_clock_participant_id": None,
-            "pairs_formed": pairs_formed,
+            "pairs_formed": partners_assigned,
+            "teammates_needed": teammates_needed,
             "next_pick_number": None,
         }
 
+    if partners_assigned < num_captains:
+        on_the_clock = captain_order[partners_assigned]
+    else:
+        extra_index = num_captains - 1 - ((partners_assigned - num_captains) % num_captains)
+        on_the_clock = captain_order[extra_index]
+
     return {
         "is_complete": False,
-        "on_the_clock_participant_id": captain_order[pairs_formed],
-        "pairs_formed": pairs_formed,
-        "next_pick_number": pairs_formed + 1,
+        "on_the_clock_participant_id": on_the_clock,
+        "pairs_formed": partners_assigned,
+        "teammates_needed": teammates_needed,
+        "next_pick_number": partners_assigned + 1,
     }
 
 
@@ -113,16 +140,17 @@ def get_pairing_celebration_progress(pairs: list[dict], now: datetime) -> tuple[
 
 def validate_captain_order(submitted_ids: list[str], valid_ids: set[str]) -> None:
     """Captains must be a duplicate-free subset of the active roster, and
-    there must be exactly half as many captains as active participants —
-    each captain pairs with exactly one non-captain, with nobody left
-    over on either side."""
+    there must be exactly floor(active roster / 2) of them — each
+    captain picks at least one non-captain teammate, with any leftover
+    (odd-sized roster) going to extra picks rather than extra captains,
+    see compute_pairing_status."""
     if not submitted_ids:
         raise ValueError("Captain order can't be empty.")
     if len(submitted_ids) != len(set(submitted_ids)):
         raise ValueError("Each participant can only be a captain once.")
     if not set(submitted_ids).issubset(valid_ids):
         raise ValueError("Captains must be current active participants.")
-    if len(submitted_ids) * 2 != len(valid_ids):
+    if len(submitted_ids) != len(valid_ids) // 2:
         raise ValueError(
             f"Need exactly {len(valid_ids) // 2} captains for {len(valid_ids)} active participants."
         )
@@ -321,12 +349,15 @@ def launch_pairing_draft(season_id: str, launched_by: str) -> dict:
     if driver_summary["phase"] != "complete":
         raise ValueError("Complete the Driver Draft before launching the Constructor Draft.")
 
-    # Captains are the second half of the driver draft order (picks 6-10
-    # of 10), in that same order — the last 5 people to pick a driver
-    # facilitate the pairing/naming rounds, rather than an admin choosing
-    # captains by hand.
+    # Captains are the back floor(N/2) picks of the driver draft order,
+    # in that same order — the last people to pick a driver facilitate
+    # the pairing/naming rounds, rather than an admin choosing captains
+    # by hand. Floor (not half rounded up) means an odd-sized roster
+    # leaves one extra non-captain rather than an extra captain — see
+    # compute_pairing_status for how that extra teammate gets assigned.
     draft_order = get_draft_state(season_id)["draft_order"]
-    ordered_captain_ids = draft_order[len(draft_order) // 2 :]
+    num_captains = len(draft_order) // 2
+    ordered_captain_ids = draft_order[len(draft_order) - num_captains :]
 
     valid_ids = {p["id"] for p in list_active_participants()}
     validate_captain_order(ordered_captain_ids, valid_ids)
@@ -361,7 +392,8 @@ def launch_naming_draft(season_id: str, launched_by: str) -> dict:
         raise ValueError("Pairing hasn't been launched yet.")
 
     pairs = get_pairs(season_id)
-    status = compute_pairing_status(state["pairing_order"], pairs)
+    total_active = len(list_active_participants())
+    status = compute_pairing_status(state["pairing_order"], pairs, total_active)
     if not status["is_complete"]:
         raise ValueError("Pairing isn't finished yet — every team needs a partner first.")
 
@@ -384,7 +416,8 @@ def make_pairing_pick(season_id: str, captain_participant_id: str, partner_parti
 
     captain_ids = set(state["pairing_order"])
     pairs = get_pairs(season_id)
-    status = compute_pairing_status(state["pairing_order"], pairs)
+    total_active = len(list_active_participants())
+    status = compute_pairing_status(state["pairing_order"], pairs, total_active)
 
     if status["is_complete"]:
         raise DraftCompleteError("Pairing is already complete.")
@@ -405,6 +438,32 @@ def make_pairing_pick(season_id: str, captain_participant_id: str, partner_parti
         raise DraftError("That participant has already been picked.")
 
     client = admin_client()
+
+    # An odd-sized roster means the last captain in the order comes back
+    # on the clock a second time (see compute_pairing_status) — that
+    # pick joins their existing team instead of starting a new one, so
+    # the roster never ends up with a captain-less non-captain.
+    existing = next(
+        (
+            pair
+            for pair in pairs
+            if captain_participant_id in {m["participant_id"] for m in pair["constructor_members"]}
+        ),
+        None,
+    )
+    if existing:
+        client.table("constructor_members").insert(
+            {
+                "constructor_id": existing["id"],
+                "participant_id": partner_participant_id,
+                "season_id": season_id,
+            }
+        ).execute()
+        client.table("constructors").update(
+            {"paired_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", existing["id"]).execute()
+        return existing
+
     constructor = (
         client.table("constructors")
         .insert(
@@ -481,7 +540,8 @@ def maybe_auto_pick_pairing(season_id: str) -> bool:
         return False
 
     pairs = get_pairs(season_id)
-    status = compute_pairing_status(state["pairing_order"], pairs)
+    total_active = len(list_active_participants())
+    status = compute_pairing_status(state["pairing_order"], pairs, total_active)
     if status["is_complete"]:
         return False
 
@@ -553,8 +613,9 @@ def get_constructor_draft_summary(season_id: str | None) -> dict:
     detail = None
     if phase == "pairing":
         pairs = get_pairs(season_id)
-        status = compute_pairing_status(state["pairing_order"], pairs)
-        detail = f"{status['pairs_formed']}/{len(state['pairing_order'])} pairs formed"
+        total_active = len(list_active_participants())
+        status = compute_pairing_status(state["pairing_order"], pairs, total_active)
+        detail = f"{status['pairs_formed']}/{status['teammates_needed']} teammates assigned"
     elif phase == "naming":
         constructors_desc = get_constructors_desc_by_pick_number(season_id)
         status = compute_naming_status(constructors_desc)
@@ -568,7 +629,8 @@ def build_pairing_board_context(season_id: str, viewer_participant_id: str | Non
 
     state = get_constructor_draft_state(season_id)
     pairs = get_pairs(season_id)
-    status = compute_pairing_status(state["pairing_order"], pairs)
+    total_active = len(list_active_participants())
+    status = compute_pairing_status(state["pairing_order"], pairs, total_active)
     now = datetime.now(timezone.utc)
 
     in_celebration = False
