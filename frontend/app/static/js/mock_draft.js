@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var pairsEl = document.getElementById("mock-draft-pairs");
   var chimeEl = document.getElementById("mock-draft-chime");
   var tickEl = document.getElementById("mock-draft-tick");
+  var finaleEl = document.getElementById("mock-draft-finale");
 
   var state = null;
   var pendingTimeout = null;
@@ -52,6 +53,13 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (e) {}
   }
 
+  function playFinale() {
+    try {
+      finaleEl.currentTime = 0;
+      finaleEl.play().catch(function () {});
+    } catch (e) {}
+  }
+
   function stopAudio(el) {
     try {
       el.pause();
@@ -65,6 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function stopAllAudio() {
     stopAudio(chimeEl);
     stopAudio(tickEl);
+    stopAudio(finaleEl);
   }
 
   function clearPending() {
@@ -432,6 +441,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (turn.phase === "complete") {
       render(turn, null);
+      // Fire once per completed run — state.finaleShown is persisted, so
+      // resuming an already-finished draft from localStorage (e.g. a
+      // page refresh) doesn't replay it.
+      if (!state.finaleShown) {
+        state.finaleShown = true;
+        saveState();
+        playFinale();
+        if (window.launchFireworks) {
+          window.launchFireworks();
+        }
+      }
       return;
     }
 

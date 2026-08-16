@@ -198,6 +198,9 @@ document.addEventListener("DOMContentLoaded", function () {
         finaleSound.currentTime = 0;
         finaleSound.play().catch(function () {});
       }
+      if (window.launchFireworks) {
+        window.launchFireworks();
+      }
       lastAnnouncedFinaleMarker = finaleMarker;
     }
 

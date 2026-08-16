@@ -1521,6 +1521,31 @@ dialog.session-modal::backdrop {
   accent-color: var(--color-accent);
 }
 
+.clip-volume-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.clip-volume-control--centered {
+  justify-content: center;
+}
+
+.clip-volume-control__icon {
+  font-size: 1.1rem;
+}
+
+.clip-volume-control__label {
+  color: var(--color-text-dim);
+  font-size: 0.85rem;
+}
+
+.clip-volume-control__slider {
+  width: 140px;
+  accent-color: var(--color-accent);
+}
+
 .draft-timer--low {
   color: var(--color-negative);
 }

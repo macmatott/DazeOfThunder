@@ -6,6 +6,22 @@
   <h1 class="page-title">Draft</h1>
   <p class="page-subtitle">Draft your drivers, then pair up for the Constructors' Championship</p>
 
+  {# Outside #draft-board on purpose — it's never touched by the 2s
+     poll swap, so it needs no hx-preserve and never loses focus. #}
+  <div class="clip-volume-control">
+    <span class="clip-volume-control__icon" aria-hidden="true">🔊</span>
+    <span class="clip-volume-control__label">Sound effects</span>
+    <input
+      type="range"
+      id="clip-volume-slider"
+      class="clip-volume-control__slider"
+      min="0"
+      max="100"
+      value="60"
+      aria-label="Sound effects volume"
+    >
+  </div>
+
   {% if launch_error %}
     <div class="form-notice form-notice--error">{{ launch_error }}</div>
   {% endif %}
@@ -20,5 +36,7 @@
   </div>
 {% endblock %}
 {% block scripts %}
+  <script src="/static/js/fireworks.js"></script>
+  <script src="/static/js/audio_volume.js"></script>
   <script src="/static/js/draft.js"></script>
 {% endblock %}

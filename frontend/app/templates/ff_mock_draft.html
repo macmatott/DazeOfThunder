@@ -11,6 +11,20 @@
     </p>
   </div>
 
+  <div class="clip-volume-control clip-volume-control--centered">
+    <span class="clip-volume-control__icon" aria-hidden="true">🔊</span>
+    <span class="clip-volume-control__label">Sound effects</span>
+    <input
+      type="range"
+      id="clip-volume-slider"
+      class="clip-volume-control__slider"
+      min="0"
+      max="100"
+      value="60"
+      aria-label="Sound effects volume"
+    >
+  </div>
+
   {# Entirely client-side (see mock_draft.js) — a private scratchpad, not
      something that needs to be shared/synced, so there's no server round
      trip per pick and no database involvement at all. #}
@@ -18,6 +32,7 @@
   <script id="mock-draft-constructors" type="application/json">{{ constructors | tojson }}</script>
   <audio id="mock-draft-chime" src="/static/audio/radio-chrip.wav" preload="auto"></audio>
   <audio id="mock-draft-tick" src="/static/audio/clock-tick.mp3" preload="auto"></audio>
+  <audio id="mock-draft-finale" src="/static/audio/draft-finale.mp3" preload="auto"></audio>
 
   <div id="mock-draft-setup" class="tower form">
     <div class="session-card__title">Set up your mock draft</div>
@@ -77,5 +92,7 @@
   </div>
 {% endblock %}
 {% block scripts %}
+  <script src="/static/js/fireworks.js"></script>
+  <script src="/static/js/audio_volume.js"></script>
   <script src="/static/js/mock_draft.js"></script>
 {% endblock %}
