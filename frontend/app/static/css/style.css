@@ -444,7 +444,8 @@ main.main--wide {
 .standings-intro,
 .scoring-intro,
 .profile-intro,
-.admin-intro {
+.admin-intro,
+.draft-intro-header {
   text-align: center;
 }
 
@@ -770,6 +771,20 @@ main.main--wide {
 
 .tower__row:last-child {
   border-bottom: none;
+}
+
+.presence-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-text-dim);
+  opacity: 0.4;
+}
+
+.presence-dot--here {
+  background: var(--color-positive);
+  opacity: 1;
+  box-shadow: 0 0 6px var(--color-positive);
 }
 
 .tower__pos {

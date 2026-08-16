@@ -22,6 +22,7 @@ from app.services.fantasy_scoring import (
     ScoringRulesNotSeededError,
     get_driver_season_fantasy_stats_by_name,
 )
+from app.services.presence import get_present_participant_ids, record_heartbeat
 
 # The league's home timezone (matches the "9:00 PM EST" sim-session
 # convention in f1_schedule.py) — the draft-scheduling form is entered
@@ -575,6 +576,12 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
     maybe_auto_launch_draft(season_id)
     maybe_auto_pick(season_id)
 
+    # The page's own 2s poll doubles as a heartbeat — every active
+    # viewer's browser calls this on every tick, so no separate ping
+    # endpoint is needed for the waiting room to know who's around.
+    if viewer_participant_id:
+        record_heartbeat(viewer_participant_id)
+
     state = get_draft_state(season_id)
     picks = get_draft_picks(season_id)
     available = get_available_drivers(season_id)
@@ -593,6 +600,8 @@ def build_draft_board_context(season_id: str, viewer_participant_id: str | None)
             "intro_elapsed_seconds": None,
             "in_celebration": False,
             "celebration_seconds_remaining": None,
+            "waiting_room_participants": list_active_participants(),
+            "present_participant_ids": get_present_participant_ids(),
         }
 
     status = compute_draft_status(state["draft_order"], state["total_rounds"], picks)

@@ -11,9 +11,25 @@
   <p class="section-label">1. Driver Draft</p>
   {% if not board.is_live %}
     <div class="tower">
-      <div class="tower__empty">
-        The driver draft hasn't started yet. Check back once the owner launches it.
-      </div>
+      <div class="tower__header">Waiting Room</div>
+      {% if board.waiting_room_participants %}
+        {% for p in board.waiting_room_participants %}
+          <div class="tower__row">
+            <div
+              class="presence-dot{% if p.id in board.present_participant_ids %} presence-dot--here{% endif %}"
+              aria-hidden="true"
+            ></div>
+            <div class="tower__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+            <div class="tower__meta">
+              {{ "Here" if p.id in board.present_participant_ids else "Away" }}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="tower__empty">
+          The driver draft hasn't started yet. Check back once the owner launches it.
+        </div>
+      {% endif %}
     </div>
   {% else %}
     <audio id="draft-turn-chime" hx-preserve="true" src="/static/audio/radio-chrip.wav" preload="auto"></audio>

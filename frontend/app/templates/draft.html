@@ -3,8 +3,10 @@
 {% block main_class %}main--wide{% endblock %}
 {% block content %}
   {% include "_league_banner.html" %}
-  <h1 class="page-title">Draft</h1>
-  <p class="page-subtitle">Draft your drivers, then pair up for the Constructors' Championship</p>
+  <div class="draft-intro-header">
+    <h1 class="page-title">Draft</h1>
+    <p class="page-subtitle">Draft your drivers, pair up for the Constructors' Championship and choose your team.</p>
+  </div>
 
   {# Outside #draft-board on purpose — it's never touched by the 2s
      poll swap, so it needs no hx-preserve and never loses focus. #}
