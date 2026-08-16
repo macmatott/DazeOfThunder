@@ -6,7 +6,7 @@ from app.services.constructor_draft import (
     CONSTRUCTOR_EASTER_EGG_CELEBRATIONS,
     auto_pick_constructor_name,
     auto_pick_teammate,
-    celebration_clip_index_for_pair,
+    celebration_clip_index_for_pick,
     celebration_seconds_for_last_named,
     celebration_seconds_for_last_pair,
     compute_naming_status,
@@ -227,45 +227,62 @@ def test_get_naming_celebration_progress_is_zero_without_easter_egg():
     assert get_naming_celebration_progress(named, now) == (0.0, 0.0)
 
 
-def _pair(pair_id, paired_at="2026-01-01T12:00:00+00:00"):
-    return {"id": pair_id, "paired_at": paired_at}
+def _pair(pair_id, paired_at="2026-01-01T12:00:00+00:00", members=2):
+    return {"id": pair_id, "paired_at": paired_at, "members": [None] * members}
 
 
 def test_celebration_seconds_for_last_pair_is_zero_when_empty():
-    assert celebration_seconds_for_last_pair([]) == 0
+    assert celebration_seconds_for_last_pair("seed", []) == 0
 
 
 def test_celebration_seconds_for_last_pair_is_zero_with_no_clips_configured(monkeypatch):
     monkeypatch.setattr("app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [])
-    assert celebration_seconds_for_last_pair([_pair("pair-1")]) == 0
+    assert celebration_seconds_for_last_pair("seed", [_pair("pair-1")]) == 0
 
 
 def test_celebration_seconds_for_last_pair_uses_the_real_configured_clips():
-    # PAIRING_CELEBRATION_CLIP_DURATIONS is populated now (5 real clips) —
-    # every pair should get a real, in-range duration, not 0.
-    duration = celebration_seconds_for_last_pair([_pair("some-real-pair-id")])
+    # PAIRING_CELEBRATION_CLIP_DURATIONS is populated now (6 real clips) —
+    # every pick should get a real, in-range duration, not 0.
+    duration = celebration_seconds_for_last_pair("some-draft-id", [_pair("some-real-pair-id")])
     assert duration > 0
 
 
-def test_celebration_clip_index_for_pair_is_deterministic(monkeypatch):
+def test_celebration_clip_index_for_pick_is_deterministic(monkeypatch):
     monkeypatch.setattr(
         "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [5, 6, 7, 8, 9]
     )
-    first = celebration_clip_index_for_pair("some-pair-uuid")
-    second = celebration_clip_index_for_pair("some-pair-uuid")
+    first = celebration_clip_index_for_pick("some-draft-id", 2)
+    second = celebration_clip_index_for_pick("some-draft-id", 2)
     assert first == second
     assert 0 <= first < 5
 
 
-def test_celebration_clip_index_for_pair_varies_by_pair_id(monkeypatch):
+def test_celebration_clip_index_for_pick_varies_by_seed(monkeypatch):
     monkeypatch.setattr(
         "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [5, 6, 7, 8, 9]
     )
-    indexes = {celebration_clip_index_for_pair(f"pair-{i}") for i in range(20)}
+    indexes = {celebration_clip_index_for_pick(f"draft-{i}", 0) for i in range(20)}
     # Not a strict guarantee with only 20 samples across 5 buckets, but
-    # overwhelmingly likely to land in more than one bucket if the hash
-    # is actually varying, not just returning a constant.
+    # overwhelmingly likely to land in more than one bucket if the shuffle
+    # is actually seed-dependent, not just returning a constant.
     assert len(indexes) > 1
+
+
+def test_every_configured_clip_plays_once_before_any_repeat(monkeypatch):
+    durations = [5, 6, 7, 8, 9, 10]
+    monkeypatch.setattr(
+        "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", durations
+    )
+    # Exactly what an 11-person league's pairing draft produces: 6
+    # teammate picks (5 teams + one captain's extra pick) against 6
+    # configured clips — every clip must be used, none repeated.
+    indexes = [celebration_clip_index_for_pick("some-draft-id", i) for i in range(len(durations))]
+    assert sorted(indexes) == list(range(len(durations)))
+
+    # The 7th pick (if a bigger league ever needed one) wraps back
+    # around to the start of the same shuffled order rather than
+    # colliding with pick 0 by coincidence.
+    assert celebration_clip_index_for_pick("some-draft-id", len(durations)) == indexes[0]
 
 
 def test_celebration_seconds_for_last_pair_uses_the_selected_clips_duration(monkeypatch):
@@ -273,16 +290,32 @@ def test_celebration_seconds_for_last_pair_uses_the_selected_clips_duration(monk
     monkeypatch.setattr(
         "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", durations
     )
-    pair_id = "some-pair-uuid"
-    expected_index = celebration_clip_index_for_pair(pair_id)
-    assert celebration_seconds_for_last_pair([_pair(pair_id)]) == durations[expected_index]
+    seed = "some-draft-id"
+    pairs = [_pair("pair-1"), _pair("pair-2")]
+    expected_index = celebration_clip_index_for_pick(seed, 1)
+    assert celebration_seconds_for_last_pair(seed, pairs) == durations[expected_index]
+
+
+def test_celebration_seconds_for_last_pair_uses_pick_order_not_pair_count(monkeypatch):
+    # A team's second member (the extra pick for an odd-sized roster)
+    # doesn't add a new pairs row, so pick order has to come from total
+    # members assigned, not len(pairs) — a 3-person team's second pick
+    # is teammate pick index 1, same as if it were a 2nd distinct pair.
+    durations = [5, 6, 7, 8, 9]
+    monkeypatch.setattr(
+        "app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", durations
+    )
+    seed = "some-draft-id"
+    pairs = [_pair("pair-1", members=3)]
+    expected_index = celebration_clip_index_for_pick(seed, 1)
+    assert celebration_seconds_for_last_pair(seed, pairs) == durations[expected_index]
 
 
 def test_get_pairing_celebration_progress_counts_down(monkeypatch):
     monkeypatch.setattr("app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [10])
     pairs = [_pair("pair-1", paired_at="2026-01-01T12:00:00+00:00")]
     now = datetime(2026, 1, 1, 12, 0, 4, tzinfo=timezone.utc)
-    elapsed, remaining = get_pairing_celebration_progress(pairs, now)
+    elapsed, remaining = get_pairing_celebration_progress("seed", pairs, now)
     assert elapsed == 4
     assert remaining == 6
 
@@ -291,7 +324,7 @@ def test_get_pairing_celebration_progress_is_zero_without_clips_configured(monke
     monkeypatch.setattr("app.services.constructor_draft.PAIRING_CELEBRATION_CLIP_DURATIONS", [])
     pairs = [_pair("pair-1")]
     now = datetime(2026, 1, 1, 12, 0, 4, tzinfo=timezone.utc)
-    assert get_pairing_celebration_progress(pairs, now) == (0.0, 0.0)
+    assert get_pairing_celebration_progress("seed", pairs, now) == (0.0, 0.0)
 
 
 def test_get_draft_finale_progress_is_zero_when_not_complete(monkeypatch):

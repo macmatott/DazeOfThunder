@@ -30,7 +30,7 @@ derived from compute_pairing_status/compute_naming_status.
 
 from __future__ import annotations
 
-import zlib
+import random
 from datetime import datetime, timezone
 
 from postgrest.exceptions import APIError
@@ -100,37 +100,61 @@ def compute_pairing_status(
     }
 
 
-# Every teammate pairing (not just special ones) gets a celebration clip
-# broadcast to every viewer, randomly picked from this list — unlike the
-# driver/constructor-name easter eggs, this isn't tied to who was picked.
-# Each value is a clip's measured duration (seconds), rounded up for a
-# small safety margin — index-aligned with the draft-pairing-clip-N audio
-# tags in _draft_content.html (teammate-1.mp3 -> index 0, etc.).
-PAIRING_CELEBRATION_CLIP_DURATIONS: list[int] = [2, 11, 7, 5, 5]
+# Every teammate pick (not just special ones) gets a celebration clip
+# broadcast to every viewer, unlike the driver/constructor-name easter
+# eggs, this isn't tied to who was picked. Each value is a clip's
+# measured duration (seconds), rounded up for a small safety margin —
+# index-aligned with the draft-pairing-clip-N audio tags in
+# _draft_content.html (teammate-1.mp3 -> index 0, etc.).
+PAIRING_CELEBRATION_CLIP_DURATIONS: list[int] = [2, 11, 7, 5, 5, 2]
 
 
-def celebration_clip_index_for_pair(pair_id: str) -> int:
-    """Deterministic-but-effectively-random pick of one of the configured
-    clips, keyed by the pair's own (UUID) id — every viewer's poll agrees
-    on the same clip/duration for the same pair this way, with no extra
-    storage needed. crc32 (not Python's built-in hash()) because it's
-    stable across processes/restarts, not randomized per-run."""
-    return zlib.crc32(pair_id.encode()) % len(PAIRING_CELEBRATION_CLIP_DURATIONS)
+def build_pairing_celebration_order(seed: str) -> list[int]:
+    """Deterministic shuffle of every configured clip's index, seeded by
+    the constructor draft's own (stable, per-season) id — every
+    viewer's poll agrees on the same order without needing extra
+    storage. Clips are assigned by *pick order* (see
+    celebration_clip_index_for_pick), not by which team picked, so an
+    odd-sized roster's extra pick — which joins an existing team rather
+    than forming a new one — still gets a different clip than that
+    team's first pick, and every configured clip plays exactly once
+    before any repeat."""
+    order = list(range(len(PAIRING_CELEBRATION_CLIP_DURATIONS)))
+    random.Random(seed).shuffle(order)
+    return order
 
 
-def celebration_seconds_for_last_pair(pairs: list[dict]) -> int:
-    """The randomly-selected clip's duration for the most recently formed
-    pair — 0 if no pairs yet or no clips configured."""
+def celebration_clip_index_for_pick(seed: str, pick_index: int) -> int:
+    """Which configured clip plays for the pick_index-th (0-based)
+    teammate pick made in this pairing draft."""
+    order = build_pairing_celebration_order(seed)
+    if not order:
+        return 0
+    return order[pick_index % len(order)]
+
+
+def _pairing_pick_index(pairs: list[dict]) -> int:
+    """0-based index of the most recent teammate pick, counting every
+    pick across every team (not len(pairs) — a team can end up with an
+    extra member without a new pairs row, see compute_pairing_status)."""
+    return sum(len(pair["members"]) - 1 for pair in pairs) - 1
+
+
+def celebration_seconds_for_last_pair(seed: str, pairs: list[dict]) -> int:
+    """The selected clip's duration for the most recently made teammate
+    pick — 0 if no picks yet or no clips configured."""
     if not pairs or not PAIRING_CELEBRATION_CLIP_DURATIONS:
         return 0
-    index = celebration_clip_index_for_pair(pairs[-1]["id"])
+    index = celebration_clip_index_for_pick(seed, _pairing_pick_index(pairs))
     return PAIRING_CELEBRATION_CLIP_DURATIONS[index]
 
 
-def get_pairing_celebration_progress(pairs: list[dict], now: datetime) -> tuple[float, float]:
+def get_pairing_celebration_progress(
+    seed: str, pairs: list[dict], now: datetime
+) -> tuple[float, float]:
     """(elapsed_seconds, remaining_seconds) since the most recently
-    formed pair — both 0 if no celebration is in progress."""
-    celebration_seconds = celebration_seconds_for_last_pair(pairs)
+    made teammate pick — both 0 if no celebration is in progress."""
+    celebration_seconds = celebration_seconds_for_last_pair(seed, pairs)
     if not celebration_seconds:
         return 0.0, 0.0
     last_paired_at = datetime.fromisoformat(pairs[-1]["paired_at"])
@@ -422,7 +446,7 @@ def make_pairing_pick(season_id: str, captain_participant_id: str, partner_parti
     if status["is_complete"]:
         raise DraftCompleteError("Pairing is already complete.")
 
-    _, remaining = get_pairing_celebration_progress(pairs, datetime.now(timezone.utc))
+    _, remaining = get_pairing_celebration_progress(state["id"], pairs, datetime.now(timezone.utc))
     if remaining > 0:
         raise DraftNotLiveError("Still celebrating that pair — hang tight.")
 
@@ -548,7 +572,7 @@ def maybe_auto_pick_pairing(season_id: str) -> bool:
     turn_started_at = get_turn_started_at(
         {"launched_at": state["pairing_launched_at"]},
         _as_timer_picks(pairs, "paired_at"),
-        celebration_seconds=celebration_seconds_for_last_pair(pairs),
+        celebration_seconds=celebration_seconds_for_last_pair(state["id"], pairs),
     )
     if not is_pick_expired(turn_started_at, datetime.now(timezone.utc)):
         return False
@@ -637,11 +661,13 @@ def build_pairing_board_context(season_id: str, viewer_participant_id: str | Non
     celebration_seconds_remaining = None
     celebration_clip_index = None
     if pairs and not status["is_complete"]:
-        _, remaining = get_pairing_celebration_progress(pairs, now)
+        _, remaining = get_pairing_celebration_progress(state["id"], pairs, now)
         if remaining > 0:
             in_celebration = True
             celebration_seconds_remaining = round(remaining)
-            celebration_clip_index = celebration_clip_index_for_pair(pairs[-1]["id"])
+            celebration_clip_index = celebration_clip_index_for_pick(
+                state["id"], _pairing_pick_index(pairs)
+            )
 
     captain_ids = set(state["pairing_order"])
     available_partners = get_available_partners(season_id, captain_ids)
@@ -656,7 +682,7 @@ def build_pairing_board_context(season_id: str, viewer_participant_id: str | Non
         turn_started_at = get_turn_started_at(
             {"launched_at": state["pairing_launched_at"]},
             _as_timer_picks(pairs, "paired_at"),
-            celebration_seconds=celebration_seconds_for_last_pair(pairs),
+            celebration_seconds=celebration_seconds_for_last_pair(state["id"], pairs),
         )
         seconds_remaining = round(compute_seconds_remaining(turn_started_at, now))
 
