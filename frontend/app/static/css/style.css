@@ -1489,53 +1489,6 @@ dialog.session-modal::backdrop {
   background: #000;
 }
 
-.draft-intro__controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.draft-intro__mute-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: none;
-  border: 1px solid var(--color-rule);
-  border-radius: 50%;
-  color: var(--color-text-dim);
-  cursor: pointer;
-}
-
-.draft-intro__mute-toggle:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.draft-intro__icon {
-  width: 20px;
-  height: 20px;
-}
-
-.draft-intro__icon--unmuted {
-  display: none;
-}
-
-.draft-intro__mute-toggle[data-muted="false"] .draft-intro__icon--muted {
-  display: none;
-}
-
-.draft-intro__mute-toggle[data-muted="false"] .draft-intro__icon--unmuted {
-  display: block;
-}
-
-.draft-intro__volume {
-  width: 120px;
-  accent-color: var(--color-accent);
-}
-
 .clip-volume-control {
   display: flex;
   align-items: center;

@@ -2,9 +2,8 @@
 // (draft.js) and the mock draft (mock_draft.js) — one slider, one
 // localStorage key, so a level set on either page carries to the
 // other. Scales every <audio> clip's volume (chimes, ticks, easter
-// eggs, celebrations, finale). Deliberately leaves the intro video's
-// own volume control (#draft-intro-volume) alone — that's a separate,
-// dedicated control for a different kind of audio.
+// eggs, celebrations, finale) and the intro video's volume — the only
+// control for all of it, no separate dedicated intro-video slider.
 (function () {
   var STORAGE_KEY = "ffDraftClipVolume";
   var DEFAULT_VOLUME = 0.6;
@@ -26,8 +25,13 @@
   }
 
   function applyVolume(v) {
-    document.querySelectorAll("audio").forEach(function (el) {
+    document.querySelectorAll("audio, video").forEach(function (el) {
       el.volume = v;
+      // A video that fell back to muted autoplay (see draft.js) needs
+      // an explicit unmute, not just a volume bump — .volume alone is
+      // silent while .muted is true. Moving the slider is a real user
+      // gesture, so unmuting here is never autoplay-policy-blocked.
+      el.muted = v === 0;
     });
   }
 

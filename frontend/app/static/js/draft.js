@@ -21,22 +21,26 @@ document.addEventListener("DOMContentLoaded", function () {
     return active.tagName !== "SELECT" && active.tagName !== "INPUT";
   };
 
-  // Mobile browsers (notably iOS Safari) only allow an <audio>/<video>
+  // Desktop and mobile browsers alike only allow an <audio>/<video>
   // .play() call to succeed when it happens synchronously within a real
-  // user gesture (a tap). A poll picking up someone ELSE's pick has no
-  // such gesture behind it, so without this, celebration/chime audio
-  // would only ever play for whichever pick you personally clicked to
-  // make — matches the reported "I can hear my own picks but not
-  // others'" bug. Fix: the first time each <audio> element is touched
-  // by any click inside the board, play-and-immediately-pause it —
-  // that "unlocks" it for the rest of the page's life, so later
-  // programmatic .play() calls (triggered by polls) go through
-  // normally. Re-checked on every click since new <audio> tags keep
-  // appearing as the draft progresses (driver picks, then constructor
-  // pairing, then naming) — defined before the chime lookup below so
-  // it's active even pre-launch.
-  board.addEventListener("click", function () {
-    board.querySelectorAll("audio").forEach(function (el) {
+  // user gesture (a click/tap) — or, afterward, anywhere on a page the
+  // browser has already seen that gesture on. A poll picking up someone
+  // ELSE's pick (or your own turn starting, which fires from a poll
+  // just the same) has no such gesture behind it, so without this,
+  // celebration/chime audio would only ever play right as you click
+  // something yourself — matches the reported "I can hear my own picks
+  // but not others'" bug, and the broader "nothing plays until I've
+  // clicked something" version of it. Fix: the first click ANYWHERE on
+  // the page (not just inside the board — someone could be sitting on
+  // their own turn's chime before ever clicking a Draft button)
+  // play-and-immediately-pauses every <audio> tag once, which "unlocks"
+  // it for the rest of the page's life so later programmatic .play()
+  // calls (triggered by polls) go through normally. Re-checked on every
+  // click since new <audio> tags keep appearing as the draft progresses
+  // (driver picks, then constructor pairing, then naming) — defined
+  // before the chime lookup below so it's active even pre-launch.
+  document.addEventListener("click", function () {
+    document.querySelectorAll("audio").forEach(function (el) {
       if (el.dataset.unlocked) {
         return;
       }
@@ -48,8 +52,9 @@ document.addEventListener("DOMContentLoaded", function () {
             el.pause();
             el.currentTime = 0;
           })
-          .catch(function () {
+          .catch(function (err) {
             delete el.dataset.unlocked;
+            console.warn("Audio unlock failed for #" + el.id + ":", err && err.name);
           });
       }
     });
@@ -62,7 +67,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   var TICK_THRESHOLD_SECONDS = 8;
-  var DEFAULT_INTRO_VOLUME = 0.3;
   var EASTER_EGG_SOUNDS = {
     "Max Verstappen": "draft-verstappen-sound",
     "Charles Leclerc": "draft-leclerc-sound",
@@ -118,6 +122,17 @@ document.addEventListener("DOMContentLoaded", function () {
   var lastAnnouncedPairingMarker = null;
   var lastAnnouncedFinaleMarker = null;
 
+  // Broadcast sounds (as opposed to the unlock trick above) fail
+  // silently by design when the browser blocks them — logging why here
+  // means a report of "I can't hear X" turns into a concrete browser
+  // console error instead of a guessing game.
+  function playWithDiagnostics(el) {
+    el.currentTime = 0;
+    el.play().catch(function (err) {
+      console.warn("Playback blocked for #" + el.id + ":", err && err.name);
+    });
+  }
+
   board.addEventListener("htmx:afterSwap", function () {
     var marker = document.getElementById("draft-turn-marker");
     if (!marker) {
@@ -127,11 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var pickNumber = marker.dataset.pickNumber;
 
     if (isOnTheClock && pickNumber && pickNumber !== lastChimedPickNumber) {
-      chime.currentTime = 0;
-      chime.play().catch(function () {
-        // Autoplay blocked (no user interaction yet on this page) — fine,
-        // the visible countdown still shows it's their turn.
-      });
+      playWithDiagnostics(chime);
       lastChimedPickNumber = pickNumber;
     }
 
@@ -139,8 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var secondsRemaining = parseInt(marker.dataset.secondsRemaining, 10);
       var alreadyTickedThisPick = pickNumber === lastTickedPickNumber;
       if (!isNaN(secondsRemaining) && secondsRemaining <= TICK_THRESHOLD_SECONDS && !alreadyTickedThisPick) {
-        tick.currentTime = 0;
-        tick.play().catch(function () {});
+        playWithDiagnostics(tick);
         lastTickedPickNumber = pickNumber;
       }
     }
@@ -153,8 +163,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (soundId && lastPickNumber && lastPickNumber !== lastAnnouncedPickNumber) {
       var easterEggSound = document.getElementById(soundId);
       if (easterEggSound) {
-        easterEggSound.currentTime = 0;
-        easterEggSound.play().catch(function () {});
+        playWithDiagnostics(easterEggSound);
       }
       lastAnnouncedPickNumber = lastPickNumber;
     }
@@ -165,8 +174,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (namingSoundId && lastNamedPickNumber && lastNamedPickNumber !== lastAnnouncedNamingPickNumber) {
       var namingEasterEggSound = document.getElementById(namingSoundId);
       if (namingEasterEggSound) {
-        namingEasterEggSound.currentTime = 0;
-        namingEasterEggSound.play().catch(function () {});
+        playWithDiagnostics(namingEasterEggSound);
       }
       lastAnnouncedNamingPickNumber = lastNamedPickNumber;
     }
@@ -181,8 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (pairingClipIndex && pairingMarker && pairingMarker !== lastAnnouncedPairingMarker) {
       var pairingSound = document.getElementById("draft-pairing-clip-" + pairingClipIndex);
       if (pairingSound) {
-        pairingSound.currentTime = 0;
-        pairingSound.play().catch(function () {});
+        playWithDiagnostics(pairingSound);
       }
       lastAnnouncedPairingMarker = pairingMarker;
     }
@@ -195,8 +202,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (finaleMarker && finaleMarker !== lastAnnouncedFinaleMarker) {
       var finaleSound = document.getElementById("draft-finale-sound");
       if (finaleSound) {
-        finaleSound.currentTime = 0;
-        finaleSound.play().catch(function () {});
+        playWithDiagnostics(finaleSound);
       }
       if (window.launchFireworks) {
         window.launchFireworks();
@@ -207,7 +213,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // The intro video sits behind hx-preserve, so this element is the
     // same DOM node across every 2s poll while the intro is playing —
     // only seek/play it the first time it shows up (dataset.synced),
-    // otherwise re-seeking would yank playback back every poll.
+    // otherwise re-seeking would yank playback back every poll. Volume
+    // comes from the shared "Sound effects" slider (audio_volume.js
+    // re-applies to this element too on every swap, including live
+    // drags of the slider), so there's no separate intro-specific
+    // volume control to keep in sync here — just try to play at
+    // whatever level that slider's already set.
     if (marker.dataset.inIntro === "true") {
       var introVideo = document.getElementById("draft-intro-video");
       if (introVideo && !introVideo.dataset.synced) {
@@ -215,68 +226,16 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!isNaN(elapsed) && elapsed > 0) {
           introVideo.currentTime = elapsed;
         }
-        introVideo.volume = DEFAULT_INTRO_VOLUME;
-        introVideo.muted = false;
         introVideo.dataset.synced = "true";
         introVideo.play().catch(function () {
           // Autoplay-with-sound blocked by the browser (no prior
-          // interaction on this page) — fall back to a muted autoplay so
-          // the video still plays; the mute-toggle button lets someone
-          // opt in with a real click.
+          // interaction on this page yet) — fall back to a muted
+          // autoplay so the video still plays; the audio-unlock click
+          // listener above (or moving the shared volume slider, a real
+          // gesture) un-mutes it for real once either happens.
           introVideo.muted = true;
-          var toggle = document.getElementById("draft-intro-mute-toggle");
-          if (toggle) {
-            setMuteToggleState(toggle, true);
-          }
-          var slider = document.getElementById("draft-intro-volume");
-          if (slider) {
-            slider.value = 0;
-          }
           introVideo.play().catch(function () {});
         });
-      }
-    }
-  });
-
-  function setMuteToggleState(toggle, muted) {
-    toggle.dataset.muted = muted ? "true" : "false";
-    toggle.setAttribute("aria-label", muted ? "Unmute" : "Mute");
-  }
-
-  board.addEventListener("click", function (e) {
-    // Clicks on the icon land on the <svg>/<path>, not the button itself.
-    var toggle = e.target.closest && e.target.closest("#draft-intro-mute-toggle");
-    if (!toggle) {
-      return;
-    }
-    var introVideo = document.getElementById("draft-intro-video");
-    if (!introVideo) {
-      return;
-    }
-    introVideo.muted = !introVideo.muted;
-    if (!introVideo.muted && introVideo.volume === 0) {
-      introVideo.volume = DEFAULT_INTRO_VOLUME;
-    }
-    setMuteToggleState(toggle, introVideo.muted);
-    var slider = document.getElementById("draft-intro-volume");
-    if (slider) {
-      slider.value = introVideo.muted ? 0 : Math.round(introVideo.volume * 100);
-    }
-    introVideo.play().catch(function () {});
-  });
-
-  board.addEventListener("input", function (e) {
-    if (e.target && e.target.id === "draft-intro-volume") {
-      var introVideo = document.getElementById("draft-intro-video");
-      if (!introVideo) {
-        return;
-      }
-      var vol = parseInt(e.target.value, 10) / 100;
-      introVideo.volume = vol;
-      introVideo.muted = vol === 0;
-      var toggle = document.getElementById("draft-intro-mute-toggle");
-      if (toggle) {
-        setMuteToggleState(toggle, introVideo.muted);
       }
     }
   });
