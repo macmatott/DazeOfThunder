@@ -55,6 +55,7 @@ def _rows_from_totals(totals: dict[str, float], participants: dict[str, dict]) -
     unknown = {"display_name": "Unknown", "role": "member"}
     standings = [
         {
+            "participant_id": pid,
             "display_name": participants.get(pid, unknown)["display_name"],
             "role": participants.get(pid, unknown)["role"],
             "points": round(points, 1),
@@ -158,7 +159,23 @@ def get_constructor_standings(season_id: str | None) -> list[dict]:
 
 def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
     if tab == "fantasy":
-        return get_fantasy_only_standings(season_id)
+        rows = get_fantasy_only_standings(season_id)
+        if season_id and rows:
+            # Per-member driver/round dropdown on the Fantasy tab only —
+            # attached here (not baked into get_fantasy_only_standings)
+            # since it's page-display detail, not part of the points
+            # total itself. Every row shares the same `fantasy_rounds`
+            # column list so they all line up.
+            from app.services.fantasy_scoring import get_fantasy_breakdown_by_participant
+
+            breakdown_by_participant, rounds, sprint_rounds = get_fantasy_breakdown_by_participant(
+                season_id
+            )
+            for row in rows:
+                row["driver_breakdown"] = breakdown_by_participant.get(row["participant_id"], [])
+                row["fantasy_rounds"] = rounds
+                row["sprint_rounds"] = sprint_rounds
+        return rows
     if tab == "sim":
         return get_sim_only_standings(season_id)
     if tab == "constructors":

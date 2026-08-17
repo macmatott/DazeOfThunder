@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import role_badge %}
+{% block title %}Draft Recap — Daze of Thunder{% endblock %}
+{% block main_class %}main--wide{% endblock %}
+{% block content %}
+  {% include "_league_banner.html" %}
+  <div class="draft-recap-intro">
+    <h1 class="page-title">Draft Recap</h1>
+    <p class="page-subtitle">Every pick and every team from this season's draft</p>
+  </div>
+
+  <div class="draft-columns">
+    <div>
+      <p class="section-label">Driver Draft</p>
+      <div class="tower draft-picks-list">
+        {% if picks %}
+          {% for pick in picks %}
+            <div class="draft-pick-row">
+              <div class="tower__pos">{{ pick.pick_number }}</div>
+              <div class="driver-photo" style="background-image: url('{{ pick.f1_drivers.photo_url }}')"></div>
+              <div>
+                <div class="tower__name">{{ pick.participants.display_name }}{{ role_badge(pick.participants.role) }}</div>
+                <div class="draft-pick-btn__header">
+                  {% if pick.f1_drivers.logo_url %}
+                    <img src="{{ pick.f1_drivers.logo_url }}" alt="" class="draft-pick-row__logo">
+                  {% endif %}
+                  <span class="tower__meta">{{ pick.f1_drivers.full_name }} — {{ pick.f1_drivers.team_name }}</span>
+                </div>
+              </div>
+              <div class="tower__points">R{{ pick.round_number }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="tower__empty">The driver draft hasn't happened yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <p class="section-label">Constructor Teams</p>
+      <div class="tower draft-picks-list">
+        {% if teams %}
+          {% for team in teams %}
+            <div class="draft-pick-row draft-pick-row--no-photo">
+              <div class="tower__pos">{{ team.pick_number }}</div>
+              <div>
+                <div class="tower__name">
+                  {% for m in team.members %}{{ m.display_name }}{{ role_badge(m.role) }}{% if not loop.last %} &amp; {% endif %}{% endfor %}
+                </div>
+                {% if team.name %}
+                  <div class="draft-pick-btn__header">
+                    {% if team.logo_url %}
+                      <img src="{{ team.logo_url }}" alt="" class="draft-pick-row__logo draft-pick-row__logo--lg">
+                    {% endif %}
+                    <span class="tower__meta">{{ team.name }}</span>
+                  </div>
+                {% else %}
+                  <div class="tower__meta">No team name yet</div>
+                {% endif %}
+              </div>
+              <div class="tower__points"></div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="tower__empty">Teams haven't been paired yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -22,7 +22,12 @@ def test_rows_from_totals_sorts_descending_and_rounds():
 
 def test_rows_from_totals_unknown_participant_falls_back():
     rows = _rows_from_totals({"ghost": 5}, PARTICIPANTS)
-    assert rows[0] == {"display_name": "Unknown", "role": "member", "points": 5}
+    assert rows[0] == {
+        "participant_id": "ghost",
+        "display_name": "Unknown",
+        "role": "member",
+        "points": 5,
+    }
 
 
 def _pair(name, member_ids, member_names="A & B"):

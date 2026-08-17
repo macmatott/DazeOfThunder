@@ -209,11 +209,11 @@ def get_draft_countdown(season_id: str) -> dict | None:
     """Drives the site-wide header banner — the draft page's nav link was
     removed, so this is the only way most members reach it.
 
-    None means show nothing: no draft_scheduled_at set and the draft
-    hasn't been launched. Once launched, the banner just says the draft
-    is live rather than tracking completion across both the driver and
-    constructor draft phases — a stale "still live" is harmless (worst
-    case, clicking through lands on the finished results).
+    None means show nothing: either no draft_scheduled_at set and the
+    draft hasn't been launched, or the entire draft (driver draft +
+    constructor pairing + naming) has finished, in which case there's
+    nothing left to point people at — see draft_and_constructor_draft_
+    are_both_complete.
 
     Also where the auto-launch fires for most viewers, since this is
     polled site-wide every 60s regardless of which page someone's on —
@@ -222,6 +222,8 @@ def get_draft_countdown(season_id: str) -> dict | None:
     maybe_auto_launch_draft(season_id)
     state = get_draft_state(season_id)
     if state and state["is_live"]:
+        if draft_and_constructor_draft_are_both_complete(season_id, state):
+            return None
         return {"is_live": True}
 
     season = get_season(season_id)
@@ -233,6 +235,25 @@ def get_draft_countdown(season_id: str) -> dict | None:
         "scheduled_at": scheduled_at,
         **compute_draft_countdown(scheduled_at, datetime.now(timezone.utc)),
     }
+
+
+def draft_and_constructor_draft_are_both_complete(season_id: str, driver_state: dict) -> bool:
+    """True once every phase is done: driver draft, constructor pairing,
+    and naming — same "computed, not stored" philosophy as everything
+    else here, checked live rather than tracked as a flag anywhere."""
+    picks = get_draft_picks(season_id)
+    driver_status = compute_draft_status(
+        driver_state["draft_order"], driver_state["total_rounds"], picks
+    )
+    if not driver_status["is_complete"]:
+        return False
+
+    from app.services.constructor_draft import (  # local: constructor_draft.py imports this module too
+        compute_naming_status,
+        get_constructors_desc_by_pick_number,
+    )
+
+    return compute_naming_status(get_constructors_desc_by_pick_number(season_id))["is_complete"]
 
 
 def get_draft_state(season_id: str) -> dict | None:

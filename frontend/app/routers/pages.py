@@ -3,7 +3,14 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from postgrest.exceptions import APIError
 
-from app.services.draft import CONSTRUCTOR_LOGOS, get_ranked_drivers, get_season_id, logo_url_for_team
+from app.services.constructor_draft import get_pairs
+from app.services.draft import (
+    CONSTRUCTOR_LOGOS,
+    get_draft_picks,
+    get_ranked_drivers,
+    get_season_id,
+    logo_url_for_team,
+)
 from app.services.f1_schedule import get_season_timeline, get_upcoming_races
 from app.services.fantasy_scoring import (
     MultipleActiveScoringRuleVersionsError,
@@ -68,6 +75,16 @@ def formula_fantasy_how_it_works(request: Request):
 def ff_schedule(request: Request):
     races = get_season_timeline(CURRENT_SEASON)
     return templates.TemplateResponse(request, "ff_schedule.html", {"races": races})
+
+
+@router.get("/formula-fantasy/draft-recap")
+def ff_draft_recap(request: Request):
+    season_id = get_season_id(str(CURRENT_SEASON))
+    picks = get_draft_picks(season_id) if season_id else []
+    teams = get_pairs(season_id) if season_id else []
+    return templates.TemplateResponse(
+        request, "ff_draft_recap.html", {"picks": picks, "teams": teams}
+    )
 
 
 def _points_table_or_empty(season_id: str | None, rule_type: str) -> list[tuple[int, float]]:

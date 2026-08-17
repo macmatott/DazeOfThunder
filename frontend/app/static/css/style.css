@@ -445,7 +445,8 @@ main.main--wide {
 .scoring-intro,
 .profile-intro,
 .admin-intro,
-.draft-intro-header {
+.draft-intro-header,
+.draft-recap-intro {
   text-align: center;
 }
 
@@ -771,6 +772,105 @@ main.main--wide {
 
 .tower__row:last-child {
   border-bottom: none;
+}
+
+/* Fantasy Championship standings: each row is a <details> wrapping a
+   .tower__row-styled <summary> (so it looks identical to every other
+   standings row when collapsed) plus a driver/round breakdown table.
+   The summary is never the details' :last-child (the breakdown table
+   comes after it), so .tower__row:last-child's border removal never
+   reaches it — this rule handles the true last row instead. */
+.tower-row-toggle:last-child .tower-row-toggle__summary {
+  border-bottom: none;
+}
+
+.tower-row-toggle__summary {
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+  padding-right: var(--space-6);
+}
+
+.tower-row-toggle__summary::-webkit-details-marker {
+  display: none;
+}
+
+.tower-row-toggle__summary::after {
+  content: "▸";
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  color: var(--color-text-dim);
+  transform: translateY(-50%);
+  transition: transform 0.15s ease;
+}
+
+.tower-row-toggle[open] .tower-row-toggle__summary::after {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.driver-breakdown-wrap {
+  overflow-x: auto;
+  padding: 0 var(--space-3) var(--space-4);
+}
+
+.driver-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.driver-breakdown-table th,
+.driver-breakdown-table td {
+  padding: var(--space-2);
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.driver-breakdown-table th:first-child,
+.driver-breakdown-table td:first-child {
+  text-align: left;
+}
+
+.driver-breakdown-table th {
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.driver-breakdown-table tbody tr:last-child th,
+.driver-breakdown-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.driver-breakdown-table__driver {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.driver-breakdown-table__total {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.driver-breakdown-table__sprint-col {
+  background: rgba(232, 220, 59, 0.08);
+}
+
+.driver-breakdown-table__legend {
+  margin-top: var(--space-2);
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
+}
+
+.driver-breakdown-table__position {
+  display: block;
+  color: var(--color-text-dim);
+  font-size: 0.7rem;
+  font-weight: 400;
 }
 
 .presence-dot {
@@ -1391,6 +1491,11 @@ dialog.session-modal::backdrop {
   background-position: center top;
   border: 1px solid var(--color-rule);
   flex-shrink: 0;
+}
+
+.driver-photo--sm {
+  width: 52px;
+  height: 52px;
 }
 
 .draft-pick-btn {

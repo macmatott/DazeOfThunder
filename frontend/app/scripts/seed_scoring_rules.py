@@ -16,6 +16,7 @@ from app.services.draft import get_season_id
 from app.services.fantasy_scoring import (
     DEFAULT_GRID_SIZE,
     DEFAULT_RULE_TYPE,
+    DEFAULT_WIN_BONUS,
     NASCAR_RULE_VERSION,
     seed_scoring_rules,
 )
@@ -27,6 +28,7 @@ def main() -> None:
     parser.add_argument("--rule-type", default=DEFAULT_RULE_TYPE)
     parser.add_argument("--version", default=NASCAR_RULE_VERSION)
     parser.add_argument("--grid-size", type=int, default=DEFAULT_GRID_SIZE)
+    parser.add_argument("--win-bonus", type=int, default=DEFAULT_WIN_BONUS)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -43,6 +45,7 @@ def main() -> None:
         season_id,
         version=args.version,
         grid_size=args.grid_size,
+        win_bonus=args.win_bonus,
         rule_type=args.rule_type,
         dry_run=args.dry_run,
     )

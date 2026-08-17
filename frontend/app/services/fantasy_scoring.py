@@ -58,6 +58,7 @@ def build_scoring_rule_rows(
     rule_type: str = DEFAULT_RULE_TYPE,
     version: str = NASCAR_RULE_VERSION,
     grid_size: int = DEFAULT_GRID_SIZE,
+    win_bonus: int = DEFAULT_WIN_BONUS,
 ) -> list[dict]:
     """One row per position, shaped for a `scoring_rules` insert/upsert."""
     return [
@@ -69,7 +70,7 @@ def build_scoring_rule_rows(
             "points": points,
             "is_active": True,
         }
-        for position, points in nascar_points_table(grid_size).items()
+        for position, points in nascar_points_table(grid_size, win_bonus).items()
     ]
 
 
@@ -162,6 +163,7 @@ def seed_scoring_rules(
     *,
     version: str = NASCAR_RULE_VERSION,
     grid_size: int = DEFAULT_GRID_SIZE,
+    win_bonus: int = DEFAULT_WIN_BONUS,
     rule_type: str = DEFAULT_RULE_TYPE,
     dry_run: bool = False,
 ) -> list[dict]:
@@ -175,7 +177,7 @@ def seed_scoring_rules(
     fantasy_points_awarded rows keep whatever scoring_rule_version they
     were calculated under, untouched here."""
     rows = build_scoring_rule_rows(
-        season_id, rule_type=rule_type, version=version, grid_size=grid_size
+        season_id, rule_type=rule_type, version=version, grid_size=grid_size, win_bonus=win_bonus
     )
     if dry_run:
         return rows
@@ -312,3 +314,68 @@ def score_season(
     for rnd in rounds:
         written.extend(score_round(season_id, rnd, dry_run=dry_run))
     return written
+
+
+def get_fantasy_breakdown_by_participant(
+    season_id: str,
+) -> tuple[dict[str, list[dict]], list[int], set[int]]:
+    """Per-driver, per-race-round points for every participant's own
+    drafted drivers — feeds the Fantasy Championship standings page's
+    per-member dropdown (drivers as rows, race rounds as columns).
+    Recomputed live from the same source data as score_round/score_season
+    rather than reading fantasy_points_awarded, so it reflects the
+    active points table even if a round hasn't been (re-)scored yet.
+
+    Returns ({participant_id: [{"driver_id", "full_name", "team_name",
+    "logo_url", "photo_url", "points_by_round": {round_number: points},
+    "positions_by_round": {round_number: [finish_position, ...]}, "total"},
+    ...]}, rounds, sprint_rounds) — `rounds` is every race round with
+    results this season, ascending, shared across every participant/
+    driver so their rows all line up under the same columns;
+    `sprint_rounds` is the subset of those that included a sprint — race
+    and sprint both count toward the same round total (no separate sprint
+    scale), but the UI still flags which rounds combined two sessions.
+    `positions_by_round` lists the race finish first, then the sprint's
+    (a sprint weekend has both), so the UI can show "P2/P1" alongside
+    that round's combined points."""
+    from app.services.draft import get_draft_picks  # local: draft.py imports this module too
+
+    points_table, _ = get_active_points_table(season_id)
+    rounds = get_rounds_with_results(season_id)
+    season_results = get_season_results(season_id)
+    sprint_rounds = {r["round_number"] for r in season_results if r.get("is_sprint")}
+    results_by_driver = group_results_by_driver(season_results)
+    draft_picks = get_draft_picks(season_id)
+
+    breakdown: dict[str, list[dict]] = defaultdict(list)
+    for pick in draft_picks:
+        driver = pick["f1_drivers"]
+        results_by_round: dict[int, list[dict]] = defaultdict(list)
+        for row in results_by_driver.get(pick["f1_driver_id"], []):
+            results_by_round[row["round_number"]].append(row)
+
+        points_by_round = {
+            rnd: round(score_driver_results(results_by_round.get(rnd, []), points_table), 1)
+            for rnd in rounds
+        }
+        positions_by_round = {
+            rnd: [
+                r["finish_position"]
+                for r in sorted(results_by_round.get(rnd, []), key=lambda r: bool(r.get("is_sprint")))
+                if r.get("finish_position") is not None
+            ]
+            for rnd in rounds
+        }
+        breakdown[pick["participant_id"]].append(
+            {
+                "driver_id": pick["f1_driver_id"],
+                "full_name": driver["full_name"],
+                "team_name": driver["team_name"],
+                "logo_url": driver.get("logo_url"),
+                "photo_url": driver.get("photo_url"),
+                "points_by_round": points_by_round,
+                "positions_by_round": positions_by_round,
+                "total": round(sum(points_by_round.values()), 1),
+            }
+        )
+    return dict(breakdown), rounds, sprint_rounds

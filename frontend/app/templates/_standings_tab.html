@@ -22,16 +22,66 @@
   <div class="tower">
     {% if rows %}
       {% for row in rows %}
-        <div class="tower__row">
-          <div class="tower__pos">{{ loop.index }}</div>
-          <div>
-            <div class="tower__name">
-              {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
-              {{ row.display_name }}{{ role_badge(row.role) }}
+        {% if active_tab == "fantasy" %}
+          <details class="tower-row-toggle">
+            <summary class="tower__row tower-row-toggle__summary">
+              <div class="tower__pos">{{ loop.index }}</div>
+              <div>
+                <div class="tower__name">{{ row.display_name }}{{ role_badge(row.role) }}</div>
+              </div>
+              <div class="tower__points">{{ row.points | int }} pts</div>
+            </summary>
+            <div class="driver-breakdown-wrap">
+              <table class="driver-breakdown-table">
+                <thead>
+                  <tr>
+                    <th>Driver</th>
+                    {% for r in row.fantasy_rounds %}
+                      <th{% if r in row.sprint_rounds %} class="driver-breakdown-table__sprint-col" title="Sprint weekend — race + sprint scored together"{% endif %}>
+                        R{{ r }}{% if r in row.sprint_rounds %}<span aria-hidden="true"> 🏁</span>{% endif %}
+                      </th>
+                    {% endfor %}
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for driver in row.driver_breakdown %}
+                    <tr>
+                      <td class="driver-breakdown-table__driver">
+                        {% if driver.photo_url %}<span class="driver-photo driver-photo--sm" style="background-image: url('{{ driver.photo_url }}')"></span>{% endif %}
+                        {% if driver.logo_url %}<img src="{{ driver.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+                        {{ driver.full_name }}
+                      </td>
+                      {% for r in row.fantasy_rounds %}
+                        <td{% if r in row.sprint_rounds %} class="driver-breakdown-table__sprint-col"{% endif %}>
+                          {{ driver.points_by_round[r] | int }}
+                          {% if driver.positions_by_round[r] %}
+                            <span class="driver-breakdown-table__position">{% for p in driver.positions_by_round[r] %}P{{ p }}{% if not loop.last %}/{% endif %}{% endfor %}</span>
+                          {% endif %}
+                        </td>
+                      {% endfor %}
+                      <td class="driver-breakdown-table__total">{{ driver.total | int }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% if row.sprint_rounds %}
+                <p class="driver-breakdown-table__legend">🏁 Sprint weekend — race + sprint scored together</p>
+              {% endif %}
             </div>
+          </details>
+        {% else %}
+          <div class="tower__row">
+            <div class="tower__pos">{{ loop.index }}</div>
+            <div>
+              <div class="tower__name">
+                {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+                {{ row.display_name }}{{ role_badge(row.role) }}
+              </div>
+            </div>
+            <div class="tower__points">{{ row.points | int }} pts</div>
           </div>
-          <div class="tower__points">{{ row.points }} pts</div>
-        </div>
+        {% endif %}
       {% endfor %}
     {% else %}
       <div class="tower__empty">{{ empty_copy }}</div>
