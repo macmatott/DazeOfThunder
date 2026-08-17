@@ -4,6 +4,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.constructor_draft import get_constructor_draft_summary
+from app.services.discord_webhooks import notify_fantasy_round, notify_sim_round
 from app.services.draft import (
     format_draft_scheduled_at_local,
     get_driver_draft_summary,
@@ -19,7 +20,6 @@ from app.services.f1_schedule import get_season_timeline
 from app.services.fantasy_scoring import (
     MultipleActiveScoringRuleVersionsError,
     ScoringRulesNotSeededError,
-    score_season,
 )
 from app.services.iracing_ingest import (
     CsvParseError,
@@ -28,6 +28,11 @@ from app.services.iracing_ingest import (
     RoundAlreadyImportedError,
     import_race_csv,
     list_recent_race_events,
+)
+from app.services.standings import (
+    get_constructor_standings,
+    get_formula_fantasy_standings,
+    get_sim_only_standings,
 )
 from app.services.participants import (
     ROLE_DOT_MEMBER,
@@ -234,6 +239,13 @@ def upload_race_results(
         (r["race_name"] for r in timeline if r["round_number"] == ff_round_number), None
     )
 
+    # Standings snapshot BEFORE scoring — import_race_csv scores sim
+    # points as part of the import itself, so this is the only chance to
+    # capture the "before" side for the Discord post's rank movement.
+    sim_before = get_sim_only_standings(season_id) if season_id else []
+    constructors_before = get_constructor_standings(season_id) if season_id else []
+    overall_before = get_formula_fantasy_standings(season_id) if season_id else []
+
     try:
         summary = import_race_csv(
             file.file.read(),
@@ -249,9 +261,40 @@ def upload_race_results(
         context["admin_action_error"] = str(exc)
         return templates.TemplateResponse(request, "admin_hub.html", context)
 
+    if season_id and summary["scored_count"]:
+        notify_sim_round(
+            season_id,
+            summary["race_event"]["id"],
+            round_name or f"Round {ff_round_number}",
+            sim_before=sim_before,
+            constructors_before=constructors_before,
+            overall_before=overall_before,
+        )
+
     context = _build_hub_context(request, active_tab="league")
     context["upload_success"] = summary
     return templates.TemplateResponse(request, "admin_hub.html", context)
+
+
+def _score_and_notify_rounds(season_id: str | None, summaries: list[dict]) -> list[dict]:
+    """Scores every round with real data (skips any with 0 rows — an
+    unreleased/unpopulated round on the schedule) and posts one Discord
+    message per round to the Fantasy + Overall webhooks — called by both
+    the single-round and "import all" routes, so a full backfill posts
+    one message per round rather than a bulk summary."""
+    if not season_id:
+        return []
+    timeline = get_season_timeline(int(CURRENT_SEASON))
+    scored: list[dict] = []
+    for s in summaries:
+        if not (s["race_rows"] or s["sprint_rows"]):
+            continue
+        round_label = next(
+            (r["race_name"] for r in timeline if r["round_number"] == s["round"]),
+            f"Round {s['round']}",
+        )
+        scored.extend(notify_fantasy_round(season_id, s["round"], round_label))
+    return scored
 
 
 @router.post("/f1-results/import")
@@ -264,7 +307,7 @@ def import_f1_results(request: Request, round_number: int = Form(...)):
     try:
         summaries = import_season(int(CURRENT_SEASON), round_number=round_number)
         season_id = get_season_id(CURRENT_SEASON)
-        scored = score_season(season_id, round_number=round_number) if season_id else []
+        scored = _score_and_notify_rounds(season_id, summaries)
     except (httpx.HTTPError, ScoringRulesNotSeededError, MultipleActiveScoringRuleVersionsError) as exc:
         context = _build_hub_context(request, active_tab="league")
         context["admin_action_error"] = f"Couldn't import F1 results: {exc}"
@@ -283,9 +326,11 @@ def import_f1_results(request: Request, round_number: int = Form(...)):
 @router.post("/f1-results/import-all")
 def import_all_f1_results(request: Request):
     """One-click backfill — every completed round on the calendar, in one
-    go, then scores Fantasy F1 for all of them. For this beta season,
-    fantasy scoring is deliberately allowed to apply retroactively (see
-    conversation) rather than being scoped to rounds after the draft."""
+    go, then scores Fantasy F1 for all of them (one Discord post per
+    round scored, not a bulk summary — see _score_and_notify_rounds).
+    For this beta season, fantasy scoring is deliberately allowed to
+    apply retroactively (see conversation) rather than being scoped to
+    rounds after the draft."""
     if not request.state.current_user:
         return RedirectResponse("/auth/login")
     if not request.state.current_user.get("is_admin"):  # Owner or Admin, both allowed
@@ -294,7 +339,7 @@ def import_all_f1_results(request: Request):
     try:
         summaries = import_season(int(CURRENT_SEASON))
         season_id = get_season_id(CURRENT_SEASON)
-        scored = score_season(season_id) if season_id else []
+        scored = _score_and_notify_rounds(season_id, summaries)
     except (httpx.HTTPError, ScoringRulesNotSeededError, MultipleActiveScoringRuleVersionsError) as exc:
         context = _build_hub_context(request, active_tab="league")
         context["admin_action_error"] = f"Couldn't import F1 results: {exc}"

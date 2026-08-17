@@ -146,6 +146,7 @@ def get_constructor_standings(season_id: str | None) -> list[dict]:
 
     standings = [
         {
+            "id": pair["id"],
             "display_name": pair["name"] or pair["member_names"],
             "role": None,
             "points": _pair_points(pair, sim_totals),

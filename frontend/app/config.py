@@ -29,6 +29,18 @@ class Settings(BaseSettings):
     # in production; never commit a real value.
     secret_key: str = ""
 
+    # Discord Incoming Webhook URLs — one per standings channel. Posted
+    # to after an admin imports F1 results or uploads an iRacing CSV
+    # (see app/services/discord_webhooks.py). Optional: posting is
+    # silently skipped for any channel whose URL isn't set (e.g. local
+    # dev). Set via .env locally / `fly secrets set` in production;
+    # never commit a real value — anyone with the URL can post to that
+    # channel.
+    discord_webhook_drivers: str = ""
+    discord_webhook_fantasy: str = ""
+    discord_webhook_constructors: str = ""
+    discord_webhook_overall: str = ""
+
     environment: str = "development"
     log_level: str = "INFO"
 
