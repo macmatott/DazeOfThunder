@@ -15,16 +15,38 @@
         hx-push-url="true"
         class="standings-tabs__link{% if active_tab == key %} standings-tabs__link--active{% endif %}"
         {% if active_tab == key %}aria-current="page"{% endif %}
-      >{{ label }}</a>
+      >
+        <svg class="standings-tabs__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          {% if key == "sim" %}
+            <circle cx="12" cy="12" r="9"/>
+            <circle cx="12" cy="12" r="2.5"/>
+            <path d="M12 3v6.5M4.8 16.3l5.4-3M19.2 16.3l-5.4-3"/>
+          {% elif key == "fantasy" %}
+            <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/>
+            <path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4"/>
+            <path d="M12 13v3M9 20h6M9.5 20 10 17.5h4l.5 2.5"/>
+          {% elif key == "constructors" %}
+            <circle cx="8.5" cy="8" r="3"/>
+            <circle cx="16" cy="9" r="2.5"/>
+            <path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M13.2 14.4c2.7.3 4.8 2.2 4.8 4.6"/>
+          {% else %}
+            <path d="M4 17h16M5 17l-1.5-8L8 12l4-6 4 6 4.5-3L19 17"/>
+          {% endif %}
+        </svg>
+        <span>{{ label }}</span>
+      </a>
     {% endfor %}
   </nav>
 
   <div class="tower">
     {% if rows %}
+      {% set max_points = rows[0].points if rows else 0 %}
       {% for row in rows %}
+        {% set pct = ((row.points / max_points * 100) if max_points else 0) | round(1) %}
+        {% set tier = "gold" if loop.index == 1 else ("silver" if loop.index == 2 else ("bronze" if loop.index == 3 else "")) %}
         {% if active_tab == "fantasy" %}
           <details class="tower-row-toggle">
-            <summary class="tower__row tower-row-toggle__summary">
+            <summary class="tower__row standings-row{% if tier %} standings-row--{{ tier }}{% endif %} tower-row-toggle__summary" style="--bar-pct: {{ pct }}%">
               <div class="tower__pos">{{ loop.index }}</div>
               <div>
                 <div class="tower__name">{{ row.display_name }}{{ role_badge(row.role) }}</div>
@@ -71,7 +93,7 @@
             </div>
           </details>
         {% else %}
-          <div class="tower__row">
+          <div class="tower__row standings-row{% if tier %} standings-row--{{ tier }}{% endif %}" style="--bar-pct: {{ pct }}%">
             <div class="tower__pos">{{ loop.index }}</div>
             <div>
               <div class="tower__name">
