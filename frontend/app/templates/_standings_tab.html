@@ -12,7 +12,7 @@
         hx-get="/partials/standings-tab?tab={{ key }}"
         hx-target="#standings-wrap"
         hx-swap="outerHTML"
-        hx-push-url="true"
+        hx-push-url="/formula-fantasy/standings?tab={{ key }}"
         class="standings-tabs__link{% if active_tab == key %} standings-tabs__link--active{% endif %}"
         {% if active_tab == key %}aria-current="page"{% endif %}
       >
@@ -45,13 +45,39 @@
         {% set pct = ((row.points / max_points * 100) if max_points else 0) | round(1) %}
         {% set tier = "gold" if loop.index == 1 else ("silver" if loop.index == 2 else ("bronze" if loop.index == 3 else "")) %}
         {% if active_tab == "fantasy" %}
-          <details class="tower-row-toggle">
+          <details class="tower-row-toggle{% if tier == 'bronze' %} standings-podium-end{% endif %}">
             <summary class="tower__row standings-row{% if tier %} standings-row--{{ tier }}{% endif %} tower-row-toggle__summary" style="--bar-pct: {{ pct }}%">
               <div class="tower__pos">{{ loop.index }}</div>
               <div>
-                <div class="tower__name">{{ row.display_name }}{{ role_badge(row.role) }}</div>
+                <div class="tower__name">
+                  {% if row.driver_breakdown %}
+                    <span class="standings-avatar-group">
+                      {% for driver in row.driver_breakdown[:2] %}
+                        {% if driver.photo_url %}<span class="driver-photo driver-photo--sm" style="background-image: url('{{ driver.photo_url }}')"></span>{% endif %}
+                      {% endfor %}
+                    </span>
+                  {% endif %}
+                  {{ row.display_name }}{{ role_badge(row.role) }}
+                </div>
               </div>
-              <div class="tower__points">{{ row.points | int }} pts</div>
+              <div class="tower__points">
+                {{ row.points | int }} pts
+                {% if row.gap_to_leader is defined %}
+                  <div class="standings-meta">
+                    {% if loop.index == 1 %}
+                      <span class="standings-meta__gap">Leader</span>
+                    {% else %}
+                      <span class="standings-meta__gap">-{{ row.gap_to_leader | int }} back</span>
+                    {% endif %}
+                    {% if row.this_round_points %}
+                      <span class="standings-meta__gain">+{{ row.this_round_points | int }} this rd</span>
+                    {% endif %}
+                    {% if row.rank_change %}
+                      <span class="standings-meta__rank{% if row.rank_change > 0 %} standings-meta__rank--up{% else %} standings-meta__rank--down{% endif %}">{% if row.rank_change > 0 %}▲{% else %}▼{% endif %}{{ row.rank_change | abs }}</span>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              </div>
             </summary>
             <div class="driver-breakdown-wrap">
               <table class="driver-breakdown-table">
@@ -93,11 +119,11 @@
             </div>
           </details>
         {% else %}
-          <div class="tower__row standings-row{% if tier %} standings-row--{{ tier }}{% endif %}" style="--bar-pct: {{ pct }}%">
+          <div class="tower__row standings-row{% if tier %} standings-row--{{ tier }}{% endif %}{% if tier == 'bronze' %} standings-podium-end{% endif %}" style="--bar-pct: {{ pct }}%">
             <div class="tower__pos">{{ loop.index }}</div>
             <div>
               <div class="tower__name">
-                {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+                {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo draft-pick-row__logo--standings">{% endif %}
                 {{ row.display_name }}{{ role_badge(row.role) }}
               </div>
             </div>

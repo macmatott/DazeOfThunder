@@ -176,6 +176,32 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 row["driver_breakdown"] = breakdown_by_participant.get(row["participant_id"], [])
                 row["fantasy_rounds"] = rounds
                 row["sprint_rounds"] = sprint_rounds
+
+            # "This round's gain" + rank movement since before that round,
+            # reconstructed by subtracting the latest round's points back
+            # out of each row's total — no separate history/snapshot table
+            # needed since fantasy_points_awarded is already broken out
+            # per round via driver_breakdown.
+            latest_round = max(rounds) if rounds else None
+            leader_points = rows[0]["points"]
+            before_totals = {}
+            for row in rows:
+                gained = sum(
+                    driver["points_by_round"].get(latest_round, 0)
+                    for driver in row["driver_breakdown"]
+                ) if latest_round is not None else 0
+                row["this_round_points"] = round(gained, 1)
+                before_totals[row["participant_id"]] = row["points"] - gained
+
+            before_rank = {
+                pid: i + 1
+                for i, (pid, _) in enumerate(
+                    sorted(before_totals.items(), key=lambda kv: kv[1], reverse=True)
+                )
+            }
+            for i, row in enumerate(rows):
+                row["gap_to_leader"] = round(leader_points - row["points"], 1)
+                row["rank_change"] = before_rank[row["participant_id"]] - (i + 1)
         return rows
     if tab == "sim":
         return get_sim_only_standings(season_id)

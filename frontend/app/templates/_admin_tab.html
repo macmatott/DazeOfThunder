@@ -15,7 +15,7 @@
         hx-get="/admin/tab?tab={{ key }}"
         hx-target="#admin-tab-wrap"
         hx-swap="outerHTML"
-        hx-push-url="true"
+        hx-push-url="/admin?tab={{ key }}"
         class="standings-tabs__link{% if active_tab == key %} standings-tabs__link--active{% endif %}"
         {% if active_tab == key %}aria-current="page"{% endif %}
       >{{ label }}</a>
