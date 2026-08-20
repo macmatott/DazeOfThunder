@@ -185,6 +185,36 @@ def test_merge_iracing_track_is_none_for_unmapped_round():
     assert races[0]["iracing_track"] is None
 
 
+def test_merge_defaults_iracing_track_is_paid_to_false():
+    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
+    races = _merge_schedule_with_results(SCHEDULE, {}, now)
+
+    assert all(race["iracing_track_is_paid"] is False for race in races)
+
+
+def test_merge_marks_iracing_track_is_paid_when_name_matches():
+    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
+    # Round 1 -> "Phillip Island Circuit" (no " — config" suffix).
+    races = _merge_schedule_with_results(SCHEDULE, {}, now, {"Phillip Island Circuit"})
+
+    by_round = {r["round_number"]: r for r in races}
+    assert by_round[1]["iracing_track_is_paid"] is True
+    assert by_round[2]["iracing_track_is_paid"] is False
+
+
+def test_merge_matches_paid_track_names_against_the_base_name_only():
+    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
+    # Round 2 -> "Okayama International Circuit — Full Course" — the paid
+    # set is keyed by track identity, not the round's specific config, so
+    # the bare name (no " — config" suffix) must still match.
+    races = _merge_schedule_with_results(
+        SCHEDULE, {}, now, {"Okayama International Circuit"}
+    )
+
+    by_round = {r["round_number"]: r for r in races}
+    assert by_round[2]["iracing_track_is_paid"] is True
+
+
 def test_merge_attaches_iso_f1_date():
     now = datetime(2026, 3, 10, tzinfo=timezone.utc)
     races = _merge_schedule_with_results(SCHEDULE, {}, now)

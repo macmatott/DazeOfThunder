@@ -18,7 +18,12 @@
         <span class="race-track__info">
           <span class="tower__name">{{ race.race_name }}</span>
           {% if race.iracing_track %}
-            <span class="tower__meta">{{ race.iracing_track }}</span>
+            <span class="tower__meta">
+              {{ race.iracing_track }}
+              {% if race.iracing_track_is_paid %}
+                <span class="track-paid-badge" title="Paid iRacing content — not included free">💰</span>
+              {% endif %}
+            </span>
           {% endif %}
         </span>
       </span>
@@ -182,10 +187,10 @@
 
   <div class="schedule-meta-grid">
     <div class="schedule-meta-card schedule-meta-card--highlight">🏆 {{ completed }}/{{ races | length }} Complete</div>
-    <div class="schedule-meta-card">📅 Thursdays • 9PM EST</div>
+    <div class="schedule-meta-card">📅 Thursdays • 9:15PM EST</div>
     <div class="schedule-meta-card">🔧 Fixed Setup</div>
     <div class="schedule-meta-card">🏃 Practice • 8:30PM EST</div>
-    <div class="schedule-meta-card">⏱️ Qualifying: 10 min</div>
+    <div class="schedule-meta-card">⏱️ Qualifying: 5 min</div>
     <div class="schedule-meta-card">🏁 Race: 50% GP</div>
   </div>
 

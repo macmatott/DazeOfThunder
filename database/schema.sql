@@ -95,6 +95,17 @@ create table public.race_events (
     imported_at timestamptz not null default now()
 );
 
+-- Season-independent paid/free-content status for the fantasy schedule's
+-- iRacing tracks (see app/services/f1_schedule.py's IRACING_TRACK_BY_ROUND).
+-- Keyed by track name rather than round, so it carries forward
+-- automatically when a future season reuses a track on a different round
+-- — only genuinely new tracks need a manual is_paid entry.
+create table public.iracing_tracks (
+    name text primary key,
+    is_paid boolean not null default false,
+    updated_at timestamptz not null default now()
+);
+
 create table public.race_results (
     id uuid primary key default gen_random_uuid(),
     race_event_id uuid not null references public.race_events(id) on delete cascade,
@@ -382,17 +393,20 @@ alter table public.scoring_rules enable row level security;
 alter table public.team_events enable row level security;
 alter table public.event_rsvps enable row level security;
 alter table public.team_event_results enable row level security;
+alter table public.iracing_tracks enable row level security;
 
 -- Policies intentionally not defined yet — public vs. private page split
 -- (Section 11 of the design doc) is still open. RLS is enabled by default
 -- (safe default = no access) so nothing is accidentally exposed before
 -- policies are written.
 --
--- Exception: seasons/f1_drivers/f1_race_results are public reference data
--- (race results, not accounts or picks) that the public-facing site reads
--- directly via the anon key — opened up read-only below. Everything else
--- stays fully closed until the public/private split is decided.
+-- Exception: seasons/f1_drivers/f1_race_results/iracing_tracks are public
+-- reference data (race results, not accounts or picks) that the
+-- public-facing site reads directly via the anon key — opened up
+-- read-only below. Everything else stays fully closed until the
+-- public/private split is decided.
 
 create policy "Public read access" on public.seasons for select using (true);
 create policy "Public read access" on public.f1_drivers for select using (true);
 create policy "Public read access" on public.f1_race_results for select using (true);
+create policy "Public read access" on public.iracing_tracks for select using (true);

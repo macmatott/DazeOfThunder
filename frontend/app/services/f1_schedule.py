@@ -119,6 +119,23 @@ IRACING_TRACK_BY_ROUND: dict[int, str] = {
     23: "Rudskogen Motorsenter",
 }
 
+def _get_paid_track_names() -> set[str]:
+    """Track names (not round-keyed) confirmed as paid iRacing DLC, from
+    the iracing_tracks table — kept by track identity rather than round
+    number so a future season reusing a track on a different round picks
+    up its paid/free status automatically instead of needing it
+    re-entered. Only genuinely new tracks need a manual is_paid row (see
+    database/schema.sql's iracing_tracks table)."""
+    rows = (
+        public_client()
+        .table("iracing_tracks")
+        .select("name")
+        .eq("is_paid", True)
+        .execute()
+        .data
+    )
+    return {row["name"] for row in rows}
+
 
 def _race_datetime(race: dict) -> datetime:
     date_str = race["date"]
@@ -327,6 +344,7 @@ def _merge_schedule_with_results(
     schedule: list[dict],
     results_by_round: dict[int, list[dict]],
     now: datetime,
+    paid_track_names: set[str] = frozenset(),
 ) -> list[dict]:
     races = []
     next_assigned = False
@@ -342,6 +360,9 @@ def _merge_schedule_with_results(
         formatted["results"] = (
             results_by_round.get(formatted["round_number"], []) if is_past else None
         )
+
+        track_name, _ = _split_track_name(formatted["iracing_track"])
+        formatted["iracing_track_is_paid"] = track_name in paid_track_names
 
         formatted["sim_temperature_f"] = SIM_TEMPERATURE_BY_ROUND.get(
             formatted["round_number"], SIM_TEMPERATURE_F
@@ -390,4 +411,5 @@ def get_season_timeline(season: int, *, now: datetime | None = None) -> list[dic
         ).data
         results_by_round = _group_results_by_round(rows)
 
-    return _merge_schedule_with_results(schedule, results_by_round, now)
+    paid_track_names = _get_paid_track_names()
+    return _merge_schedule_with_results(schedule, results_by_round, now, paid_track_names)
