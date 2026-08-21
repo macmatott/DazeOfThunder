@@ -39,9 +39,32 @@ def _pair(name, member_ids, member_names="A & B"):
     }
 
 
-def test_pair_points_sums_both_members_sim_totals():
-    assert _pair_points(_pair(None, ["a", "b"]), {"a": 10, "b": 5}) == 15
+def test_pair_points_sums_both_members_across_rounds():
+    points_by_round = {
+        "r1": {"a": 10, "b": 5},
+        "r2": {"a": 8, "b": 4},
+    }
+    assert _pair_points(_pair(None, ["a", "b"]), points_by_round) == 27
 
 
 def test_pair_points_treats_unscored_member_as_zero():
-    assert _pair_points(_pair(None, ["a", "c"]), {"a": 10}) == 10
+    points_by_round = {"r1": {"a": 10}}
+    assert _pair_points(_pair(None, ["a", "c"]), points_by_round) == 10
+
+
+def test_pair_points_drops_the_lowest_of_three_each_round():
+    # This league's one 3-person team — dropping the lowest scorer each
+    # round keeps them from getting an extra scoring opportunity that
+    # 2-person teams don't get.
+    points_by_round = {
+        "r1": {"a": 20, "b": 15, "c": 5},   # c dropped this round
+        "r2": {"a": 3, "b": 25, "c": 10},   # a dropped this round
+    }
+    assert _pair_points(_pair(None, ["a", "b", "c"]), points_by_round) == (20 + 15) + (25 + 10)
+
+
+def test_pair_points_three_person_team_matches_two_person_math_when_one_is_absent():
+    # A round where the 3rd member didn't score at all (0) should behave
+    # exactly like a 2-person team's round.
+    points_by_round = {"r1": {"a": 12, "b": 7}}
+    assert _pair_points(_pair(None, ["a", "b", "c"]), points_by_round) == 19

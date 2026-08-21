@@ -124,14 +124,35 @@ def get_sim_only_standings(season_id: str | None = None) -> list[dict]:
     return _rows_from_totals(_get_sim_totals(client, season_id), participants)
 
 
-def _pair_points(pair: dict, sim_totals: dict[str, float]) -> float:
-    """Sum of both members' Sim Racing points — Constructors' scoring is
-    explicitly Sim-Racing-only per ff_how_it_works.html's published copy
-    ("Your team's combined Sim Racing results carry the Constructors'
-    Championship"), not the Overall sim+fantasy blend."""
-    return round(
-        sum(sim_totals.get(m["participant_id"], 0.0) for m in pair["constructor_members"]), 1
-    )
+def _get_sim_points_by_round(client) -> dict[str, dict[str, float]]:
+    """race_event_id -> {participant_id: points}, for _pair_points' per-
+    round best-2-of-team scoring below."""
+    rows = client.table("sim_points_awarded").select("participant_id, points, race_event_id").execute().data
+    by_round: dict[str, dict[str, float]] = defaultdict(dict)
+    for row in rows:
+        by_round[row["race_event_id"]][row["participant_id"]] = row["points"]
+    return by_round
+
+
+def _pair_points(pair: dict, points_by_round: dict[str, dict[str, float]]) -> float:
+    """Sum, across every scored round, of the team's best 2 contributors
+    that round — Constructors' scoring is explicitly Sim-Racing-only per
+    ff_how_it_works.html's published copy ("Your team's combined Sim
+    Racing results carry the Constructors' Championship"), not the
+    Overall sim+fantasy blend.
+
+    This league has one team of 3 (odd number of members); capping every
+    team at its best 2 scorers per round — rather than summing all of a
+    3-person team's results — keeps a 3-person team from getting an
+    extra scoring opportunity every race that 2-person teams don't get.
+    Which member gets dropped can change round to round, since it's
+    whoever scored lowest that specific race, not fixed for the season."""
+    member_ids = [m["participant_id"] for m in pair["constructor_members"]]
+    total = 0.0
+    for round_points in points_by_round.values():
+        scores = sorted((round_points.get(pid, 0.0) for pid in member_ids), reverse=True)
+        total += sum(scores[:2])
+    return round(total, 1)
 
 
 def get_constructor_standings(season_id: str | None) -> list[dict]:
@@ -141,7 +162,7 @@ def get_constructor_standings(season_id: str | None) -> list[dict]:
     if not season_id:
         return []
     client = admin_client()
-    sim_totals = _get_sim_totals(client, season_id)
+    points_by_round = _get_sim_points_by_round(client)
     pairs = get_pairs(season_id)
 
     standings = [
@@ -149,7 +170,7 @@ def get_constructor_standings(season_id: str | None) -> list[dict]:
             "id": pair["id"],
             "display_name": pair["name"] or pair["member_names"],
             "role": None,
-            "points": _pair_points(pair, sim_totals),
+            "points": _pair_points(pair, points_by_round),
             "logo_url": pair["logo_url"],
         }
         for pair in pairs
