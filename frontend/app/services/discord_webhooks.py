@@ -188,28 +188,46 @@ def compute_constructor_round_details(
     shape as compute_fantasy_round_details (display_name, driver_lines,
     total) so both feed format_breakdown_message. A member with no
     result that event (e.g. joined the team after this round already
-    ran) is omitted rather than shown at 0."""
+    ran) is omitted rather than shown at 0.
+
+    Matches get_constructor_standings' best-2-per-round scoring (see
+    standings.py::_pair_points): a team's reported total only counts its
+    best 2 scorers that round, so this league's one 3-person team's
+    lowest scorer that round is listed but marked "(dropped)" rather
+    than folded into the total — otherwise the round total shown here
+    would drift from the cumulative standings total."""
     details = []
     for pair in pairs:
-        member_lines = []
-        total = 0.0
+        scoring_members = []
         for member in pair["constructor_members"]:
             participant_id = member["participant_id"]
             if participant_id not in points_by_participant:
                 continue
-            points = points_by_participant[participant_id]
-            position = position_by_participant.get(participant_id)
-            name = member["participants"]["display_name"]
-            pos_label = f"P{position}" if position is not None else "?"
-            member_lines.append(f"{name} ({pos_label}) — {points:.0f} pts")
-            total += points
-        if not member_lines:
+            scoring_members.append(
+                {
+                    "name": member["participants"]["display_name"],
+                    "points": points_by_participant[participant_id],
+                    "position": position_by_participant.get(participant_id),
+                }
+            )
+        if not scoring_members:
             continue
+
+        scoring_members.sort(key=lambda m: m["points"], reverse=True)
+        counted, dropped = scoring_members[:2], scoring_members[2:]
+
+        def _line(m: dict, *, dropped: bool = False) -> str:
+            pos_label = f"P{m['position']}" if m["position"] is not None else "?"
+            suffix = " (dropped)" if dropped else ""
+            return f"{m['name']} ({pos_label}) — {m['points']:.0f} pts{suffix}"
+
+        member_lines = [_line(m) for m in counted] + [_line(m, dropped=True) for m in dropped]
+
         details.append(
             {
                 "display_name": pair["name"] or pair["member_names"],
                 "driver_lines": member_lines,
-                "total": round(total, 1),
+                "total": round(sum(m["points"] for m in counted), 1),
             }
         )
     details.sort(key=lambda d: d["total"], reverse=True)

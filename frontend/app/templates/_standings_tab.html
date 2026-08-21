@@ -44,19 +44,13 @@
       {% for row in rows %}
         {% set pct = ((row.points / max_points * 100) if max_points else 0) | round(1) %}
         {% set tier = "gold" if loop.index == 1 else ("silver" if loop.index == 2 else ("bronze" if loop.index == 3 else "")) %}
-        {% if active_tab == "fantasy" %}
+        {% if active_tab in ("fantasy", "sim", "constructors", "overall") %}
           <details class="tower-row-toggle{% if tier == 'bronze' %} standings-podium-end{% endif %}">
             <summary class="tower__row standings-row{% if tier %} standings-row--{{ tier }}{% endif %} tower-row-toggle__summary" style="--bar-pct: {{ pct }}%">
               <div class="tower__pos">{{ loop.index }}</div>
               <div>
                 <div class="tower__name">
-                  {% if row.driver_breakdown %}
-                    <span class="standings-avatar-group">
-                      {% for driver in row.driver_breakdown[:2] %}
-                        {% if driver.photo_url %}<span class="driver-photo driver-photo--sm" style="background-image: url('{{ driver.photo_url }}')"></span>{% endif %}
-                      {% endfor %}
-                    </span>
-                  {% endif %}
+                  {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo draft-pick-row__logo--standings">{% endif %}
                   {{ row.display_name }}{{ role_badge(row.role) }}
                 </div>
               </div>
@@ -84,7 +78,7 @@
                 <thead>
                   <tr>
                     <th>Driver</th>
-                    {% for r in row.fantasy_rounds %}
+                    {% for r in row.breakdown_rounds %}
                       <th{% if r in row.sprint_rounds %} class="driver-breakdown-table__sprint-col" title="Sprint weekend — race + sprint scored together"{% endif %}>
                         R{{ r }}{% if r in row.sprint_rounds %}<span aria-hidden="true"> 🏁</span>{% endif %}
                       </th>
@@ -96,13 +90,20 @@
                   {% for driver in row.driver_breakdown %}
                     <tr>
                       <td class="driver-breakdown-table__driver">
-                        {% if driver.photo_url %}<span class="driver-photo driver-photo--sm" style="background-image: url('{{ driver.photo_url }}')"></span>{% endif %}
-                        {% if driver.logo_url %}<img src="{{ driver.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
-                        {{ driver.full_name }}
+                        <span class="driver-breakdown-table__driver-inner">
+                          {% if driver.photo_url %}<span class="driver-photo driver-photo--sm" style="background-image: url('{{ driver.photo_url }}')"></span>{% endif %}
+                          {% if driver.logo_url %}<img src="{{ driver.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+                          {{ driver.full_name }}
+                        </span>
                       </td>
-                      {% for r in row.fantasy_rounds %}
-                        <td{% if r in row.sprint_rounds %} class="driver-breakdown-table__sprint-col"{% endif %}>
-                          {{ driver.points_by_round[r] | int }}
+                      {% for r in row.breakdown_rounds %}
+                        {% set is_sprint = (r in row.sprint_rounds) and not (driver.is_sim_entry | default(false)) %}
+                        {% set is_dropped = r in (driver.dropped_rounds | default([])) %}
+                        {% set cell_classes = [] %}
+                        {% if is_sprint %}{% set _ = cell_classes.append("driver-breakdown-table__sprint-col") %}{% endif %}
+                        {% if is_dropped %}{% set _ = cell_classes.append("driver-breakdown-table__dropped") %}{% endif %}
+                        <td{% if cell_classes %} class="{{ cell_classes | join(' ') }}"{% endif %}{% if is_dropped %} title="Didn't count toward the team's total this round — only the best 2 of 3 scorers count"{% endif %}>
+                          {{ driver.points_by_round[r] | int }}{% if is_dropped %}<span aria-hidden="true"> †</span>{% endif %}
                           {% if driver.positions_by_round[r] %}
                             <span class="driver-breakdown-table__position">{% for p in driver.positions_by_round[r] %}P{{ p }}{% if not loop.last %}/{% endif %}{% endfor %}</span>
                           {% endif %}
@@ -115,6 +116,9 @@
               </table>
               {% if row.sprint_rounds %}
                 <p class="driver-breakdown-table__legend">🏁 Sprint weekend — race + sprint scored together</p>
+              {% endif %}
+              {% if row.driver_breakdown | selectattr("dropped_rounds") | list %}
+                <p class="driver-breakdown-table__legend">† Didn't count toward the team's total that round — only the best 2 of 3 scorers count each round</p>
               {% endif %}
             </div>
           </details>

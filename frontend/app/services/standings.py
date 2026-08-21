@@ -124,6 +124,159 @@ def get_sim_only_standings(season_id: str | None = None) -> list[dict]:
     return _rows_from_totals(_get_sim_totals(client, season_id), participants)
 
 
+def _get_sim_results_by_round(
+    client, season_id: str
+) -> tuple[dict[str, dict[int, float]], dict[str, dict[int, int]], list[int]]:
+    """(points_by_participant, positions_by_participant, rounds), each
+    participant-keyed dict mapping ff_round_number -> that round's value.
+    Shared by get_sim_breakdown_by_participant and
+    get_constructor_breakdown_by_team below — both need the same raw
+    per-round sim results, just grouped differently afterward."""
+    events = (
+        client.table("race_events")
+        .select("id, ff_round_number")
+        .eq("season_id", season_id)
+        .eq("is_superseded", False)
+        .execute()
+        .data
+    )
+    round_by_event = {e["id"]: e["ff_round_number"] for e in events if e["ff_round_number"] is not None}
+    rounds = sorted(set(round_by_event.values()))
+    if not rounds:
+        return {}, {}, []
+
+    points_rows = (
+        client.table("sim_points_awarded").select("participant_id, points, race_event_id").execute().data
+    )
+    position_rows = (
+        client.table("race_results")
+        .select("participant_id, finish_position, race_event_id")
+        .execute()
+        .data
+    )
+
+    points_by_participant: dict[str, dict[int, float]] = defaultdict(dict)
+    for row in points_rows:
+        rnd = round_by_event.get(row["race_event_id"])
+        if rnd is not None:
+            points_by_participant[row["participant_id"]][rnd] = row["points"]
+
+    positions_by_participant: dict[str, dict[int, int]] = defaultdict(dict)
+    for row in position_rows:
+        participant_id = row["participant_id"]
+        rnd = round_by_event.get(row["race_event_id"])
+        if participant_id and rnd is not None:
+            positions_by_participant[participant_id][rnd] = row["finish_position"]
+
+    return points_by_participant, positions_by_participant, rounds
+
+
+def get_sim_breakdown_by_participant(season_id: str | None) -> tuple[dict[str, dict], list[int]]:
+    """Per-round sim points/finish position for every participant's own
+    results — feeds the Drivers' Championship standings page's per-
+    member dropdown, the same interaction as the Fantasy tab's per-
+    driver breakdown table but with a single "driver" row (themselves),
+    since Drivers' scores each racer on their own sim results, not a
+    drafted pair.
+
+    Returns ({participant_id: {"points_by_round": {round_number:
+    points}, "positions_by_round": {round_number: [finish_position]},
+    "total"}}, rounds) — `rounds` is every ff_round_number with a scored
+    (non-superseded) race_event this season, ascending."""
+    if not season_id:
+        return {}, []
+    client = admin_client()
+    points_by_participant, positions_by_participant, rounds = _get_sim_results_by_round(client, season_id)
+    if not rounds:
+        return {}, []
+
+    breakdown: dict[str, dict] = {}
+    for participant_id in set(points_by_participant) | set(positions_by_participant):
+        points_by_round = {
+            rnd: points_by_participant.get(participant_id, {}).get(rnd, 0) for rnd in rounds
+        }
+        positions_by_round = {
+            rnd: (
+                [positions_by_participant[participant_id][rnd]]
+                if rnd in positions_by_participant.get(participant_id, {})
+                else []
+            )
+            for rnd in rounds
+        }
+        breakdown[participant_id] = {
+            "points_by_round": points_by_round,
+            "positions_by_round": positions_by_round,
+            "total": round(sum(points_by_round.values()), 1),
+        }
+
+    return breakdown, rounds
+
+
+def get_constructor_breakdown_by_team(season_id: str | None) -> tuple[dict[str, list[dict]], list[int]]:
+    """Per-round sim points/finish position for every constructor team's
+    own members — feeds the Constructors' standings page's per-team
+    dropdown, the same interaction as Fantasy/Drivers' but with one
+    "driver" row per team member.
+
+    A team's actual per-round score only counts its best 2 scorers that
+    round (see _pair_points above) — this league's one 3-person team has
+    its lowest-scoring member each round marked via that member's
+    dropped_rounds set, so the table can flag it (and each member's own
+    `total` only sums the rounds that counted, so the three members'
+    totals still add up to the team's real standings total)."""
+    if not season_id:
+        return {}, []
+    client = admin_client()
+    points_by_participant, positions_by_participant, rounds = _get_sim_results_by_round(client, season_id)
+    if not rounds:
+        return {}, []
+
+    pairs = get_pairs(season_id)
+    breakdown: dict[str, list[dict]] = {}
+    for pair in pairs:
+        member_ids = [m["participant_id"] for m in pair["constructor_members"]]
+
+        dropped_by_member: dict[str, set[int]] = defaultdict(set)
+        for rnd in rounds:
+            ranked = sorted(
+                member_ids,
+                key=lambda pid: points_by_participant.get(pid, {}).get(rnd, 0.0),
+                reverse=True,
+            )
+            for pid in ranked[2:]:
+                dropped_by_member[pid].add(rnd)
+
+        members_breakdown = []
+        for member in pair["constructor_members"]:
+            pid = member["participant_id"]
+            dropped_rounds = dropped_by_member.get(pid, set())
+            points_by_round = {rnd: points_by_participant.get(pid, {}).get(rnd, 0) for rnd in rounds}
+            positions_by_round = {
+                rnd: (
+                    [positions_by_participant[pid][rnd]]
+                    if rnd in positions_by_participant.get(pid, {})
+                    else []
+                )
+                for rnd in rounds
+            }
+            members_breakdown.append(
+                {
+                    "full_name": member["participants"]["display_name"],
+                    "photo_url": None,
+                    "logo_url": None,
+                    "points_by_round": points_by_round,
+                    "positions_by_round": positions_by_round,
+                    "dropped_rounds": dropped_rounds,
+                    "total": round(
+                        sum(pts for rnd, pts in points_by_round.items() if rnd not in dropped_rounds), 1
+                    ),
+                }
+            )
+        breakdown[pair["id"]] = members_breakdown
+
+    return breakdown, rounds
+
+
 def _get_sim_points_by_round(client) -> dict[str, dict[str, float]]:
     """race_event_id -> {participant_id: points}, for _pair_points' per-
     round best-2-of-team scoring below."""
@@ -153,6 +306,55 @@ def _pair_points(pair: dict, points_by_round: dict[str, dict[str, float]]) -> fl
         scores = sorted((round_points.get(pid, 0.0) for pid in member_ids), reverse=True)
         total += sum(scores[:2])
     return round(total, 1)
+
+
+def get_overall_breakdown_by_participant(
+    season_id: str | None,
+) -> tuple[dict[str, list[dict]], list[int], set[int]]:
+    """Per-round breakdown for the Overall Championship's dropdown —
+    each participant's 2 drafted Fantasy drivers plus their own Sim
+    Racing entry, three "driver" rows total, since Overall is just
+    those two championships added together.
+
+    Fantasy's rounds are the real F1 calendar's round numbers; Sim's
+    rounds are each race_event's admin-assigned ff_round_number — the
+    same numbering space by design (an iRacing race is mapped onto
+    "this counts as Round 7", see race_events.ff_round_number), so the
+    two round lists are unioned into one shared column set rather than
+    kept separate."""
+    if not season_id:
+        return {}, [], set()
+
+    from app.services.fantasy_scoring import get_fantasy_breakdown_by_participant
+
+    fantasy_breakdown, fantasy_rounds, sprint_rounds = get_fantasy_breakdown_by_participant(season_id)
+    sim_breakdown, sim_rounds = get_sim_breakdown_by_participant(season_id)
+    rounds = sorted(set(fantasy_rounds) | set(sim_rounds))
+
+    def _reindexed(entry: dict) -> dict:
+        return {
+            **entry,
+            "points_by_round": {r: entry["points_by_round"].get(r, 0) for r in rounds},
+            "positions_by_round": {r: entry["positions_by_round"].get(r, []) for r in rounds},
+        }
+
+    breakdown: dict[str, list[dict]] = {}
+    for pid in set(fantasy_breakdown) | set(sim_breakdown):
+        entries = [_reindexed(driver) for driver in fantasy_breakdown.get(pid, [])]
+        sim_entry = sim_breakdown.get(pid)
+        if sim_entry:
+            entries.append(
+                {
+                    **_reindexed(sim_entry),
+                    "full_name": "Sim Racing",
+                    "photo_url": None,
+                    "logo_url": None,
+                    "is_sim_entry": True,
+                }
+            )
+        breakdown[pid] = entries
+
+    return breakdown, rounds, sprint_rounds
 
 
 def get_constructor_standings(season_id: str | None) -> list[dict]:
@@ -186,7 +388,7 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
             # Per-member driver/round dropdown on the Fantasy tab only —
             # attached here (not baked into get_fantasy_only_standings)
             # since it's page-display detail, not part of the points
-            # total itself. Every row shares the same `fantasy_rounds`
+            # total itself. Every row shares the same `breakdown_rounds`
             # column list so they all line up.
             from app.services.fantasy_scoring import get_fantasy_breakdown_by_participant
 
@@ -195,7 +397,7 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
             )
             for row in rows:
                 row["driver_breakdown"] = breakdown_by_participant.get(row["participant_id"], [])
-                row["fantasy_rounds"] = rounds
+                row["breakdown_rounds"] = rounds
                 row["sprint_rounds"] = sprint_rounds
 
             # "This round's gain" + rank movement since before that round,
@@ -225,7 +427,41 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 row["rank_change"] = before_rank[row["participant_id"]] - (i + 1)
         return rows
     if tab == "sim":
-        return get_sim_only_standings(season_id)
+        rows = get_sim_only_standings(season_id)
+        if season_id and rows:
+            # Per-round dropdown on the Drivers' tab, same interaction as
+            # the Fantasy tab's — one "driver" row (themselves) instead
+            # of two drafted drivers, since a sim racer scores on their
+            # own results.
+            breakdown_by_participant, rounds = get_sim_breakdown_by_participant(season_id)
+            for row in rows:
+                entry = breakdown_by_participant.get(row["participant_id"])
+                row["driver_breakdown"] = (
+                    [{**entry, "full_name": row["display_name"], "photo_url": None, "logo_url": None}]
+                    if entry
+                    else []
+                )
+                row["breakdown_rounds"] = rounds
+                row["sprint_rounds"] = set()
+        return rows
     if tab == "constructors":
-        return get_constructor_standings(season_id)
-    return get_formula_fantasy_standings(season_id)
+        rows = get_constructor_standings(season_id)
+        if season_id and rows:
+            # Per-round dropdown on the Constructors' tab — one "driver"
+            # row per team member, same interaction as Fantasy/Drivers'.
+            breakdown_by_team, rounds = get_constructor_breakdown_by_team(season_id)
+            for row in rows:
+                row["driver_breakdown"] = breakdown_by_team.get(row["id"], [])
+                row["breakdown_rounds"] = rounds
+                row["sprint_rounds"] = set()
+        return rows
+    rows = get_formula_fantasy_standings(season_id)
+    if season_id and rows:
+        # Per-round dropdown on the Overall tab — each participant's 2
+        # drafted Fantasy drivers plus their own Sim Racing entry.
+        breakdown_by_participant, rounds, sprint_rounds = get_overall_breakdown_by_participant(season_id)
+        for row in rows:
+            row["driver_breakdown"] = breakdown_by_participant.get(row["participant_id"], [])
+            row["breakdown_rounds"] = rounds
+            row["sprint_rounds"] = sprint_rounds
+    return rows

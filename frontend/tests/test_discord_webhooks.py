@@ -248,6 +248,32 @@ def test_compute_constructor_round_details_omits_members_with_no_result():
     ]
 
 
+def test_compute_constructor_round_details_marks_the_lowest_of_three_as_dropped():
+    pairs = [
+        {
+            "name": "Red Bull",
+            "member_names": "Mac & Caleb & Dylan",
+            "constructor_members": [
+                {"participant_id": "m", "participants": {"display_name": "Mac"}},
+                {"participant_id": "c", "participants": {"display_name": "Caleb"}},
+                {"participant_id": "d", "participants": {"display_name": "Dylan"}},
+            ],
+        }
+    ]
+    points_by_participant = {"m": 11.0, "c": 4.0, "d": 1.0}
+    position_by_participant = {"m": 1, "c": 4, "d": 8}
+
+    details = compute_constructor_round_details(pairs, points_by_participant, position_by_participant)
+
+    assert details == [
+        {
+            "display_name": "Red Bull",
+            "driver_lines": ["Mac (P1) — 11 pts", "Caleb (P4) — 4 pts", "Dylan (P8) — 1 pts (dropped)"],
+            "total": 15.0,
+        }
+    ]
+
+
 def test_compute_constructor_round_details_omits_teams_with_no_results_at_all():
     pairs = [
         {

@@ -908,7 +908,13 @@ main.main--wide {
   border-bottom: none;
 }
 
-.driver-breakdown-table__driver {
+/* display:flex directly on the <td> broke its border-bottom out of the
+   table's border-collapse row geometry (browsers stop treating an
+   explicitly flexed table cell as a normal table-cell for border
+   purposes) — the flex layout lives on this inner wrapper instead, so
+   the <td> itself stays a plain cell and its border lines up with its
+   row siblings. */
+.driver-breakdown-table__driver-inner {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -921,6 +927,13 @@ main.main--wide {
 
 .driver-breakdown-table__sprint-col {
   background: rgba(232, 220, 59, 0.08);
+}
+
+/* Constructors' tab only: a 3-person team's lowest scorer that round —
+   didn't count toward the team's total (only the best 2 do). */
+.driver-breakdown-table__dropped {
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 
 .driver-breakdown-table__legend {
@@ -1597,20 +1610,6 @@ dialog.session-modal::backdrop {
 .driver-photo--sm {
   width: 60px;
   height: 60px;
-}
-
-/* A pair of headshots on a collapsed Fantasy standings row — same size
-   as the expanded breakdown table's photos, overlapped like a stacked
-   avatar group, each with its own ring so they read as two distinct
-   drivers rather than one blob. */
-.standings-avatar-group {
-  display: inline-flex;
-  vertical-align: middle;
-  margin-right: var(--space-2);
-}
-
-.standings-avatar-group .driver-photo--sm + .driver-photo--sm {
-  margin-left: -20px;
 }
 
 .draft-pick-btn {
