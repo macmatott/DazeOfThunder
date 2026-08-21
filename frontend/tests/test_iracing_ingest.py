@@ -16,15 +16,26 @@ from app.services.iracing_ingest import (
     match_participants,
     parse_event_csv,
     parse_event_id_from_filename,
+    split_event_and_result_blocks,
 )
 
-FIXTURE_PATH = (
-    Path(__file__).resolve().parents[2] / "discord-bot" / "tests" / "fixtures" / "eventresult_87601875_0.csv"
-)
+FIXTURE_DIR = Path(__file__).resolve().parents[2] / "discord-bot" / "tests" / "fixtures"
+FIXTURE_PATH = FIXTURE_DIR / "eventresult_87601875_0.csv"
+
+# A real Hosted-session export (this league's actual race format) — no
+# official-series season/week/strength-of-field metadata, and a
+# "League Name"/"League ID" info block sandwiched before the real
+# results table. See split_event_and_result_blocks/_parse_event_block's
+# docstrings.
+HOSTED_FIXTURE_PATH = FIXTURE_DIR / "eventresult_88113080_0.csv"
 
 
 def _fixture_text() -> str:
     return FIXTURE_PATH.read_text(encoding="utf-8-sig")
+
+
+def _hosted_fixture_text() -> str:
+    return HOSTED_FIXTURE_PATH.read_text(encoding="utf-8-sig")
 
 
 def test_parse_event_id_from_filename_extracts_id():
@@ -95,6 +106,39 @@ def test_parse_event_csv_handles_blanks_vs_explicit_zero():
 def test_parse_event_csv_rejects_missing_blank_line_separator():
     with pytest.raises(CsvParseError):
         parse_event_csv('"Fin Pos","Cust ID"\n"1","123"\n')
+
+
+def test_parse_event_csv_against_real_hosted_session_event_block():
+    parsed = parse_event_csv(_hosted_fixture_text())
+    assert parsed["event"] == {
+        "track": "Circuit Zandvoort - Grand Prix",
+        "series": "Hosted iRacing",
+        "start_time": "2026-08-21T00:30:40Z",
+        # Hosted sessions carry none of the official-series metadata.
+        "iracing_season_year": None,
+        "iracing_season_quarter": None,
+        "race_week": None,
+        "strength_of_field": None,
+        "special_event_type": None,
+    }
+    assert len(parsed["results"]) == 10
+
+
+def test_parse_event_csv_hosted_session_result_row_has_no_iracing_points_or_irating():
+    parsed = parse_event_csv(_hosted_fixture_text())
+    winner = parsed["results"][0]
+    assert winner["finish_position"] == 1
+    assert winner["iracing_display_name"] == "Mac Matott"
+    assert winner["iracing_points"] is None
+    assert winner["iracing_club_points"] is None
+    assert winner["old_irating"] is None
+    assert winner["new_irating"] is None
+
+
+def test_split_skips_the_league_info_block_in_a_hosted_session_export():
+    _, results_text = split_event_and_result_blocks(_hosted_fixture_text())
+    assert results_text.startswith('"Fin Pos"')
+    assert "League Name" not in results_text
 
 
 def test_match_participants_maps_by_cust_id_and_leaves_unmatched_as_none():

@@ -1,0 +1,18 @@
+Start Time,Track,Series,Hosted Session Name
+"2026-08-21T00:30:40Z","Circuit Zandvoort - Grand Prix","Hosted iRacing","Daze of Thunder - Formula Fantasy"
+
+
+"League Name","League ID","League Season","League Season ID","Points System"
+"Daze of Thunder - Formula Fantasy","15047","2026 Beta","136287","11 Man Grid"
+
+"Fin Pos","Car ID","Car","Car Class ID","Car Class","Team ID","Cust ID","Name","Start Pos","Car #","Out ID","Out","Interval","Laps Led","Qualify Time","Average Lap Time","Fastest Lap Time","Fast Lap#","Laps Comp","Inc","League Points","Max Fuel Fill%","Weight Penalty (KG)","League Agg Points","AI"
+"1","148","FIA F4","0","Hosted All Cars Class","1493105","1493105","Mac Matott","1","6","0","Running","-00.000","35","","1:37.805","1:35.381","16","36","4","11","100","0","11","0"
+"2","148","FIA F4","0","Hosted All Cars Class","889883","889883","Mitchell Davies2","9","17","0","Running","-34.766","1","","1:38.770","1:35.366","13","36","11","9","100","0","9","0"
+"3","148","FIA F4","0","Hosted All Cars Class","890245","890245","Patrick Hall5","3","11","0","Running","-59.030","0","","1:39.445","1:34.672","29","36","6","8","100","0","8","0"
+"4","148","FIA F4","0","Hosted All Cars Class","1530231","1530231","Brantley Adcock","2","29","0","Running","-1:12.125","0","","1:39.808","1:35.907","34","36","7","7","100","0","7","0"
+"5","148","FIA F4","0","Hosted All Cars Class","1515761","1515761","Codey Whiteside","5","22","0","Running","-1 L","0","","1:40.722","1:36.463","21","35","13","6","100","0","6","0"
+"6","148","FIA F4","0","Hosted All Cars Class","1503960","1503960","Cj Self","4","50","0","Running","-1 L","0","","1:41.711","1:36.582","22","35","10","5","100","0","5","0"
+"7","148","FIA F4","0","Hosted All Cars Class","1498715","1498715","Caleb Cushing","6","7","0","Running","-1 L","0","","1:41.989","1:36.942","28","35","6","4","100","0","4","0"
+"8","148","FIA F4","0","Hosted All Cars Class","1527348","1527348","Zach Stipe","7","8","0","Running","-2 L","0","","1:45.165","1:37.710","32","34","21","3","100","0","3","0"
+"9","148","FIA F4","0","Hosted All Cars Class","1047790","1047790","Ellis Davies","10","9","0","Running","-3 L","0","","1:48.122","1:37.565","31","33","18","2","100","0","2","0"
+"10","148","FIA F4","0","Hosted All Cars Class","1433491","1433491","Dylan Stowe2","8","10","32","Disconnected","-25 L","0","","2:33.558","1:41.441","5","11","22","1","100","0","1","0"

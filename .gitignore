@@ -12,7 +12,7 @@ venv/
 
 # Data files that shouldn't be committed (real league data, not fixtures)
 *.csv
-!tests/fixtures/*.csv
+!**/tests/fixtures/*.csv
 
 # OS
 .DS_Store

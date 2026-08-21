@@ -71,6 +71,14 @@ def _to_int_default(value: str, default: int = 0) -> int:
     return int(value) if value else default
 
 
+def _optional_int(row: dict, column: str) -> int | None:
+    return _to_int(row[column]) if column in row else None
+
+
+def _optional_text(row: dict, column: str) -> str | None:
+    return _blank_to_none(row[column]) if column in row else None
+
+
 def _parse_event_block(rows: list[dict]) -> dict:
     if len(rows) != 1:
         raise CsvParseError(f"Expected exactly one event metadata row, found {len(rows)}.")
@@ -80,11 +88,16 @@ def _parse_event_block(rows: list[dict]) -> dict:
             "track": row["Track"],
             "series": row["Series"],
             "start_time": row["Start Time"],
-            "iracing_season_year": _to_int(row["Season Year"]),
-            "iracing_season_quarter": _to_int(row["Season Quarter"]),
-            "race_week": _to_int(row["Race Week"]),
-            "strength_of_field": _to_int(row["Strength of Field"]),
-            "special_event_type": _blank_to_none(row["Special Event Type"]),
+            # Official-series-only fields — a Hosted session (this
+            # league's actual race format, see eventresult_88113080_0.csv)
+            # has no season/week/strength-of-field of its own, only an
+            # official iRacing series race does. race_events already has
+            # these columns nullable for exactly this reason.
+            "iracing_season_year": _optional_int(row, "Season Year"),
+            "iracing_season_quarter": _optional_int(row, "Season Quarter"),
+            "race_week": _optional_int(row, "Race Week"),
+            "strength_of_field": _optional_int(row, "Strength of Field"),
+            "special_event_type": _optional_text(row, "Special Event Type"),
         }
     except KeyError as exc:
         raise CsvParseError(f"Event metadata row is missing column {exc}.") from exc
@@ -109,10 +122,14 @@ def _parse_result_row(row: dict) -> dict:
             "average_lap_time": _blank_to_none(row["Average Lap Time"]),
             "fastest_lap_time": _blank_to_none(row["Fastest Lap Time"]),
             "fastest_lap_number": _to_int(row["Fast Lap#"]),
-            "iracing_points": _to_int(row["Pts"]),
-            "iracing_club_points": _to_int(row["Club Pts"]),
-            "old_irating": _to_int(row["Old iRating"]),
-            "new_irating": _to_int(row["New iRating"]),
+            # iRacing's own native points/iRating — reference data only,
+            # not used for league scoring (compute_sim_scores scores off
+            # finish_position instead), and Hosted sessions (this
+            # league's format) don't report them at all.
+            "iracing_points": _optional_int(row, "Pts"),
+            "iracing_club_points": _optional_int(row, "Club Pts"),
+            "old_irating": _optional_int(row, "Old iRating"),
+            "new_irating": _optional_int(row, "New iRating"),
             "is_ai": row["AI"].strip() == "1",
         }
     except KeyError as exc:
@@ -120,18 +137,33 @@ def _parse_result_row(row: dict) -> dict:
 
 
 def split_event_and_result_blocks(csv_text: str) -> tuple[str, str]:
-    """(event_block_text, result_block_text) — split on the blank line
-    separating the two. Shared by parse_event_csv and any caller that
-    needs a raw CSV column parse_event_csv's typed rows don't carry
-    through (e.g. "Car Class ID", used only for Team Events' per-class
-    standings — race_results, the F1/season pipeline's table, has no
-    use for it)."""
-    lines = csv_text.splitlines()
-    blank_indexes = [i for i, line in enumerate(lines) if not line.strip()]
-    if not blank_indexes:
+    """(event_block_text, result_block_text). Blank line(s) separate
+    blocks; the event block is always first, and the result block is
+    identified by its header containing "Fin Pos" rather than assumed
+    to be whatever immediately follows the first blank line — a Hosted
+    session export (this league's actual race format, see
+    eventresult_88113080_0.csv) sandwiches an extra "League Name"/
+    "League ID" info block in between, which this skips over. Shared by
+    parse_event_csv and any caller that needs a raw CSV column
+    parse_event_csv's typed rows don't carry through (e.g. "Car Class
+    ID", used only for Team Events' per-class standings — race_results,
+    the F1/season pipeline's table, has no use for it)."""
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in csv_text.splitlines():
+        if line.strip():
+            current.append(line)
+        elif current:
+            blocks.append(current)
+            current = []
+    if current:
+        blocks.append(current)
+
+    result_block = next((b for b in blocks[1:] if "Fin Pos" in b[0]), None)
+    if not blocks or result_block is None:
         raise CsvParseError("Expected a blank line separating event metadata from results.")
-    blank_index = blank_indexes[0]
-    return "\n".join(lines[:blank_index]), "\n".join(lines[blank_index + 1 :])
+
+    return "\n".join(blocks[0]), "\n".join(result_block)
 
 
 def parse_event_csv(csv_text: str) -> dict:
