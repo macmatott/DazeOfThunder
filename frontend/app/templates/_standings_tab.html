@@ -50,6 +50,13 @@
               <div class="tower__pos">{{ loop.index }}</div>
               <div>
                 <div class="tower__name">
+                  {% if active_tab == "fantasy" and row.driver_breakdown | selectattr("photo_url") | list %}
+                    <span class="standings-avatar-group">
+                      {% for driver in row.driver_breakdown[:2] %}
+                        {% if driver.photo_url %}<span class="driver-photo driver-photo--sm" style="background-image: url('{{ driver.photo_url }}')"></span>{% endif %}
+                      {% endfor %}
+                    </span>
+                  {% endif %}
                   {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo draft-pick-row__logo--standings">{% endif %}
                   {{ row.display_name }}{{ role_badge(row.role) }}
                 </div>

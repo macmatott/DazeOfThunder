@@ -381,15 +381,48 @@ def get_constructor_standings(season_id: str | None) -> list[dict]:
     return standings
 
 
+def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = "participant_id") -> None:
+    """Attaches this_round_points, gap_to_leader, and rank_change to
+    every row, in place — shared by all 4 tabs' dropdowns. "This round"
+    is reconstructed by subtracting the latest round's points back out
+    of each row's total (no separate history/snapshot table needed,
+    since driver_breakdown already has it broken out per round). A
+    driver-breakdown entry's dropped_rounds (Constructors' 3-person-team
+    capping) is excluded from the round's gain, so a dropped member's
+    score doesn't inflate the team's own "this round" figure."""
+    if not rows:
+        return
+    latest_round = max(rounds) if rounds else None
+    leader_points = rows[0]["points"]
+    before_totals = {}
+    for row in rows:
+        gained = 0
+        if latest_round is not None:
+            for driver in row["driver_breakdown"]:
+                if latest_round in driver.get("dropped_rounds", set()):
+                    continue
+                gained += driver["points_by_round"].get(latest_round, 0)
+        row["this_round_points"] = round(gained, 1)
+        before_totals[row[key_field]] = row["points"] - gained
+
+    before_rank = {
+        key: i + 1
+        for i, (key, _) in enumerate(sorted(before_totals.items(), key=lambda kv: kv[1], reverse=True))
+    }
+    for i, row in enumerate(rows):
+        row["gap_to_leader"] = round(leader_points - row["points"], 1)
+        row["rank_change"] = before_rank[row[key_field]] - (i + 1)
+
+
 def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
     if tab == "fantasy":
         rows = get_fantasy_only_standings(season_id)
         if season_id and rows:
-            # Per-member driver/round dropdown on the Fantasy tab only —
-            # attached here (not baked into get_fantasy_only_standings)
-            # since it's page-display detail, not part of the points
-            # total itself. Every row shares the same `breakdown_rounds`
-            # column list so they all line up.
+            # Per-member driver/round dropdown — attached here (not
+            # baked into get_fantasy_only_standings) since it's page-
+            # display detail, not part of the points total itself.
+            # Every row shares the same `breakdown_rounds` column list
+            # so they all line up.
             from app.services.fantasy_scoring import get_fantasy_breakdown_by_participant
 
             breakdown_by_participant, rounds, sprint_rounds = get_fantasy_breakdown_by_participant(
@@ -399,32 +432,7 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 row["driver_breakdown"] = breakdown_by_participant.get(row["participant_id"], [])
                 row["breakdown_rounds"] = rounds
                 row["sprint_rounds"] = sprint_rounds
-
-            # "This round's gain" + rank movement since before that round,
-            # reconstructed by subtracting the latest round's points back
-            # out of each row's total — no separate history/snapshot table
-            # needed since fantasy_points_awarded is already broken out
-            # per round via driver_breakdown.
-            latest_round = max(rounds) if rounds else None
-            leader_points = rows[0]["points"]
-            before_totals = {}
-            for row in rows:
-                gained = sum(
-                    driver["points_by_round"].get(latest_round, 0)
-                    for driver in row["driver_breakdown"]
-                ) if latest_round is not None else 0
-                row["this_round_points"] = round(gained, 1)
-                before_totals[row["participant_id"]] = row["points"] - gained
-
-            before_rank = {
-                pid: i + 1
-                for i, (pid, _) in enumerate(
-                    sorted(before_totals.items(), key=lambda kv: kv[1], reverse=True)
-                )
-            }
-            for i, row in enumerate(rows):
-                row["gap_to_leader"] = round(leader_points - row["points"], 1)
-                row["rank_change"] = before_rank[row["participant_id"]] - (i + 1)
+            _attach_round_metrics(rows, rounds)
         return rows
     if tab == "sim":
         rows = get_sim_only_standings(season_id)
@@ -443,6 +451,7 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 )
                 row["breakdown_rounds"] = rounds
                 row["sprint_rounds"] = set()
+            _attach_round_metrics(rows, rounds)
         return rows
     if tab == "constructors":
         rows = get_constructor_standings(season_id)
@@ -454,6 +463,7 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 row["driver_breakdown"] = breakdown_by_team.get(row["id"], [])
                 row["breakdown_rounds"] = rounds
                 row["sprint_rounds"] = set()
+            _attach_round_metrics(rows, rounds, key_field="id")
         return rows
     rows = get_formula_fantasy_standings(season_id)
     if season_id and rows:
@@ -464,4 +474,5 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
             row["driver_breakdown"] = breakdown_by_participant.get(row["participant_id"], [])
             row["breakdown_rounds"] = rounds
             row["sprint_rounds"] = sprint_rounds
+        _attach_round_metrics(rows, rounds)
     return rows

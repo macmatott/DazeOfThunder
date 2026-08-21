@@ -1612,6 +1612,22 @@ dialog.session-modal::backdrop {
   height: 60px;
 }
 
+/* A pair of headshots on a collapsed Fantasy standings row (only —
+   Overall's collapsed row stays headshot-free even though it shares
+   the same driver_breakdown data) — same size as the expanded
+   breakdown table's photos, overlapped like a stacked avatar group,
+   each with its own ring so they read as two distinct drivers rather
+   than one blob. */
+.standings-avatar-group {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: var(--space-2);
+}
+
+.standings-avatar-group .driver-photo--sm + .driver-photo--sm {
+  margin-left: -20px;
+}
+
 .draft-pick-btn {
   display: grid;
   grid-template-columns: 3.5rem 90px 1fr 6rem 6rem 6rem;
