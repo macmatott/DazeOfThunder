@@ -248,7 +248,7 @@ def test_compute_constructor_round_details_omits_members_with_no_result():
     ]
 
 
-def test_compute_constructor_round_details_marks_the_lowest_of_three_as_dropped():
+def test_compute_constructor_round_details_averages_the_non_top_scorers_of_three():
     pairs = [
         {
             "name": "Red Bull",
@@ -265,11 +265,17 @@ def test_compute_constructor_round_details_marks_the_lowest_of_three_as_dropped(
 
     details = compute_constructor_round_details(pairs, points_by_participant, position_by_participant)
 
+    # Top scorer (Mac, 11) counts in full; Caleb (4) and Dylan (1) are
+    # averaged (2.5) and rounded up (3): 11 + 3 = 14.
     assert details == [
         {
             "display_name": "Red Bull",
-            "driver_lines": ["Mac (P1) — 11 pts", "Caleb (P4) — 4 pts", "Dylan (P8) — 1 pts (dropped)"],
-            "total": 15.0,
+            "driver_lines": [
+                "Mac (P1) — 11 pts",
+                "Caleb (P4) — 4 pts (avg)",
+                "Dylan (P8) — 1 pts (avg)",
+            ],
+            "total": 14.0,
         }
     ]
 

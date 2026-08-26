@@ -14,6 +14,7 @@ normalized/percentage-based) is still an open question — this currently
 does direct addition as a placeholder.
 """
 
+import math
 from collections import defaultdict
 
 from app.db.supabase_client import admin_client
@@ -218,12 +219,14 @@ def get_constructor_breakdown_by_team(season_id: str | None) -> tuple[dict[str, 
     dropdown, the same interaction as Fantasy/Drivers' but with one
     "driver" row per team member.
 
-    A team's actual per-round score only counts its best 2 scorers that
-    round (see _pair_points above) — this league's one 3-person team has
-    its lowest-scoring member each round marked via that member's
-    dropped_rounds set, so the table can flag it (and each member's own
-    `total` only sums the rounds that counted, so the three members'
-    totals still add up to the team's real standings total)."""
+    A team's actual per-round score is constructor_round_points below:
+    its top scorer's points in full, plus the rounded average of every
+    other member's points that round. This league's one 3-person team
+    has its non-top members marked each round via that member's
+    averaged_rounds set, so the table can flag it — nobody's result is
+    fully discarded anymore, so each member's own `total` here is their
+    real, unblended season total (useful for reference), not something
+    that necessarily sums to the team's actual standings total."""
     if not season_id:
         return {}, []
     client = admin_client()
@@ -236,20 +239,23 @@ def get_constructor_breakdown_by_team(season_id: str | None) -> tuple[dict[str, 
     for pair in pairs:
         member_ids = [m["participant_id"] for m in pair["constructor_members"]]
 
-        dropped_by_member: dict[str, set[int]] = defaultdict(set)
-        for rnd in rounds:
-            ranked = sorted(
-                member_ids,
-                key=lambda pid: points_by_participant.get(pid, {}).get(rnd, 0.0),
-                reverse=True,
-            )
-            for pid in ranked[2:]:
-                dropped_by_member[pid].add(rnd)
+        # Only a 3+ person team ever has a non-top member folded into an
+        # average — a 2-person team's "everyone but the top scorer" is
+        # just the other member, unchanged, so marking it would be noise.
+        averaged_by_member: dict[str, set[int]] = defaultdict(set)
+        if len(member_ids) > 2:
+            for rnd in rounds:
+                ranked = sorted(
+                    member_ids,
+                    key=lambda pid: points_by_participant.get(pid, {}).get(rnd, 0.0),
+                    reverse=True,
+                )
+                for pid in ranked[1:]:
+                    averaged_by_member[pid].add(rnd)
 
         members_breakdown = []
         for member in pair["constructor_members"]:
             pid = member["participant_id"]
-            dropped_rounds = dropped_by_member.get(pid, set())
             points_by_round = {rnd: points_by_participant.get(pid, {}).get(rnd, 0) for rnd in rounds}
             positions_by_round = {
                 rnd: (
@@ -266,10 +272,8 @@ def get_constructor_breakdown_by_team(season_id: str | None) -> tuple[dict[str, 
                     "logo_url": None,
                     "points_by_round": points_by_round,
                     "positions_by_round": positions_by_round,
-                    "dropped_rounds": dropped_rounds,
-                    "total": round(
-                        sum(pts for rnd, pts in points_by_round.items() if rnd not in dropped_rounds), 1
-                    ),
+                    "averaged_rounds": averaged_by_member.get(pid, set()),
+                    "total": round(sum(points_by_round.values()), 1),
                 }
             )
         breakdown[pair["id"]] = members_breakdown
@@ -287,25 +291,45 @@ def _get_sim_points_by_round(client) -> dict[str, dict[str, float]]:
     return by_round
 
 
+def round_half_up(value: float) -> int:
+    """Standard round-to-nearest, ties rounding up (unlike Python's
+    built-in round(), which rounds ties to even) — e.g. 13.5 -> 14, not
+    12.5's usual "round to even" surprise. Only ever applied to
+    non-negative point totals here."""
+    return math.floor(value + 0.5)
+
+
+def constructor_round_points(scores: list[float]) -> float:
+    """A team's score for one round: its top scorer's points in full,
+    plus the average of every other member's points that round, rounded
+    to the nearest whole point (see round_half_up). For a 2-person team
+    this is just a plain sum — averaging one remaining score with itself
+    is that score. For this league's one 3-person team, it means no
+    member's result is ever fully discarded the way an earlier "best 2
+    of 3" rule allowed; a weak night from either non-top scorer still
+    pulls the round down somewhat, just softened by averaging rather
+    than dropped outright."""
+    if not scores:
+        return 0.0
+    ranked = sorted(scores, reverse=True)
+    top, rest = ranked[0], ranked[1:]
+    if not rest:
+        return top
+    return top + round_half_up(sum(rest) / len(rest))
+
+
 def _pair_points(pair: dict, points_by_round: dict[str, dict[str, float]]) -> float:
-    """Sum, across every scored round, of the team's best 2 contributors
+    """Sum, across every scored round, of the team's constructor_round_points
     that round — Constructors' scoring is explicitly Sim-Racing-only per
     ff_how_it_works.html's published copy ("Your team's combined Sim
     Racing results carry the Constructors' Championship"), not the
-    Overall sim+fantasy blend.
-
-    This league has one team of 3 (odd number of members); capping every
-    team at its best 2 scorers per round — rather than summing all of a
-    3-person team's results — keeps a 3-person team from getting an
-    extra scoring opportunity every race that 2-person teams don't get.
-    Which member gets dropped can change round to round, since it's
-    whoever scored lowest that specific race, not fixed for the season."""
+    Overall sim+fantasy blend."""
     member_ids = [m["participant_id"] for m in pair["constructor_members"]]
     total = 0.0
     for round_points in points_by_round.values():
-        scores = sorted((round_points.get(pid, 0.0) for pid in member_ids), reverse=True)
-        total += sum(scores[:2])
-    return round(total, 1)
+        scores = [round_points.get(pid, 0.0) for pid in member_ids]
+        total += constructor_round_points(scores)
+    return total
 
 
 def get_overall_breakdown_by_participant(
@@ -386,10 +410,13 @@ def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = 
     every row, in place — shared by all 4 tabs' dropdowns. "This round"
     is reconstructed by subtracting the latest round's points back out
     of each row's total (no separate history/snapshot table needed,
-    since driver_breakdown already has it broken out per round). A
-    driver-breakdown entry's dropped_rounds (Constructors' 3-person-team
-    capping) is excluded from the round's gain, so a dropped member's
-    score doesn't inflate the team's own "this round" figure."""
+    since driver_breakdown already has it broken out per round).
+
+    For Constructors' rows (key_field="id"), a round's gain has to be
+    recomputed via constructor_round_points on that round's raw member
+    scores — a team's round score isn't a simple sum/exclusion of its
+    driver_breakdown entries the way it is for the other 3 tabs (each of
+    which is just individual people/drivers with no such blending)."""
     if not rows:
         return
     latest_round = max(rounds) if rounds else None
@@ -398,10 +425,15 @@ def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = 
     for row in rows:
         gained = 0
         if latest_round is not None:
-            for driver in row["driver_breakdown"]:
-                if latest_round in driver.get("dropped_rounds", set()):
-                    continue
-                gained += driver["points_by_round"].get(latest_round, 0)
+            if key_field == "id":
+                raw_scores = [
+                    driver["points_by_round"].get(latest_round, 0) for driver in row["driver_breakdown"]
+                ]
+                gained = constructor_round_points(raw_scores)
+            else:
+                gained = sum(
+                    driver["points_by_round"].get(latest_round, 0) for driver in row["driver_breakdown"]
+                )
         row["this_round_points"] = round(gained, 1)
         before_totals[row[key_field]] = row["points"] - gained
 

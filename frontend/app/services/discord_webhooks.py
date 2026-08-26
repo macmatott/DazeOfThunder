@@ -30,6 +30,7 @@ import httpx
 
 from app.config import settings
 from app.db.supabase_client import admin_client
+from app.services.standings import constructor_round_points
 
 MEDALS = ["🥇", "🥈", "🥉"]
 GITHUB_REPO_URL = "https://github.com/macmatott/DazeOfThunder"
@@ -230,12 +231,13 @@ def compute_constructor_round_details(
     result that event (e.g. joined the team after this round already
     ran) is omitted rather than shown at 0.
 
-    Matches get_constructor_standings' best-2-per-round scoring (see
-    standings.py::_pair_points): a team's reported total only counts its
-    best 2 scorers that round, so this league's one 3-person team's
-    lowest scorer that round is listed but marked "(dropped)" rather
-    than folded into the total — otherwise the round total shown here
-    would drift from the cumulative standings total."""
+    Matches get_constructor_standings' scoring (see
+    standings.py::constructor_round_points): a team's reported total is
+    its top scorer's points in full plus the rounded average of every
+    other member's points that round — so this league's one 3-person
+    team's non-top members are listed but marked "(avg)" rather than
+    one being dropped outright, since nobody's result is fully
+    discarded anymore."""
     details = []
     for pair in pairs:
         scoring_members = []
@@ -254,20 +256,24 @@ def compute_constructor_round_details(
             continue
 
         scoring_members.sort(key=lambda m: m["points"], reverse=True)
-        counted, dropped = scoring_members[:2], scoring_members[2:]
+        total = constructor_round_points([m["points"] for m in scoring_members])
 
-        def _line(m: dict, *, dropped: bool = False) -> str:
+        def _line(m: dict, *, averaged: bool = False) -> str:
             pos_label = f"P{m['position']}" if m["position"] is not None else "?"
-            suffix = " (dropped)" if dropped else ""
+            suffix = " (avg)" if averaged else ""
             return f"{m['name']} ({pos_label}) — {m['points']:.0f} pts{suffix}"
 
-        member_lines = [_line(m) for m in counted] + [_line(m, dropped=True) for m in dropped]
+        if len(scoring_members) > 2:
+            top, rest = scoring_members[0], scoring_members[1:]
+            member_lines = [_line(top)] + [_line(m, averaged=True) for m in rest]
+        else:
+            member_lines = [_line(m) for m in scoring_members]
 
         details.append(
             {
                 "display_name": pair["name"] or pair["member_names"],
                 "driver_lines": member_lines,
-                "total": round(sum(m["points"] for m in counted), 1),
+                "total": round(total, 1),
             }
         )
     details.sort(key=lambda d: d["total"], reverse=True)

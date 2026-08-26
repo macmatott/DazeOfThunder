@@ -1053,11 +1053,13 @@ main.main--wide {
   background: rgba(232, 220, 59, 0.08);
 }
 
-/* Constructors' tab only: a 3-person team's lowest scorer that round —
-   didn't count toward the team's total (only the best 2 do). */
-.driver-breakdown-table__dropped {
-  opacity: 0.45;
-  text-decoration: line-through;
+/* Constructors' tab only: a 3-person team's non-top scorer that round
+   — their point still counts, just blended into an average with the
+   other non-top member rather than kept in full, so this is dimmed
+   (not struck through — unlike a fully dropped score, it's not
+   discarded). */
+.driver-breakdown-table__averaged {
+  opacity: 0.65;
 }
 
 .driver-breakdown-table__legend {

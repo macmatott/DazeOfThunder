@@ -105,12 +105,12 @@
                       </td>
                       {% for r in row.breakdown_rounds %}
                         {% set is_sprint = (r in row.sprint_rounds) and not (driver.is_sim_entry | default(false)) %}
-                        {% set is_dropped = r in (driver.dropped_rounds | default([])) %}
+                        {% set is_averaged = r in (driver.averaged_rounds | default([])) %}
                         {% set cell_classes = [] %}
                         {% if is_sprint %}{% set _ = cell_classes.append("driver-breakdown-table__sprint-col") %}{% endif %}
-                        {% if is_dropped %}{% set _ = cell_classes.append("driver-breakdown-table__dropped") %}{% endif %}
-                        <td{% if cell_classes %} class="{{ cell_classes | join(' ') }}"{% endif %}{% if is_dropped %} title="Didn't count toward the team's total this round — only the best 2 of 3 scorers count"{% endif %}>
-                          {{ driver.points_by_round[r] | int }}{% if is_dropped %}<span aria-hidden="true"> †</span>{% endif %}
+                        {% if is_averaged %}{% set _ = cell_classes.append("driver-breakdown-table__averaged") %}{% endif %}
+                        <td{% if cell_classes %} class="{{ cell_classes | join(' ') }}"{% endif %}{% if is_averaged %} title="Counted as part of a 2-driver average toward the team's total this round, not on its own"{% endif %}>
+                          {{ driver.points_by_round[r] | int }}{% if is_averaged %}<span aria-hidden="true"> †</span>{% endif %}
                           {% if driver.positions_by_round[r] %}
                             <span class="driver-breakdown-table__position">{% for p in driver.positions_by_round[r] %}P{{ p }}{% if not loop.last %}/{% endif %}{% endfor %}</span>
                           {% endif %}
@@ -124,8 +124,8 @@
               {% if row.sprint_rounds %}
                 <p class="driver-breakdown-table__legend">🏁 Sprint weekend — race + sprint scored together</p>
               {% endif %}
-              {% if row.driver_breakdown | selectattr("dropped_rounds") | list %}
-                <p class="driver-breakdown-table__legend">† Didn't count toward the team's total that round — only the best 2 of 3 scorers count each round</p>
+              {% if row.driver_breakdown | selectattr("averaged_rounds") | list %}
+                <p class="driver-breakdown-table__legend">† This team's top scorer that round counts in full; the other two members' points are averaged together rather than one being dropped</p>
               {% endif %}
             </div>
           </details>
