@@ -211,13 +211,13 @@ CONSTRUCTOR_EASTER_EGG_CELEBRATIONS: dict[str, int] = {
     "Ferrari": 11,  # 10.16s, VBR
     "McLaren": 6,  # 5.67s, VBR
     "Mercedes": 4,  # 3.53s, VBR
-    "Red Bull": 4,  # 3.45s
+    "Red Bull Racing": 4,  # 3.45s
     "Alpine F1 Team": 4,  # 3.27s, VBR — shared generic clip
     "Aston Martin": 4,  # shared generic clip
     "Audi": 4,  # shared generic clip
     "Cadillac F1 Team": 4,  # shared generic clip
     "Haas F1 Team": 4,  # shared generic clip
-    "RB F1 Team": 4,  # shared generic clip
+    "Racing Bulls": 4,  # shared generic clip
     "Williams": 4,  # shared generic clip
 }
 

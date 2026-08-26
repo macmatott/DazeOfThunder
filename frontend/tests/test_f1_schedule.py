@@ -14,6 +14,7 @@ from app.services.f1_schedule import (
     SIM_TEMPERATURE_F,
     _group_results_by_round,
     _merge_schedule_with_results,
+    _parse_lap_time_seconds,
     _thursday_before,
     get_upcoming_races,
 )
@@ -260,3 +261,17 @@ def test_merge_attaches_sim_session_detail_only_for_rounds_with_a_real_import():
     by_round = {r["round_number"]: r for r in races}
     assert by_round[1]["sim_session_detail"] == {"track": "Phillip Island Circuit", "results": []}
     assert by_round[2]["sim_session_detail"] is None
+
+
+def test_parse_lap_time_seconds_handles_minutes_and_seconds():
+    assert _parse_lap_time_seconds("1:35.381") == 95.381
+
+
+def test_parse_lap_time_seconds_handles_bare_seconds():
+    assert _parse_lap_time_seconds("35.381") == 35.381
+
+
+def test_parse_lap_time_seconds_is_none_for_missing_or_unparseable():
+    assert _parse_lap_time_seconds(None) is None
+    assert _parse_lap_time_seconds("") is None
+    assert _parse_lap_time_seconds("DNF") is None

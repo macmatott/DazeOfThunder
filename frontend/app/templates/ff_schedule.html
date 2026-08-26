@@ -50,30 +50,41 @@
         <thead>
           <tr>
             <th>Pos</th>
+            <th>No.</th>
             <th>Driver</th>
-            <th>Car</th>
-            <th>Status</th>
+            <th>Team</th>
             <th>Interval</th>
             <th>Laps</th>
             <th>Inc</th>
             <th>Fastest Lap</th>
+            <th>Pts</th>
           </tr>
         </thead>
         <tbody>
           {% for r in race.sim_session_detail.results %}
             <tr>
               <td class="session-results-table__num">{{ r.position }}</td>
+              <td class="session-results-table__num">{{ r.car_number or "—" }}</td>
               <td>{{ r.driver_name }}{% if r.is_ai %} <span class="tower__meta">(AI)</span>{% endif %}</td>
-              <td>{{ r.car }}{% if r.car_number %} #{{ r.car_number }}{% endif %}</td>
-              <td>{{ r.status }}</td>
+              <td>
+                {% if r.team_name %}
+                  <span class="session-results-table__team">
+                    {% if r.team_logo_url %}<img src="{{ r.team_logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+                    {{ r.team_name }}
+                  </span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
               <td class="session-results-table__num">{{ r.interval or "—" }}</td>
               <td class="session-results-table__num">
                 {{ r.laps_completed }}{% if r.laps_led %}<span class="tower__meta"> ({{ r.laps_led }} led)</span>{% endif %}
               </td>
               <td class="session-results-table__num">{{ r.incidents }}</td>
-              <td class="session-results-table__num">
+              <td class="session-results-table__num{% if r.is_fastest_lap %} session-results-table__fastest-lap{% endif %}">
                 {{ r.fastest_lap_time or "—" }}{% if r.fastest_lap_number %}<span class="tower__meta"> (L{{ r.fastest_lap_number }})</span>{% endif %}
               </td>
+              <td class="session-results-table__num">{{ r.awarded_points | int if r.awarded_points is not none else "—" }}</td>
             </tr>
           {% endfor %}
         </tbody>

@@ -4,7 +4,7 @@ Supabase — payloads below are real Jolpica-F1 responses (2025 Australian GP)
 captured verbatim.
 """
 
-from app.services.f1_ingest import map_result_to_row
+from app.services.f1_ingest import map_result_to_row, normalize_constructor_name
 
 WINNER_RESULT = {
     "number": "4",
@@ -89,3 +89,15 @@ def test_maps_dnf_with_numeric_classification_position():
     assert row["status"] == "Retired"
     assert row["points"] == 0.0
     assert row["fastest_lap"] is False
+
+
+def test_normalize_constructor_name_corrects_stale_jolpica_names():
+    # Jolpica/Ergast still returns these two teams' older/shorter names
+    # (confirmed live) — normalized to current official branding so
+    # f1_drivers.team_name matches the CONSTRUCTOR_LOGOS/celebration keys.
+    assert normalize_constructor_name("Red Bull") == "Red Bull Racing"
+    assert normalize_constructor_name("RB F1 Team") == "Racing Bulls"
+
+
+def test_normalize_constructor_name_leaves_other_teams_unchanged():
+    assert normalize_constructor_name("McLaren") == "McLaren"

@@ -87,8 +87,8 @@ CONSTRUCTOR_LOGOS = {
     "Haas F1 Team": "haas.png",
     "McLaren": "mclaren.png",
     "Mercedes": "mercedes.png",
-    "RB F1 Team": "rb.png",
-    "Red Bull": "red-bull.png",
+    "Racing Bulls": "rb.png",
+    "Red Bull Racing": "red-bull.png",
     "Williams": "williams.png",
 }
 

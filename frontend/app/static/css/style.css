@@ -22,6 +22,7 @@
   --color-rule: #2e3242;
   --color-positive: #5fb87a;
   --color-negative: #d9634a;
+  --color-fastest-lap: #a855f7;
 
   --color-gold: #e8dc3b;
   --color-silver: #c1c7d6;
@@ -1494,6 +1495,19 @@ main.main--wide {
 .session-results-table__num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.session-results-table__team {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Race's single fastest lap — same "purple" convention as real F1
+   timing towers. */
+.session-results-table__fastest-lap {
+  color: var(--color-fastest-lap);
+  font-weight: 600;
 }
 
 /* ── Forms (Profile Settings) ────────────────────────────── */

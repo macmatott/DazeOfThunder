@@ -99,13 +99,13 @@ document.addEventListener("DOMContentLoaded", function () {
     "Ferrari": "draft-ferrari-sound",
     "McLaren": "draft-mclaren-sound",
     "Mercedes": "draft-mercedes-sound",
-    "Red Bull": "draft-red-bull-sound",
+    "Red Bull Racing": "draft-red-bull-sound",
     "Alpine F1 Team": "draft-constructor-generic-sound",
     "Aston Martin": "draft-constructor-generic-sound",
     "Audi": "draft-constructor-generic-sound",
     "Cadillac F1 Team": "draft-constructor-generic-sound",
     "Haas F1 Team": "draft-constructor-generic-sound",
-    "RB F1 Team": "draft-constructor-generic-sound",
+    "Racing Bulls": "draft-constructor-generic-sound",
     "Williams": "draft-constructor-generic-sound",
   };
 

@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from app.db.supabase_client import admin_client, public_client
+from app.services.constructor_draft import get_pairs
 from app.services.driver_photos import slugify_name
 from app.services.f1_ingest import JolpicaClient
 
@@ -245,6 +246,19 @@ def _group_results_by_round(rows: list[dict]) -> dict[int, list[dict]]:
     return grouped
 
 
+def _parse_lap_time_seconds(text: str | None) -> float | None:
+    """"1:35.381" or "35.381" -> seconds, for comparing lap times.
+    None (missing/unparseable) for anything else."""
+    if not text:
+        return None
+    minutes, sep, rest = text.rpartition(":")
+    try:
+        seconds = float(rest)
+        return seconds + int(minutes) * 60 if sep else seconds
+    except ValueError:
+        return None
+
+
 def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
     """Real per-round iRacing session detail (event metadata + full
     per-driver results), keyed by ff_round_number — derived entirely
@@ -252,9 +266,13 @@ def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
     from this dict has no real import yet, which the schedule page uses
     to decide whether to show that round's "i" info button at all,
     rather than showing made-up data for a round nothing's actually
-    been uploaded for. Two queries total regardless of season length —
-    every non-superseded race_event this season, then every result row
-    for all of them at once."""
+    been uploaded for. A handful of queries total regardless of season
+    length — every non-superseded race_event this season, then every
+    result row and every awarded-points row for all of them at once.
+    Each result's awarded_points is the site's own Sim Racing scoring
+    for that round (sim_points_awarded), not iRacing's native
+    iracing_points/iracing_club_points, which are kept separately for
+    reference."""
     client = admin_client()
     events = (
         client.table("race_events")
@@ -275,7 +293,7 @@ def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
             "car_name, car_class, car_number, status, interval, laps_led, "
             "laps_completed, incidents, qualify_time, average_lap_time, "
             "fastest_lap_time, fastest_lap_number, iracing_points, "
-            "iracing_club_points, old_irating, new_irating, is_ai, "
+            "iracing_club_points, old_irating, new_irating, is_ai, participant_id, "
             "participants(display_name)"
         )
         .in_("race_event_id", event_ids)
@@ -287,11 +305,74 @@ def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
     for row in results:
         results_by_event[row["race_event_id"]].append(row)
 
+    awarded_points_rows = (
+        client.table("sim_points_awarded")
+        .select("race_event_id, participant_id, points")
+        .in_("race_event_id", event_ids)
+        .execute()
+        .data
+    )
+    points_by_event_participant: dict[tuple[str, str], float] = {
+        (row["race_event_id"], row["participant_id"]): row["points"] for row in awarded_points_rows
+    }
+
+    team_by_participant_id: dict[str, dict] = {}
+    for pair in get_pairs(season_id):
+        for member in pair["constructor_members"]:
+            team_by_participant_id[member["participant_id"]] = {
+                "team_name": pair["name"],
+                "team_logo_url": pair["logo_url"],
+            }
+
     detail_by_round: dict[int, dict] = {}
     for event in events:
         round_number = event["ff_round_number"]
         if round_number is None:
             continue
+
+        results = [
+            {
+                "position": row["finish_position"],
+                "start_position": row["start_position"],
+                "driver_name": (
+                    row["participants"]["display_name"]
+                    if row["participants"]
+                    else row["iracing_display_name"]
+                ),
+                "car": row["car_name"],
+                "car_class": row["car_class"],
+                "car_number": row["car_number"],
+                "status": row["status"],
+                "interval": row["interval"],
+                "laps_led": row["laps_led"],
+                "laps_completed": row["laps_completed"],
+                "incidents": row["incidents"],
+                "qualify_time": row["qualify_time"],
+                "average_lap_time": row["average_lap_time"],
+                "fastest_lap_time": row["fastest_lap_time"],
+                "fastest_lap_number": row["fastest_lap_number"],
+                "iracing_points": row["iracing_points"],
+                "iracing_club_points": row["iracing_club_points"],
+                "old_irating": row["old_irating"],
+                "new_irating": row["new_irating"],
+                "is_ai": row["is_ai"],
+                "team_name": team_by_participant_id.get(row["participant_id"], {}).get("team_name"),
+                "team_logo_url": team_by_participant_id.get(row["participant_id"], {}).get("team_logo_url"),
+                "awarded_points": points_by_event_participant.get((row["race_event_id"], row["participant_id"])),
+                "is_fastest_lap": False,
+            }
+            for row in results_by_event.get(event["id"], [])
+        ]
+
+        lap_seconds = [
+            (i, _parse_lap_time_seconds(r["fastest_lap_time"]))
+            for i, r in enumerate(results)
+        ]
+        timed = [(i, s) for i, s in lap_seconds if s is not None]
+        if timed:
+            fastest_index, _ = min(timed, key=lambda pair: pair[1])
+            results[fastest_index]["is_fastest_lap"] = True
+
         detail_by_round[round_number] = {
             "track": event["track"],
             "series": event["series"],
@@ -301,35 +382,7 @@ def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
             "race_week": event["race_week"],
             "strength_of_field": event["strength_of_field"],
             "special_event_type": event["special_event_type"],
-            "results": [
-                {
-                    "position": row["finish_position"],
-                    "start_position": row["start_position"],
-                    "driver_name": (
-                        row["participants"]["display_name"]
-                        if row["participants"]
-                        else row["iracing_display_name"]
-                    ),
-                    "car": row["car_name"],
-                    "car_class": row["car_class"],
-                    "car_number": row["car_number"],
-                    "status": row["status"],
-                    "interval": row["interval"],
-                    "laps_led": row["laps_led"],
-                    "laps_completed": row["laps_completed"],
-                    "incidents": row["incidents"],
-                    "qualify_time": row["qualify_time"],
-                    "average_lap_time": row["average_lap_time"],
-                    "fastest_lap_time": row["fastest_lap_time"],
-                    "fastest_lap_number": row["fastest_lap_number"],
-                    "iracing_points": row["iracing_points"],
-                    "iracing_club_points": row["iracing_club_points"],
-                    "old_irating": row["old_irating"],
-                    "new_irating": row["new_irating"],
-                    "is_ai": row["is_ai"],
-                }
-                for row in results_by_event.get(event["id"], [])
-            ],
+            "results": results,
         }
     return detail_by_round
 

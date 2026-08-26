@@ -23,6 +23,22 @@ from supabase import Client
 from app.config import settings
 from app.db.supabase_client import admin_client
 
+# Jolpica/Ergast still labels these two constructors under older/shorter
+# names than their current official branding (confirmed live: the API's
+# `Constructor.name` for constructorId "red_bull"/"rb" is still "Red Bull"/
+# "RB F1 Team") — normalized here at driver-creation time so
+# f1_drivers.team_name, and everything keyed off it (constructor logos,
+# easter-egg celebration sounds), uses the corrected name instead of
+# propagating the API's stale one.
+CONSTRUCTOR_NAME_ALIASES = {
+    "Red Bull": "Red Bull Racing",
+    "RB F1 Team": "Racing Bulls",
+}
+
+
+def normalize_constructor_name(name: str) -> str:
+    return CONSTRUCTOR_NAME_ALIASES.get(name, name)
+
 
 class JolpicaClient:
     def __init__(self, base_url: str | None = None, request_delay: float = 1.0):
@@ -174,7 +190,7 @@ def _import_results(
             season_id,
             given_name=driver["givenName"],
             family_name=driver["familyName"],
-            team_name=result["Constructor"]["name"],
+            team_name=normalize_constructor_name(result["Constructor"]["name"]),
             cache=driver_cache,
             dry_run=dry_run,
         )
