@@ -9,10 +9,11 @@ public-facing data.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from app.db.supabase_client import public_client
+from app.db.supabase_client import admin_client, public_client
 from app.services.driver_photos import slugify_name
 from app.services.f1_ingest import JolpicaClient
 
@@ -244,100 +245,93 @@ def _group_results_by_round(rows: list[dict]) -> dict[int, list[dict]]:
     return grouped
 
 
-def _session_detail(
-    *,
-    round_number: int,
-    race_name: str,
-    iracing_track: str | None,
-    location: str,
-    sim_date: str,
-    sim_temperature_f: int,
-    sim_conditions: str,
-    is_past: bool,
-    results: list[dict] | None,
-) -> dict:
-    """
-    Fields for the session detail popout. This project has no iRacing API
-    connection, so most of this is static placeholder data (same value on
-    every race, never implying it's live) — only track/venue/round/date/
-    weather/results-derived fields are real. "—" marks fields we don't
-    track at all (session/subsession/DB IDs, timestamps, etc.).
-    """
-    track_name, track_config = _split_track_name(iracing_track)
+def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
+    """Real per-round iRacing session detail (event metadata + full
+    per-driver results), keyed by ff_round_number — derived entirely
+    from an actual CSV import, never placeholder data. A round missing
+    from this dict has no real import yet, which the schedule page uses
+    to decide whether to show that round's "i" info button at all,
+    rather than showing made-up data for a round nothing's actually
+    been uploaded for. Two queries total regardless of season length —
+    every non-superseded race_event this season, then every result row
+    for all of them at once."""
+    client = admin_client()
+    events = (
+        client.table("race_events")
+        .select("*")
+        .eq("season_id", season_id)
+        .eq("is_superseded", False)
+        .execute()
+        .data
+    )
+    if not events:
+        return {}
 
-    f1_laps = F1_LAPS_BY_ROUND.get(round_number)
-    sim_laps = sim_race_laps(round_number)
-    if sim_laps:
-        race_length = f"{sim_laps} laps"
-        race_laps_detail = f"{sim_laps} laps (50% of {f1_laps})"
-    else:
-        race_length = "50% GP"
-        race_laps_detail = "—"
+    event_ids = [e["id"] for e in events]
+    results = (
+        client.table("race_results")
+        .select(
+            "race_event_id, finish_position, start_position, iracing_display_name, "
+            "car_name, car_class, car_number, status, interval, laps_led, "
+            "laps_completed, incidents, qualify_time, average_lap_time, "
+            "fastest_lap_time, fastest_lap_number, iracing_points, "
+            "iracing_club_points, old_irating, new_irating, is_ai, "
+            "participants(display_name)"
+        )
+        .in_("race_event_id", event_ids)
+        .order("finish_position")
+        .execute()
+        .data
+    )
+    results_by_event: dict[str, list[dict]] = defaultdict(list)
+    for row in results:
+        results_by_event[row["race_event_id"]].append(row)
 
-    return {
-        "track": {
-            "name": track_name,
-            "config": track_config,
-            "track_id": "—",
-            "venue": location,
-        },
-        "session_meta": {
-            "session_id": "—",
-            "subsession_id": "—",
-            "status": "Completed" if is_past else "Scheduled",
-            "launch_at": f"{sim_date}, 9:00 PM EST",
-            "has_results": "Yes" if results else "No",
-            "password_protected": "No",
-            "driver_changes": "No",
-            "lone_qualify": "No",
-        },
-        "session_lengths": {
-            "practice": "8:30 PM",
-            "qualifying": "10 minutes",
-            "race": race_length,
-            "qualify_laps": "N/A",
-            "race_laps": race_laps_detail,
-            "total_time_limit": "—",
-        },
-        "entries": {
-            "entered": 0,
-            "team_entries": 0,
-            "max_drivers": 24,
-            "race_number": round_number,
-        },
-        "weather": {
-            "temperature_f": sim_temperature_f,
-            "skies": "Clear",
-            "humidity": "45%",
-            "wind": "N @ 2 km/h",
-            "precip_option": sim_conditions,
-            "fog": "0%",
-            "allow_fog": "No",
-            "var_initial": "0",
-            "var_ongoing": "0",
-        },
-        "track_state": {
-            "leave_marbles": "Yes",
-            "practice_rubber": "Carry-over",
-            "qualify_rubber": "Carry-over",
-            "race_rubber": "Carry-over",
-        },
-        "database": {
-            "db_id": "—",
-            "race_name": race_name,
-            "description": "—",
-            "series_type": "—",
-            "race_number": round_number,
-            "race_date_db": sim_date,
-            "signup_deadline": "—",
-            "auto_signup": "No",
-            "signup_msg_id": "—",
-            "selected_track_id": "—",
-            "selected_car_ids": "—",
-            "created_at": "—",
-            "updated_at": "—",
-        },
-    }
+    detail_by_round: dict[int, dict] = {}
+    for event in events:
+        round_number = event["ff_round_number"]
+        if round_number is None:
+            continue
+        detail_by_round[round_number] = {
+            "track": event["track"],
+            "series": event["series"],
+            "start_time": event["start_time"],
+            "iracing_season_year": event["iracing_season_year"],
+            "iracing_season_quarter": event["iracing_season_quarter"],
+            "race_week": event["race_week"],
+            "strength_of_field": event["strength_of_field"],
+            "special_event_type": event["special_event_type"],
+            "results": [
+                {
+                    "position": row["finish_position"],
+                    "start_position": row["start_position"],
+                    "driver_name": (
+                        row["participants"]["display_name"]
+                        if row["participants"]
+                        else row["iracing_display_name"]
+                    ),
+                    "car": row["car_name"],
+                    "car_class": row["car_class"],
+                    "car_number": row["car_number"],
+                    "status": row["status"],
+                    "interval": row["interval"],
+                    "laps_led": row["laps_led"],
+                    "laps_completed": row["laps_completed"],
+                    "incidents": row["incidents"],
+                    "qualify_time": row["qualify_time"],
+                    "average_lap_time": row["average_lap_time"],
+                    "fastest_lap_time": row["fastest_lap_time"],
+                    "fastest_lap_number": row["fastest_lap_number"],
+                    "iracing_points": row["iracing_points"],
+                    "iracing_club_points": row["iracing_club_points"],
+                    "old_irating": row["old_irating"],
+                    "new_irating": row["new_irating"],
+                    "is_ai": row["is_ai"],
+                }
+                for row in results_by_event.get(event["id"], [])
+            ],
+        }
+    return detail_by_round
 
 
 def _merge_schedule_with_results(
@@ -345,7 +339,9 @@ def _merge_schedule_with_results(
     results_by_round: dict[int, list[dict]],
     now: datetime,
     paid_track_names: set[str] = frozenset(),
+    sim_session_details: dict[int, dict] | None = None,
 ) -> list[dict]:
+    sim_session_details = sim_session_details or {}
     races = []
     next_assigned = False
     for race in schedule:
@@ -372,17 +368,11 @@ def _merge_schedule_with_results(
         )
         formatted["sim_laps"] = sim_race_laps(formatted["round_number"])
 
-        formatted["session_detail"] = _session_detail(
-            round_number=formatted["round_number"],
-            race_name=formatted["race_name"],
-            iracing_track=formatted["iracing_track"],
-            location=formatted["location"],
-            sim_date=formatted["sim_date"],
-            sim_temperature_f=formatted["sim_temperature_f"],
-            sim_conditions=formatted["sim_conditions"],
-            is_past=is_past,
-            results=formatted["results"],
-        )
+        # Real per-round iRacing session detail (event + full results),
+        # not placeholder data — a round has no entry here (and the
+        # schedule page shows no "i" info button at all) until an actual
+        # CSV import exists for it.
+        formatted["sim_session_detail"] = sim_session_details.get(formatted["round_number"])
 
         races.append(formatted)
 
@@ -396,10 +386,11 @@ def get_season_timeline(season: int, *, now: datetime | None = None) -> list[dic
 
     client = public_client()
     season_row = client.table("seasons").select("id").eq("name", str(season)).execute()
+    season_id = season_row.data[0]["id"] if season_row.data else None
 
     results_by_round: dict[int, list[dict]] = {}
-    if season_row.data:
-        season_id = season_row.data[0]["id"]
+    sim_session_details: dict[int, dict] = {}
+    if season_id:
         rows = (
             client.table("f1_race_results")
             .select("round_number, finish_position, points, status, f1_drivers(full_name, team_name)")
@@ -410,6 +401,9 @@ def get_season_timeline(season: int, *, now: datetime | None = None) -> list[dic
             .execute()
         ).data
         results_by_round = _group_results_by_round(rows)
+        sim_session_details = get_sim_session_details_by_round(season_id)
 
     paid_track_names = _get_paid_track_names()
-    return _merge_schedule_with_results(schedule, results_by_round, now, paid_track_names)
+    return _merge_schedule_with_results(
+        schedule, results_by_round, now, paid_track_names, sim_session_details
+    )

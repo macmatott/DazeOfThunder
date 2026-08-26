@@ -7,7 +7,6 @@ from datetime import date, datetime, timezone
 from unittest.mock import patch
 
 from app.services.f1_schedule import (
-    F1_LAPS_BY_ROUND,
     IRACING_TRACK_BY_ROUND,
     SIM_CONDITIONS,
     SIM_CONDITIONS_BY_ROUND,
@@ -15,7 +14,6 @@ from app.services.f1_schedule import (
     SIM_TEMPERATURE_F,
     _group_results_by_round,
     _merge_schedule_with_results,
-    _session_detail,
     _thursday_before,
     get_upcoming_races,
 )
@@ -246,145 +244,19 @@ def test_merge_falls_back_to_default_weather_for_unlisted_round():
     assert races[0]["sim_conditions"] == SIM_CONDITIONS
 
 
-def test_session_detail_splits_track_name_and_config():
-    detail = _session_detail(
-        round_number=7,
-        race_name="Barcelona Grand Prix",
-        iracing_track="Circuit de Barcelona-Catalunya — Grand Prix",
-        location="Barcelona, Spain",
-        sim_date="Jun 11, 2026",
-        sim_temperature_f=75,
-        sim_conditions="No rain",
-        is_past=True,
-        results=[{"driver_name": "George Russell"}],
-    )
-
-    assert detail["track"]["name"] == "Circuit de Barcelona-Catalunya"
-    assert detail["track"]["config"] == "Grand Prix"
-    assert detail["track"]["venue"] == "Barcelona, Spain"
-
-
-def test_session_detail_handles_track_with_no_config():
-    detail = _session_detail(
-        round_number=11,
-        race_name="Hungarian Grand Prix",
-        iracing_track="Hungaroring",
-        location="Budapest, Hungary",
-        sim_date="Jul 23, 2026",
-        sim_temperature_f=71,
-        sim_conditions="No rain",
-        is_past=False,
-        results=None,
-    )
-
-    assert detail["track"]["name"] == "Hungaroring"
-    assert detail["track"]["config"] == "—"
-
-
-def test_session_detail_status_and_has_results_reflect_past_vs_future():
-    past = _session_detail(
-        round_number=1,
-        race_name="Australian Grand Prix",
-        iracing_track="Phillip Island Circuit",
-        location="Melbourne, Australia",
-        sim_date="Mar 5, 2026",
-        sim_temperature_f=72,
-        sim_conditions="No rain",
-        is_past=True,
-        results=[{"driver_name": "George Russell"}],
-    )
-    future = _session_detail(
-        round_number=12,
-        race_name="Dutch Grand Prix",
-        iracing_track="Circuit Park Zandvoort",
-        location="Zandvoort, Netherlands",
-        sim_date="Aug 20, 2026",
-        sim_temperature_f=80,
-        sim_conditions="No rain",
-        is_past=False,
-        results=None,
-    )
-    past_no_results_yet = _session_detail(
-        round_number=2,
-        race_name="Chinese Grand Prix",
-        iracing_track="Okayama International Circuit — Full Course",
-        location="Shanghai, China",
-        sim_date="Mar 19, 2026",
-        sim_temperature_f=66,
-        sim_conditions="No rain",
-        is_past=True,
-        results=[],
-    )
-
-    assert past["session_meta"]["status"] == "Completed"
-    assert past["session_meta"]["has_results"] == "Yes"
-
-    assert future["session_meta"]["status"] == "Scheduled"
-    assert future["session_meta"]["has_results"] == "No"
-
-    assert past_no_results_yet["session_meta"]["status"] == "Completed"
-    assert past_no_results_yet["session_meta"]["has_results"] == "No"
-
-
-def test_session_detail_carries_real_weather_and_round_number():
-    detail = _session_detail(
-        round_number=9,
-        race_name="British Grand Prix",
-        iracing_track="Silverstone Circuit — Grand Prix",
-        location="Silverstone, UK",
-        sim_date="Jul 16, 2026",
-        sim_temperature_f=67,
-        sim_conditions="No rain",
-        is_past=True,
-        results=[],
-    )
-
-    assert detail["weather"]["temperature_f"] == 67
-    assert detail["weather"]["precip_option"] == "No rain"
-    assert detail["entries"]["race_number"] == 9
-    assert detail["database"]["race_number"] == 9
-    assert detail["database"]["race_name"] == "British Grand Prix"
-
-
-def test_session_detail_computes_50pct_race_laps_rounding_down():
-    detail = _session_detail(
-        round_number=3,  # F1_LAPS_BY_ROUND[3] == 53 (odd)
-        race_name="Japanese Grand Prix",
-        iracing_track="Suzuka International Racing Course — Grand Prix",
-        location="Suzuka, Japan",
-        sim_date="Apr 2, 2026",
-        sim_temperature_f=67,
-        sim_conditions="No rain",
-        is_past=True,
-        results=[],
-    )
-
-    assert F1_LAPS_BY_ROUND[3] == 53
-    assert detail["session_lengths"]["race"] == "26 laps"
-    assert detail["session_lengths"]["race_laps"] == "26 laps (50% of 53)"
-
-
-def test_session_detail_falls_back_when_round_has_no_lap_data():
-    detail = _session_detail(
-        round_number=99,
-        race_name="Unmapped Grand Prix",
-        iracing_track=None,
-        location="Nowhere",
-        sim_date="Jan 1, 2026",
-        sim_temperature_f=80,
-        sim_conditions="No rain",
-        is_past=False,
-        results=None,
-    )
-
-    assert detail["session_lengths"]["race"] == "50% GP"
-    assert detail["session_lengths"]["race_laps"] == "—"
-
-
-def test_merge_attaches_session_detail_to_every_race():
+def test_merge_defaults_sim_session_detail_to_none_with_no_real_import():
     now = datetime(2026, 3, 10, tzinfo=timezone.utc)
     races = _merge_schedule_with_results(SCHEDULE, {}, now)
 
     for race in races:
-        assert "session_detail" in race
-        assert race["session_detail"]["track"]["venue"] == race["location"]
+        assert race["sim_session_detail"] is None
+
+
+def test_merge_attaches_sim_session_detail_only_for_rounds_with_a_real_import():
+    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
+    sim_session_details = {1: {"track": "Phillip Island Circuit", "results": []}}
+    races = _merge_schedule_with_results(SCHEDULE, {}, now, sim_session_details=sim_session_details)
+
+    by_round = {r["round_number"]: r for r in races}
+    assert by_round[1]["sim_session_detail"] == {"track": "Phillip Island Circuit", "results": []}
+    assert by_round[2]["sim_session_detail"] is None
