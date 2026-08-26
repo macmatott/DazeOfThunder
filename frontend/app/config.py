@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     discord_webhook_constructors: str = ""
     discord_webhook_overall: str = ""
 
+    # Posted manually (not by any app request handler) after a commit is
+    # pushed and deployed to prod — see post_changelog in
+    # discord_webhooks.py. There's no CI pipeline here; deploys only
+    # happen when explicitly requested, so this stays a deliberate step
+    # in that same conversation rather than something triggered
+    # automatically off of every git push.
+    discord_webhook_changelog: str = ""
+
     environment: str = "development"
     log_level: str = "INFO"
 

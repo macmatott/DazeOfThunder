@@ -1,11 +1,14 @@
 """
-Posts race-result and standings updates to the league's Discord via
-Incoming Webhooks — one URL per standings channel (Drivers', Fantasy,
-Constructors', Overall), configured in app.config.settings. A webhook
-is enough here since this is one-way (announce results, nothing reads
-commands back), so there's no gateway connection or second deployment
-to run — a post happens directly from the same admin request that
-triggers an F1 results import or an iRacing CSV upload.
+Posts race-result, standings, and changelog updates to the league's
+Discord via Incoming Webhooks — one URL per channel (Drivers', Fantasy,
+Constructors', Overall, and #changelog), configured in
+app.config.settings. A webhook is enough here since this is one-way
+(announce results, nothing reads commands back), so there's no gateway
+connection or second deployment to run — a standings post happens
+directly from the same admin request that triggers an F1 results
+import or an iRacing CSV upload; a changelog post (post_changelog) is
+a deliberate step taken alongside a deploy instead, since there's no CI
+pipeline here to trigger it automatically off of every git push.
 
 Fails silently everywhere: a channel whose webhook URL isn't set (e.g.
 local dev) is just skipped, and a Discord outage/HTTP error never
@@ -21,12 +24,16 @@ per round instead of a bulk summary.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import httpx
 
 from app.config import settings
 from app.db.supabase_client import admin_client
 
 MEDALS = ["🥇", "🥈", "🥉"]
+GITHUB_REPO_URL = "https://github.com/macmatott/DazeOfThunder"
+SITE_URL = "https://dazeofthunder.com"
 
 
 def post_to_webhook(webhook_url: str, content: str) -> None:
@@ -36,6 +43,39 @@ def post_to_webhook(webhook_url: str, content: str) -> None:
         httpx.post(webhook_url, json={"content": content}, timeout=10)
     except httpx.HTTPError:
         pass
+
+
+def post_changelog(
+    changes: list[str],
+    *,
+    commit_sha: str | None = None,
+    site_url: str = SITE_URL,
+) -> None:
+    """Posts a brief changelog synopsis to the #changelog channel —
+    timestamped, linking to the live site (the homepage by default, or
+    a more specific page via `site_url` when the change is localized to
+    one) and to the pushed commit on GitHub (when known).
+
+    `changes` is one or more short bullet lines for whatever shipped in
+    this deploy. Prefix each with its own type emoji (✨ feature, 🐛 fix,
+    🎨 style/UI, 🔧 config/infra) — the caller (a human deploying, not
+    app code, since there's no CI pipeline here) decides the type, so a
+    deploy bundling several kinds of change still reads as a clear list
+    rather than one blurred sentence.
+
+    Not called by any request handler — a deploy only ever happens
+    because it was explicitly requested, and this is a deliberate step
+    taken in that same breath rather than something triggered
+    automatically off of every git push."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    parts = ["📝 **Site Update**", ""]
+    parts.extend(f"• {change}" for change in changes)
+    parts.append("")
+    parts.append(f"🕒 {timestamp}")
+    parts.append(f"🌐 {site_url}")
+    if commit_sha:
+        parts.append(f"🔗 {GITHUB_REPO_URL}/commit/{commit_sha}")
+    post_to_webhook(settings.discord_webhook_changelog, "\n".join(parts))
 
 
 def compute_standings_deltas(
