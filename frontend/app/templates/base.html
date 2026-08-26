@@ -116,6 +116,8 @@
     </nav>
   </div>
 
+  {% include "_telemetry_ticker.html" %}
+
   <div id="draft-countdown-bar" hx-get="/partials/draft-countdown" hx-trigger="load, every 60s" hx-swap="innerHTML"></div>
 
   <main class="{% block main_class %}{% endblock %}">
@@ -141,5 +143,6 @@
   </main>
 
   {% block scripts %}{% endblock %}
+  <script src="/static/js/telemetry-ticker.js"></script>
 </body>
 </html>

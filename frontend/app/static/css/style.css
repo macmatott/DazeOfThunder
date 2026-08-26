@@ -297,6 +297,130 @@ button:focus-visible,
   }
 }
 
+/* ── Live telemetry ticker ───────────────────────────────────
+   Scrolling marquee of currently-streaming iRacing sessions, polled
+   from an external Worker by telemetry-ticker.js. Hidden by default
+   (via the missing --active modifier) so there's no empty flash while
+   the first poll is in flight or when nobody's live. */
+
+.telemetry-ticker {
+  display: none;
+  align-items: center;
+  height: 38px;
+  background: var(--color-ground);
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-data);
+}
+
+.telemetry-ticker--active {
+  display: flex;
+}
+
+.telemetry-ticker__live-pill {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 14px;
+  background: var(--color-surface-raised);
+  border-right: 1px solid var(--color-rule);
+  color: var(--color-accent);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.telemetry-ticker__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 6px var(--color-accent);
+  animation: telemetry-ticker-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes telemetry-ticker-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes telemetry-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.telemetry-ticker__viewport {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.telemetry-ticker__track {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  height: 100%;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.telemetry-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--color-text-dim);
+}
+
+.telemetry-ticker-item b {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.telemetry-ticker-item .pos {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.telemetry-ticker-sep {
+  color: var(--color-accent-blue);
+}
+
+@media (max-width: 600px) {
+  .telemetry-ticker {
+    height: 34px;
+  }
+
+  .telemetry-ticker__live-pill {
+    padding: 0 10px;
+    font-size: 10px;
+    gap: 5px;
+  }
+
+  .telemetry-ticker-item {
+    font-size: 11px;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .telemetry-ticker__track {
+    animation-duration: 90s !important;
+  }
+}
+
 /* ── Nav dropdown (CSS-only: hover + focus-within, no JS) ──── */
 
 .nav-dropdown {
