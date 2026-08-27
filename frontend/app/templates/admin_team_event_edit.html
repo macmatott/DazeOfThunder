@@ -94,8 +94,8 @@
 
   <form method="post" action="/admin/team-events/{{ event.id }}/results" enctype="multipart/form-data" class="form">
     <div class="form-field">
-      <label for="results-file">iRacing Results CSV</label>
-      <input type="file" id="results-file" name="file" accept=".csv" required>
+      <label for="results-file">iRacing Results JSON</label>
+      <input type="file" id="results-file" name="file" accept=".json" required>
       <div class="tower__meta">Uploading replaces any results already stored for this event. Only rows matching our registered members (by iRacing Cust ID) are kept.</div>
     </div>
     <button type="submit" class="form-submit">Upload Results</button>

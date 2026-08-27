@@ -3,7 +3,7 @@
    schedule.html and returned directly by the RSVP POST route
    (hx-target scoped to #event-{{ event.id }}), so it must stay
    self-contained (no base.html deps), same rule as the draft partials. #}
-{% from "_macros.html" import role_badge %}
+{% from "_macros.html" import finish_position_cell, role_badge %}
 <div class="event-card{% if event.image_url or event.track_background_url %} event-card--has-image{% endif %}{% if event.is_next %} event-card--next{% endif %}" id="event-{{ event.id }}">
   {% if event.track_background_url %}
     <span class="event-card__track-bg" style="background-image: url('{{ event.track_background_url }}')"></span>
@@ -17,7 +17,19 @@
   <div class="event-card__body">
     <div class="event-card__header">
       <div class="event-card__title">{{ event.title }}</div>
-      <div class="event-card__date">{{ event.event_date_display }}</div>
+      <div class="event-card__date">
+        {% if event.session_datetime_display %}
+          {{ event.session_datetime_display }}
+          {% if event.session_split_display %}
+            <div class="event-card__split">{{ event.session_split_display }}</div>
+          {% endif %}
+          {% if event.session_sof_display %}
+            <div class="event-card__split">{{ event.session_sof_display }}</div>
+          {% endif %}
+        {% else %}
+          {{ event.event_date_display }}
+        {% endif %}
+      </div>
     </div>
 
     {% if event.team_result_summary %}
@@ -101,11 +113,55 @@
     {% if event.team_results %}
       <details class="team-results-toggle">
         <summary>Our Results ({{ event.team_results | length }})</summary>
+
+        {% set fastest_lap_driver = event.team_results | selectattr("is_fastest_lap") | first %}
+        {% set best_avg_lap_driver = event.team_results | selectattr("is_best_avg_lap") | first %}
+        {% set least_incidents_driver = event.team_results | selectattr("has_least_incidents") | first %}
+        <div class="team-summary-wrap">
+          <div class="team-summary-row team-summary-row--header">
+            <span>Qual</span>
+            <span>Finish</span>
+            <span>Laps</span>
+            <span>Inc</span>
+            <span>Fastest Lap</span>
+            <span>Best Avg Lap</span>
+            <span>Least Inc</span>
+          </div>
+          <div class="team-summary-row">
+            <span>P{{ event.team_results[0].start_position }}</span>
+            <span>P{{ finish_position_cell(event.team_results[0].start_position, event.team_results[0].finish_position) }}</span>
+            <span>{{ event.team_results | sum(attribute="laps_completed") }}</span>
+            <span>{{ event.team_results | sum(attribute="incidents") }}</span>
+            <span>
+              {% if fastest_lap_driver %}
+                {{ fastest_lap_driver.participants.display_name }}
+                <span class="tower__meta">{{ fastest_lap_driver.fastest_lap_time }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </span>
+            <span>
+              {% if best_avg_lap_driver %}
+                {{ best_avg_lap_driver.participants.display_name }}
+                <span class="tower__meta">{{ best_avg_lap_driver.average_lap_time }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </span>
+            <span>
+              {% if least_incidents_driver %}
+                {{ least_incidents_driver.participants.display_name }}
+                <span class="tower__meta">{{ least_incidents_driver.incidents }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </span>
+          </div>
+        </div>
+
         <div class="team-results-wrap">
           <div class="team-results-row team-results-row--header">
             <span>Driver</span>
-            <span>Finish</span>
-            <span>Start</span>
             <span>Laps</span>
             <span>Inc</span>
             <span>Fastest Lap</span>
@@ -114,11 +170,9 @@
           {% for r in event.team_results %}
             <div class="team-results-row">
               <span>{{ r.participants.display_name }}{{ role_badge(r.participants.role) }}</span>
-              <span>P{{ r.finish_position }}</span>
-              <span>P{{ r.start_position }}</span>
               <span>{{ r.laps_completed }}</span>
               <span>{{ r.incidents }}</span>
-              <span>{{ r.fastest_lap_time or "—" }}</span>
+              <span{% if r.is_fastest_lap %} class="team-results-row__fastest-lap"{% endif %}>{{ r.fastest_lap_time or "—" }}</span>
               <span>{{ r.average_lap_time or "—" }}</span>
             </div>
           {% endfor %}

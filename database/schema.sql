@@ -354,6 +354,16 @@ create table public.team_event_results (
     average_lap_time text,
     fastest_lap_time text,
 
+    -- The real session's own start time (not the team_events row's
+    -- admin-entered start_date/end_date range), which iRacing split we
+    -- raced in (e.g. "Split 2/6"), and that split's own strength of
+    -- field — all from the JSON import, null until a re-upload
+    -- backfills them.
+    session_start_time timestamptz,
+    split_number int,
+    split_total int,
+    strength_of_field int,
+
     source_filename text not null,
     imported_by uuid references public.participants(id),
     imported_at timestamptz not null default now(),

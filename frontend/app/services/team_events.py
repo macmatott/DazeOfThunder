@@ -19,6 +19,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from app.db.supabase_client import admin_client
+from app.services.draft import LEAGUE_TIMEZONE
 from app.services.driver_photos import slugify_name
 from app.services.team_event_results import get_team_event_results
 
@@ -120,6 +121,16 @@ def _summarize_team_result(team_results: list[dict]) -> dict | None:
     return {"finish_position": best["finish_position"], "car_name": best["car_name"]}
 
 
+def format_session_datetime(start_time_iso: str) -> str:
+    """The real session's own start time (from the JSON import), shown
+    in the league's home timezone — same no-zero-pad day-of-month
+    convention as format_event_date_range, e.g. "Sun, Jul 12, 2026 ·
+    6:00 PM ET"."""
+    dt = datetime.fromisoformat(start_time_iso).astimezone(LEAGUE_TIMEZONE)
+    hour12 = dt.strftime("%I").lstrip("0") or "12"
+    return f"{dt:%a, %b} {dt.day}, {dt:%Y} · {hour12}:{dt:%M %p} ET"
+
+
 def _enrich_with_rsvps(events: list[dict], viewer_participant_id: str | None) -> list[dict]:
     """Attaches rsvps_by_status ({"not_interested": [...], "interested":
     [...], "signed_up": [...]}, participant dicts with display_name/role
@@ -146,6 +157,27 @@ def _enrich_with_rsvps(events: list[dict], viewer_participant_id: str | None) ->
         del event["event_rsvps"]
         event["team_results"] = get_team_event_results(event["id"])
         event["team_result_summary"] = _summarize_team_result(event["team_results"])
+
+        # Real session date/time + split (e.g. "Split 2/6" for a big
+        # enduro), from the JSON import — shown instead of the admin-
+        # entered start_date/end_date range once we actually know when
+        # our own session ran.
+        session = event["team_results"][0] if event["team_results"] else None
+        event["session_datetime_display"] = (
+            format_session_datetime(session["session_start_time"])
+            if session and session.get("session_start_time")
+            else None
+        )
+        event["session_split_display"] = (
+            f"Split {session['split_number']}/{session['split_total']}"
+            if session and session.get("split_number") and session.get("split_total")
+            else None
+        )
+        event["session_sof_display"] = (
+            f"SOF {session['strength_of_field']}"
+            if session and session.get("strength_of_field")
+            else None
+        )
     return events
 
 

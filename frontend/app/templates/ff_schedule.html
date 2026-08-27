@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import finish_position_cell %}
 {% block title %}Schedule — Daze of Thunder{% endblock %}
 {% block main_class %}main--wide{% endblock %}
 
@@ -63,6 +64,7 @@
           <th>No.</th>
           <th>Driver</th>
           <th>Team</th>
+          <th>Qual</th>
           <th>Interval</th>
           <th>Laps</th>
           <th>Inc</th>
@@ -73,10 +75,11 @@
       <tbody>
         {% for r in detail.results %}
           <tr>
-            <td class="session-results-table__num">{{ r.position }}</td>
+            <td class="session-results-table__num">{{ finish_position_cell(r.start_position, r.position) }}</td>
             <td class="session-results-table__num">{{ r.car_number or "—" }}</td>
             <td>{{ r.driver_name }}{% if r.is_ai %} <span class="tower__meta">(AI)</span>{% endif %}</td>
             <td>{{ _race_row_team_cell(r.team_name, r.team_logo_url) }}</td>
+            <td class="session-results-table__num">{{ r.start_position or "—" }}</td>
             <td class="session-results-table__num">{{ r.interval or "—" }}</td>
             <td class="session-results-table__num">
               {{ r.laps_completed }}{% if r.laps_led %}<span class="tower__meta"> ({{ r.laps_led }} led)</span>{% endif %}
@@ -102,6 +105,7 @@
           <th>No.</th>
           <th>Driver</th>
           <th>Team</th>
+          <th>Qual</th>
           <th>Interval</th>
           <th>Laps</th>
           <th>Fastest Lap</th>
@@ -111,7 +115,7 @@
       <tbody>
         {% for r in detail.results %}
           <tr>
-            <td class="session-results-table__num">{{ r.position }}</td>
+            <td class="session-results-table__num">{{ finish_position_cell(r.start_position, r.position) }}</td>
             <td class="session-results-table__num">{{ r.car_number or "—" }}</td>
             <td>
               <span class="session-results-table__driver">
@@ -120,6 +124,7 @@
               </span>
             </td>
             <td>{{ _race_row_team_cell(r.team_name, r.team_logo_url) }}</td>
+            <td class="session-results-table__num">{{ r.start_position or "—" }}</td>
             <td class="session-results-table__num">{{ r.interval or "DNF" }}</td>
             <td class="session-results-table__num">{{ r.laps or "—" }}</td>
             <td class="session-results-table__num{% if r.is_fastest_lap %} session-results-table__fastest-lap{% endif %}">

@@ -22,11 +22,10 @@ from app.services.fantasy_scoring import (
     ScoringRulesNotSeededError,
 )
 from app.services.iracing_ingest import (
-    CsvParseError,
     DuplicateEventError,
-    InvalidFilenameError,
+    JsonParseError,
     RoundAlreadyImportedError,
-    import_race_csv,
+    import_race_json,
     list_recent_race_events,
 )
 from app.services.standings import (
@@ -239,7 +238,7 @@ def upload_race_results(
         (r["race_name"] for r in timeline if r["round_number"] == ff_round_number), None
     )
 
-    # Standings snapshot BEFORE scoring — import_race_csv scores sim
+    # Standings snapshot BEFORE scoring — import_race_json scores sim
     # points as part of the import itself, so this is the only chance to
     # capture the "before" side for the Discord post's rank movement.
     sim_before = get_sim_only_standings(season_id) if season_id else []
@@ -247,7 +246,7 @@ def upload_race_results(
     overall_before = get_formula_fantasy_standings(season_id) if season_id else []
 
     try:
-        summary = import_race_csv(
+        summary = import_race_json(
             file.file.read(),
             file.filename,
             season_id=season_id,
@@ -256,7 +255,7 @@ def upload_race_results(
             imported_by=request.state.current_user["participant_id"],
             supersede=supersede,
         )
-    except (InvalidFilenameError, CsvParseError, DuplicateEventError, RoundAlreadyImportedError) as exc:
+    except (JsonParseError, DuplicateEventError, RoundAlreadyImportedError) as exc:
         context = _build_hub_context(request, active_tab="league")
         context["admin_action_error"] = str(exc)
         return templates.TemplateResponse(request, "admin_hub.html", context)
@@ -483,7 +482,7 @@ def upload_event_results(request: Request, event_id: str, file: UploadFile = Fil
             file.filename,
             imported_by=request.state.current_user["participant_id"],
         )
-    except CsvParseError as exc:
+    except JsonParseError as exc:
         context = _build_edit_context(event_id)
         context["results_action_error"] = str(exc)
         return templates.TemplateResponse(request, "admin_team_event_edit.html", context)

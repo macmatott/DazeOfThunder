@@ -10,3 +10,7 @@
     <span>{{ label }}</span>
   </span>
 {% endmacro %}
+
+{% macro finish_position_cell(start_position, finish_position) %}
+  {{ finish_position }}{% if start_position %}{% set gain = start_position - finish_position %}{% if gain > 0 %} <span class="session-results-table__qual-gain">(+{{ gain }})</span>{% elif gain < 0 %} <span class="session-results-table__qual-loss">({{ gain }})</span>{% endif %}{% endif %}
+{% endmacro %}

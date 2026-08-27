@@ -1516,6 +1516,16 @@ main.main--wide {
   gap: var(--space-2);
 }
 
+/* Positions gained/lost between qualifying and the finish — same
+   green/red convention as the standings page's rank-change indicators. */
+.session-results-table__qual-gain {
+  color: var(--color-positive);
+}
+
+.session-results-table__qual-loss {
+  color: var(--color-negative);
+}
+
 /* Sim Racing / F1 Race Results / F1 Sprint Results toggle inside a
    past race's dropdown — pure CSS (radio + sibling selectors), no JS,
    same "declarative over hand-written JS" approach as everywhere else
@@ -2060,6 +2070,16 @@ main.main--wide {
   font-size: 0.85rem;
   color: var(--color-accent);
   white-space: nowrap;
+  text-align: right;
+}
+
+/* Which split of a big multi-split enduro we raced in (e.g. "Split
+   2/6") — beneath the real session date/time, once we actually know
+   it from the JSON import. */
+.event-card__split {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .event-card__track {
@@ -2252,7 +2272,7 @@ main.main--wide {
 
 .team-results-row {
   display: grid;
-  grid-template-columns: 1.5fr 3.5rem 3.5rem 3rem 3rem 6rem 6rem;
+  grid-template-columns: 1.5fr 3rem 3rem 6rem 6rem;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) 0;
@@ -2272,13 +2292,53 @@ main.main--wide {
   border-bottom: 1px solid var(--color-rule);
 }
 
+/* The team's single fastest lap among our own co-drivers — same
+   "purple" convention as the schedule page's results tables, just
+   scoped to our own crew rather than the whole field. */
+.team-results-row__fastest-lap {
+  color: var(--color-fastest-lap);
+  font-weight: 600;
+}
+
 .event-card--has-image .team-results-toggle > summary,
-.event-card--has-image .team-results-row--header {
+.event-card--has-image .team-results-row--header,
+.event-card--has-image .team-summary-row--header {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.event-card--has-image .team-results-row {
+.event-card--has-image .team-results-row,
+.event-card--has-image .team-summary-row {
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Team-level summary (qualifying/finishing position, total laps/
+   incidents across the whole crew) — same compact-grid pattern as
+   .team-results-row, above the per-driver breakdown. */
+.team-summary-wrap {
+  overflow-x: auto;
+  margin-top: var(--space-2);
+}
+
+.team-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 2fr 2fr 2fr;
+  min-width: 38rem;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: 0.85rem;
+  text-align: center;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.team-summary-row:last-child {
+  border-bottom: none;
+}
+
+.team-summary-row--header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
 }
 
 .admin-event-edit__image-preview {

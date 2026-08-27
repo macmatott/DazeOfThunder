@@ -6,7 +6,7 @@ app.config.settings. A webhook is enough here since this is one-way
 (announce results, nothing reads commands back), so there's no gateway
 connection or second deployment to run — a standings post happens
 directly from the same admin request that triggers an F1 results
-import or an iRacing CSV upload; a changelog post (post_changelog) is
+import or an iRacing results upload; a changelog post (post_changelog) is
 a deliberate step taken alongside a deploy instead, since there's no CI
 pipeline here to trigger it automatically off of every git push.
 
@@ -395,10 +395,11 @@ def notify_sim_round(
     overall_before: list[dict],
 ) -> None:
     """Posts to the Drivers' + Constructors' + Overall webhooks after an
-    iRacing CSV upload. Scoring already happened inside import_race_csv
-    by the time this is called, so the caller snapshots the BEFORE
-    standings itself (right before calling import_race_csv) and passes
-    them in — this function only needs to snapshot AFTER."""
+    iRacing results upload. Scoring already happened inside
+    import_race_json by the time this is called, so the caller
+    snapshots the BEFORE standings itself (right before calling
+    import_race_json) and passes them in — this function only needs to
+    snapshot AFTER."""
     from app.services.standings import (
         get_constructor_standings,
         get_formula_fantasy_standings,
