@@ -16,6 +16,7 @@ from app.services.fantasy_scoring import (
     MultipleActiveScoringRuleVersionsError,
     ScoringRulesNotSeededError,
     get_active_points_table,
+    sprint_points_table,
 )
 from app.services.participants import (
     get_participant,
@@ -114,11 +115,13 @@ def ff_mock_draft(request: Request):
 @router.get("/formula-fantasy/scoring")
 def ff_scoring(request: Request):
     season_id = get_season_id(str(CURRENT_SEASON))
+    fantasy_points = _points_table_or_empty(season_id, "fantasy_f1")
     return templates.TemplateResponse(
         request,
         "ff_scoring.html",
         {
-            "fantasy_points": _points_table_or_empty(season_id, "fantasy_f1"),
+            "fantasy_points": fantasy_points,
+            "sprint_points": sorted(sprint_points_table(dict(fantasy_points)).items()) if fantasy_points else [],
             "sim_points": _points_table_or_empty(season_id, "sim_racing"),
         },
     )

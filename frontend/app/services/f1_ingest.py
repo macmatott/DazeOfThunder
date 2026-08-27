@@ -103,8 +103,12 @@ def map_result_to_row(
     is_sprint: bool,
     f1_driver_id: str,
 ) -> dict:
-    """One Jolpica Results/SprintResults entry -> one f1_race_results row."""
-    fastest_lap = result.get("FastestLap", {}).get("rank") == "1"
+    """One Jolpica Results/SprintResults entry -> one f1_race_results row.
+
+    Time/FastestLap are absent for non-classified results (e.g. a DNF),
+    so both are read defensively rather than assumed present."""
+    fastest_lap_info = result.get("FastestLap", {})
+    fastest_lap = fastest_lap_info.get("rank") == "1"
     return {
         "season_id": season_id,
         "round_number": round_number,
@@ -115,6 +119,12 @@ def map_result_to_row(
         "status": result["status"],
         "points": float(result["points"]),
         "fastest_lap": fastest_lap,
+        "car_number": int(result["number"]) if result.get("number") else None,
+        "start_position": int(result["grid"]) if result.get("grid") else None,
+        "interval": result.get("Time", {}).get("time"),
+        "laps": int(result["laps"]) if result.get("laps") else None,
+        "fastest_lap_time": fastest_lap_info.get("Time", {}).get("time"),
+        "fastest_lap_number": int(fastest_lap_info["lap"]) if fastest_lap_info.get("lap") else None,
     }
 
 

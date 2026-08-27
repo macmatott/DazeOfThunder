@@ -5,11 +5,36 @@
   {% include "_league_banner.html" %}
   <div class="scoring-intro">
     <h1 class="page-title">Scoring</h1>
-    <p class="page-subtitle">Full point structure for Fantasy F1 and Sim Racing</p>
+    <p class="page-subtitle">Full point structure for Fantasy F1, F1 Sprints, and Sim Racing</p>
   </div>
+
+  {% macro points_tower(rows, empty_last_label="Last-place finisher — still on the board") %}
+    <div class="tower">
+      {% if rows %}
+        {% for position, points in rows %}
+          <div class="tower__row">
+            <div class="tower__pos">{{ position }}</div>
+            <div>
+              <div class="tower__name">
+                {% if position == 1 %}{{ medal_row('gold', 'Race winner') }}
+                {% elif position == 2 %}{{ medal_row('silver', 'Runner-up') }}
+                {% elif position == 3 %}{{ medal_row('bronze', 'Podium') }}
+                {% elif loop.last %}{{ empty_last_label }}
+                {% endif %}
+              </div>
+            </div>
+            <div class="tower__points">{{ points | int }} pts</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="tower__empty">Scoring rules haven't been set up yet.</div>
+      {% endif %}
+    </div>
+  {% endmacro %}
 
   <div class="scoring-columns">
     <p class="section-label">Fantasy F1 Scoring</p>
+    <p class="section-label">Fantasy F1 Sprint Scoring</p>
     <p class="section-label">Sim Racing Scoring</p>
 
     <p class="ff-intro">
@@ -19,54 +44,20 @@
       for last.
     </p>
     <p class="ff-intro">
+      Real F1 pays a sprint at roughly a third of a full race, so ours
+      does too — the full race scale, thirded and rounded, with the win
+      bumped a point above 2nd so they don't tie. Still every finisher
+      scores, same as the race.
+    </p>
+    <p class="ff-intro">
       Same NASCAR-inspired shape, scaled to our own 11-person grid
       instead of F1's — every finisher scores, the win is worth 11
       points, and points drop by one per position after a small bonus
       over 2nd place.
     </p>
 
-    <div class="tower">
-      {% if fantasy_points %}
-        {% for position, points in fantasy_points %}
-          <div class="tower__row">
-            <div class="tower__pos">{{ position }}</div>
-            <div>
-              <div class="tower__name">
-                {% if position == 1 %}{{ medal_row('gold', 'Race winner') }}
-                {% elif position == 2 %}{{ medal_row('silver', 'Runner-up') }}
-                {% elif position == 3 %}{{ medal_row('bronze', 'Podium') }}
-                {% elif loop.last %}Last-place finisher — still on the board
-                {% endif %}
-              </div>
-            </div>
-            <div class="tower__points">{{ points | int }} pts</div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <div class="tower__empty">Scoring rules haven't been set up yet.</div>
-      {% endif %}
-    </div>
-
-    <div class="tower">
-      {% if sim_points %}
-        {% for position, points in sim_points %}
-          <div class="tower__row">
-            <div class="tower__pos">{{ position }}</div>
-            <div>
-              <div class="tower__name">
-                {% if position == 1 %}{{ medal_row('gold', 'Race winner') }}
-                {% elif position == 2 %}{{ medal_row('silver', 'Runner-up') }}
-                {% elif position == 3 %}{{ medal_row('bronze', 'Podium') }}
-                {% elif loop.last %}Last-place finisher — still on the board
-                {% endif %}
-              </div>
-            </div>
-            <div class="tower__points">{{ points | int }} pts</div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <div class="tower__empty">Scoring rules haven't been set up yet.</div>
-      {% endif %}
-    </div>
+    {{ points_tower(fantasy_points) }}
+    {{ points_tower(sprint_points) }}
+    {{ points_tower(sim_points) }}
   </div>
 {% endblock %}

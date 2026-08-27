@@ -13,13 +13,21 @@ scores based on where it was running).
 The position -> points mapping lives in `scoring_rules` (versioned, so
 historical `fantasy_points_awarded` rows stay reproducible even after the
 scale changes) rather than being hardcoded — `seed_scoring_rules` writes
-it, `get_active_points_table` reads it back. A round's fantasy score is
-the sum across all of a participant's drafted drivers' results that
-round — race and sprint both count, same table for each.
+it, `get_active_points_table` reads it back.
+
+Sprint results are worth much less than a full race in real F1 (roughly
+a third), so they score on their own derived scale rather than the race
+scale directly — see sprint_points_table(). It isn't seeded/versioned
+separately: it's always computed from whichever race scale is currently
+active, the same way the race scale itself is only ever "whatever's
+active right now" at scoring time. A round's fantasy score is the sum
+across all of a participant's drafted drivers' results that round, each
+row scored on its own scale (race or sprint) by `is_sprint`.
 """
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 
 from app.db.supabase_client import admin_client
@@ -80,6 +88,28 @@ def points_for_position(position: int | None, points_table: dict[int, float]) ->
     return points_table.get(position, 0.0)
 
 
+def round_half_up(value: float) -> int:
+    """Standard round-to-nearest, ties rounding up (unlike Python's
+    built-in round(), which rounds ties to even)."""
+    return math.floor(value + 0.5)
+
+
+def sprint_points_table(race_points_table: dict[int, float]) -> dict[int, float]:
+    """Sprint scoring is the race scale thirded (round_half_up), floored
+    at 1 for every position that scored at all in the race scale — real
+    F1 pays sprints roughly a third of a full race (8 vs 25 for the
+    win), and this keeps our own "every classified finisher scores"
+    rule intact rather than zeroing out anyone below the real F1
+    sprint's top 8. Thirding then flooring can otherwise tie 1st and
+    2nd (e.g. 22 and 20 both third-and-round to 7), so the winner is
+    bumped to one more point than 2nd — same idea as the race scale's
+    own win_bonus, just reapplied at this reduced tier."""
+    table = {position: max(1.0, float(round_half_up(points / 3))) for position, points in race_points_table.items()}
+    if 1 in table and 2 in table:
+        table[1] = table[2] + 1
+    return table
+
+
 def group_results_by_driver(round_results: list[dict]) -> dict[str, list[dict]]:
     """f1_race_results rows for one round -> {f1_driver_id: [row, ...]}
     (normally 1 row, 2 if that round had a sprint)."""
@@ -89,29 +119,38 @@ def group_results_by_driver(round_results: list[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
-def score_driver_results(results: list[dict], points_table: dict[int, float]) -> float:
-    """Sum of points across all of one driver's result rows for the round
-    (race + sprint both use points_table — no separate sprint scale)."""
-    return sum(points_for_position(r.get("finish_position"), points_table) for r in results)
+def score_driver_results(
+    results: list[dict], race_points_table: dict[int, float], sprint_table: dict[int, float]
+) -> float:
+    """Sum of points across all of one driver's result rows for the
+    round — each row scored against the race or sprint scale by its own
+    `is_sprint` flag."""
+    total = 0.0
+    for r in results:
+        table = sprint_table if r.get("is_sprint") else race_points_table
+        total += points_for_position(r.get("finish_position"), table)
+    return total
 
 
 def score_participant_round(
     drafted_driver_ids: list[str],
     results_by_driver: dict[str, list[dict]],
-    points_table: dict[int, float],
+    race_points_table: dict[int, float],
+    sprint_table: dict[int, float],
 ) -> float:
     """Sum across however many of the participant's drafted drivers raced
     that round — drivers with no result that round contribute 0."""
     total = 0.0
     for driver_id in drafted_driver_ids:
-        total += score_driver_results(results_by_driver.get(driver_id, []), points_table)
+        total += score_driver_results(results_by_driver.get(driver_id, []), race_points_table, sprint_table)
     return total
 
 
 def compute_round_scores(
     draft_picks: list[dict],
     round_results: list[dict],
-    points_table: dict[int, float],
+    race_points_table: dict[int, float],
+    sprint_table: dict[int, float],
 ) -> dict[str, float]:
     """{participant_id: total_points}. Participants with zero draft picks
     are simply absent — nothing to score."""
@@ -122,13 +161,13 @@ def compute_round_scores(
     results_by_driver = group_results_by_driver(round_results)
 
     return {
-        participant_id: score_participant_round(driver_ids, results_by_driver, points_table)
+        participant_id: score_participant_round(driver_ids, results_by_driver, race_points_table, sprint_table)
         for participant_id, driver_ids in drivers_by_participant.items()
     }
 
 
 def compute_driver_season_stats(
-    season_results: list[dict], points_table: dict[int, float]
+    season_results: list[dict], race_points_table: dict[int, float], sprint_table: dict[int, float]
 ) -> dict[str, dict]:
     """{f1_driver_id: {"total": ..., "average": ...}} across every result
     row for a season (all rounds, race + sprint) — same grouping/summing
@@ -140,7 +179,7 @@ def compute_driver_season_stats(
     grouped = group_results_by_driver(season_results)
     stats = {}
     for driver_id, rows in grouped.items():
-        total = score_driver_results(rows, points_table)
+        total = score_driver_results(rows, race_points_table, sprint_table)
         weeks = len({r["round_number"] for r in rows}) or 1
         stats[driver_id] = {"total": total, "average": total / weeks}
     return stats
@@ -261,8 +300,10 @@ def get_driver_season_fantasy_stats_by_name(season_id: str) -> dict[str, dict]:
     )
     names_by_id = {d["id"]: d["full_name"] for d in drivers}
 
-    points_table, _ = get_active_points_table(season_id)
-    stats_by_driver_id = compute_driver_season_stats(get_season_results(season_id), points_table)
+    race_table, _ = get_active_points_table(season_id)
+    stats_by_driver_id = compute_driver_season_stats(
+        get_season_results(season_id), race_table, sprint_points_table(race_table)
+    )
 
     return {
         names_by_id[driver_id]: stats
@@ -281,9 +322,9 @@ def score_round(season_id: str, round_number: int, *, dry_run: bool = False) -> 
 
     from app.services.draft import get_draft_picks  # local: draft.py imports this module too
 
-    points_table, version = get_active_points_table(season_id)
+    race_table, version = get_active_points_table(season_id)
     draft_picks = get_draft_picks(season_id)
-    scores = compute_round_scores(draft_picks, round_results, points_table)
+    scores = compute_round_scores(draft_picks, round_results, race_table, sprint_points_table(race_table))
 
     rows = [
         {
@@ -332,15 +373,16 @@ def get_fantasy_breakdown_by_participant(
     ...]}, rounds, sprint_rounds) — `rounds` is every race round with
     results this season, ascending, shared across every participant/
     driver so their rows all line up under the same columns;
-    `sprint_rounds` is the subset of those that included a sprint — race
-    and sprint both count toward the same round total (no separate sprint
-    scale), but the UI still flags which rounds combined two sessions.
-    `positions_by_round` lists the race finish first, then the sprint's
-    (a sprint weekend has both), so the UI can show "P2/P1" alongside
-    that round's combined points."""
+    `sprint_rounds` is the subset of those that included a sprint — the
+    sprint result scores on its own, lesser scale (sprint_points_table)
+    but still adds into that same round's total, and the UI flags which
+    rounds combined two sessions. `positions_by_round` lists the race
+    finish first, then the sprint's (a sprint weekend has both), so the
+    UI can show "P2/P1" alongside that round's combined points."""
     from app.services.draft import get_draft_picks  # local: draft.py imports this module too
 
-    points_table, _ = get_active_points_table(season_id)
+    race_table, _ = get_active_points_table(season_id)
+    sprint_table = sprint_points_table(race_table)
     rounds = get_rounds_with_results(season_id)
     season_results = get_season_results(season_id)
     sprint_rounds = {r["round_number"] for r in season_results if r.get("is_sprint")}
@@ -355,7 +397,7 @@ def get_fantasy_breakdown_by_participant(
             results_by_round[row["round_number"]].append(row)
 
         points_by_round = {
-            rnd: round(score_driver_results(results_by_round.get(rnd, []), points_table), 1)
+            rnd: round(score_driver_results(results_by_round.get(rnd, []), race_table, sprint_table), 1)
             for rnd in rounds
         }
         positions_by_round = {

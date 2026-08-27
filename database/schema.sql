@@ -220,6 +220,12 @@ create table public.f1_race_results (
     status text,                        -- Finished / DNF / DSQ / etc.
     points numeric,                     -- official F1 points for this result
     fastest_lap boolean not null default false,
+    car_number int,
+    start_position int,                 -- Jolpica's grid position
+    interval text,                      -- winner's total race time, or "+M:SS.mmm" gap for the rest
+    laps int,                           -- laps completed
+    fastest_lap_time text,
+    fastest_lap_number int,
     imported_at timestamptz not null default now(),
     unique (season_id, round_number, is_sprint, f1_driver_id)
 );

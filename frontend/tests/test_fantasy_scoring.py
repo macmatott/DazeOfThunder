@@ -9,6 +9,8 @@ from app.services.fantasy_scoring import (
     compute_round_scores,
     nascar_points_table,
     points_for_position,
+    score_driver_results,
+    sprint_points_table,
 )
 
 
@@ -92,24 +94,25 @@ def test_compute_round_scores_sums_across_participants_drivers():
         {"f1_driver_id": "d3", "finish_position": 2, "is_sprint": False},
     ]
 
-    scores = compute_round_scores(DRAFT_PICKS, round_results, table)
+    scores = compute_round_scores(DRAFT_PICKS, round_results, table, table)
 
     assert scores == {"p1": 3.0 + 1.0, "p2": 1.0}
 
 
-def test_compute_round_scores_combines_race_and_sprint_with_same_table():
-    table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
+def test_compute_round_scores_scores_sprint_rows_on_their_own_lesser_table():
+    race_table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
+    sprint_table = sprint_points_table(race_table)  # {1: 2.0, 2: 1.0, 3: 1.0}
     round_results = [
         {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False},
-        {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": True},
+        {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": True},
         {"f1_driver_id": "d2", "finish_position": 3, "is_sprint": False},
         {"f1_driver_id": "d3", "finish_position": 2, "is_sprint": False},
     ]
 
-    scores = compute_round_scores(DRAFT_PICKS, round_results, table)
+    scores = compute_round_scores(DRAFT_PICKS, round_results, race_table, sprint_table)
 
-    # p1 owns both d1 (race 3.0 + sprint 1.0) and d2 (race 1.0).
-    assert scores["p1"] == 3.0 + 1.0 + 1.0
+    # p1 owns both d1 (race win 3.0 + sprint win 2.0, not another 3.0) and d2 (race 1.0).
+    assert scores["p1"] == 3.0 + 2.0 + 1.0
 
 
 def test_dnf_still_scored_by_classified_position():
@@ -117,7 +120,7 @@ def test_dnf_still_scored_by_classified_position():
     round_results = [{"f1_driver_id": "d1", "finish_position": 15, "status": "Retired"}]
 
     scores = compute_round_scores(
-        [{"participant_id": "p1", "f1_driver_id": "d1"}], round_results, table
+        [{"participant_id": "p1", "f1_driver_id": "d1"}], round_results, table, table
     )
 
     assert scores["p1"] == table[15]
@@ -126,7 +129,7 @@ def test_dnf_still_scored_by_classified_position():
 def test_driver_with_no_result_contributes_zero():
     table = nascar_points_table(grid_size=3)
 
-    scores = compute_round_scores(DRAFT_PICKS, [], table)
+    scores = compute_round_scores(DRAFT_PICKS, [], table, table)
 
     assert scores == {"p1": 0.0, "p2": 0.0}
 
@@ -135,40 +138,74 @@ def test_participant_with_zero_picks_is_absent_from_scores():
     table = nascar_points_table(grid_size=3)
     round_results = [{"f1_driver_id": "d1", "finish_position": 1}]
 
-    scores = compute_round_scores([], round_results, table)
+    scores = compute_round_scores([], round_results, table, table)
 
     assert scores == {}
 
 
 def test_compute_driver_season_stats_sums_across_all_rounds_and_sprints():
-    table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
+    race_table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
+    sprint_table = sprint_points_table(race_table)  # {1: 2.0, 2: 1.0, 3: 1.0}
     season_results = [
         {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False, "round_number": 1},
         {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": False, "round_number": 2},
-        {"f1_driver_id": "d1", "finish_position": 3, "is_sprint": True, "round_number": 2},
+        {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": True, "round_number": 2},
         {"f1_driver_id": "d2", "finish_position": 1, "is_sprint": False, "round_number": 1},
     ]
 
-    stats = compute_driver_season_stats(season_results, table)
+    stats = compute_driver_season_stats(season_results, race_table, sprint_table)
 
-    assert stats["d1"]["total"] == 3.0 + 1.0 + 1.0
+    assert stats["d1"]["total"] == 3.0 + 1.0 + 2.0
     assert stats["d2"]["total"] == 3.0
 
 
 def test_compute_driver_season_stats_averages_per_race_weekend_not_per_row():
     # d1 raced 2 weekends (round 2 had a sprint, contributing 2 rows for
     # that one week) — average should divide by 2 weeks, not 3 rows.
-    table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
+    race_table = nascar_points_table(grid_size=3)  # {1: 3.0, 2: 1.0, 3: 1.0}
+    sprint_table = sprint_points_table(race_table)  # {1: 2.0, 2: 1.0, 3: 1.0}
     season_results = [
         {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": False, "round_number": 1},
         {"f1_driver_id": "d1", "finish_position": 2, "is_sprint": False, "round_number": 2},
-        {"f1_driver_id": "d1", "finish_position": 3, "is_sprint": True, "round_number": 2},
+        {"f1_driver_id": "d1", "finish_position": 1, "is_sprint": True, "round_number": 2},
     ]
 
-    stats = compute_driver_season_stats(season_results, table)
+    stats = compute_driver_season_stats(season_results, race_table, sprint_table)
 
-    assert stats["d1"]["total"] == 3.0 + 1.0 + 1.0
-    assert stats["d1"]["average"] == (3.0 + 1.0 + 1.0) / 2
+    assert stats["d1"]["total"] == 3.0 + 1.0 + 2.0
+    assert stats["d1"]["average"] == (3.0 + 1.0 + 2.0) / 2
+
+
+def test_score_driver_results_picks_table_by_is_sprint_flag():
+    race_table = {1: 22.0}
+    sprint_table = {1: 8.0}
+    results = [{"finish_position": 1, "is_sprint": False}, {"finish_position": 1, "is_sprint": True}]
+
+    assert score_driver_results(results, race_table, sprint_table) == 22.0 + 8.0
+
+
+def test_sprint_points_table_thirds_and_rounds_the_race_scale():
+    race_table = nascar_points_table(grid_size=22)
+    table = sprint_points_table(race_table)
+
+    # Race 3rd/4th/5th (19/18/17) all third-and-round to 6.
+    assert table[3] == 6.0
+    assert table[4] == 6.0
+    assert table[5] == 6.0
+    # Bottom of the field stays floored at 1, same as the race scale.
+    assert table[21] == 1.0
+    assert table[22] == 1.0
+
+
+def test_sprint_points_table_gives_the_winner_one_more_than_second():
+    # Naively thirding 22 and 20 both round to 7 and would tie 1st/2nd —
+    # the winner is bumped to break that tie, same idea as the race
+    # scale's own win_bonus.
+    race_table = nascar_points_table(grid_size=22)
+    table = sprint_points_table(race_table)
+
+    assert table[2] == 7.0
+    assert table[1] == 8.0
 
 
 def test_points_table_from_rule_rows_builds_table_and_version():

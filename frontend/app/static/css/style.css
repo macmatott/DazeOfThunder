@@ -615,7 +615,7 @@ main.main--wide {
 
 .scoring-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: auto 7rem auto;
   align-items: start;
   gap: var(--space-5);
@@ -1510,6 +1510,63 @@ main.main--wide {
   font-weight: 600;
 }
 
+.session-results-table__driver {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Sim Racing / F1 Race Results / F1 Sprint Results toggle inside a
+   past race's dropdown — pure CSS (radio + sibling selectors), no JS,
+   same "declarative over hand-written JS" approach as everywhere else
+   on this page. Only rendered at all when a round has 2+ real data
+   sources; a round with just one shows that table directly with no
+   toggle (sprint results in particular only exist for the handful of
+   rounds with a sprint weekend). */
+.race-row-results__toggle-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.race-row-results__toggle-labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.race-row-results__toggle-labels label {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-rule);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.race-row-results__toggle-input--sim:checked ~ .race-row-results__toggle-labels label[for$="-sim"],
+.race-row-results__toggle-input--f1:checked ~ .race-row-results__toggle-labels label[for$="-f1"],
+.race-row-results__toggle-input--f1-sprint:checked ~ .race-row-results__toggle-labels label[for$="-f1-sprint"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-ground);
+}
+
+.race-row-results--has-toggle .race-row-results__panel {
+  display: none;
+}
+
+.race-row-results__toggle-input--sim:checked ~ .race-row-results__panel--sim,
+.race-row-results__toggle-input--f1:checked ~ .race-row-results__panel--f1,
+.race-row-results__toggle-input--f1-sprint:checked ~ .race-row-results__panel--f1-sprint {
+  display: block;
+}
+
 /* ── Forms (Profile Settings) ────────────────────────────── */
 
 .form {
@@ -1660,6 +1717,11 @@ main.main--wide {
   background-position: center top;
   border: 1px solid var(--color-rule);
   flex-shrink: 0;
+}
+
+.driver-photo--xs {
+  width: 26px;
+  height: 26px;
 }
 
 .driver-photo--sm {

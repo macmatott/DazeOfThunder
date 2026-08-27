@@ -15,8 +15,15 @@ from pathlib import Path
 
 from app.db.supabase_client import admin_client, public_client
 from app.services.constructor_draft import get_pairs
-from app.services.driver_photos import slugify_name
+from app.services.draft import logo_url_for_team
+from app.services.driver_photos import driver_photo_url, slugify_name
 from app.services.f1_ingest import JolpicaClient
+from app.services.fantasy_scoring import (
+    ScoringRulesNotSeededError,
+    get_active_points_table,
+    points_for_position,
+    sprint_points_table,
+)
 
 TRACK_IMAGE_DIR = Path(__file__).resolve().parent.parent / "static" / "img" / "tracks"
 
@@ -230,20 +237,80 @@ def get_upcoming_races(season: int, *, now: datetime | None = None) -> list[dict
     return upcoming
 
 
-def _group_results_by_round(rows: list[dict]) -> dict[int, list[dict]]:
-    grouped: dict[int, list[dict]] = {}
+def _get_f1_session_details_by_round(season_id: str, *, is_sprint: bool) -> dict[int, dict]:
+    """Real per-round Formula 1 results, keyed by round_number — shared
+    by get_f1_session_details_by_round (race) and
+    get_f1_sprint_session_details_by_round (sprint shootout, only
+    exists for rounds with a sprint weekend). Same "missing key means
+    no real import yet" contract as get_sim_session_details_by_round.
+    `interval` is Jolpica's winner-total-time-or-gap string, None
+    (rendered as "DNF") for anything not classified with a time.
+    `fantasy_points` is the league's own scoring
+    (fantasy_scoring.points_for_position against the season's active
+    scale, same scale for race and sprint) for that finish position —
+    not f1_race_results.points, which is real-world F1 points and isn't
+    shown here — None if scoring rules haven't been seeded yet."""
+    client = admin_client()
+    rows = (
+        client.table("f1_race_results")
+        .select(
+            "round_number, finish_position, start_position, car_number, status, "
+            "interval, laps, fastest_lap, fastest_lap_time, fastest_lap_number, "
+            "f1_drivers(full_name, team_name)"
+        )
+        .eq("season_id", season_id)
+        .eq("is_sprint", is_sprint)
+        .order("round_number")
+        .order("finish_position")
+        .execute()
+        .data
+    )
+    if not rows:
+        return {}
+
+    try:
+        points_table, _ = get_active_points_table(season_id)
+    except ScoringRulesNotSeededError:
+        points_table = {}
+    if is_sprint and points_table:
+        points_table = sprint_points_table(points_table)
+
+    detail_by_round: dict[int, dict] = defaultdict(lambda: {"results": []})
     for row in rows:
         driver = row["f1_drivers"]
-        grouped.setdefault(row["round_number"], []).append(
+        team_name = driver["team_name"]
+        detail_by_round[row["round_number"]]["results"].append(
             {
                 "position": row["finish_position"],
+                "start_position": row["start_position"],
                 "driver_name": driver["full_name"],
-                "team_name": driver["team_name"],
-                "points": row["points"],
+                "photo_url": driver_photo_url(driver["full_name"]),
+                "car_number": row["car_number"],
+                "team_name": team_name,
+                "team_logo_url": logo_url_for_team(team_name) if team_name else None,
                 "status": row["status"],
+                "interval": row["interval"],
+                "laps": row["laps"],
+                "fastest_lap_time": row["fastest_lap_time"],
+                "fastest_lap_number": row["fastest_lap_number"],
+                "is_fastest_lap": bool(row["fastest_lap"]),
+                "fantasy_points": (
+                    points_for_position(row["finish_position"], points_table) if points_table else None
+                ),
             }
         )
-    return grouped
+    return dict(detail_by_round)
+
+
+def get_f1_session_details_by_round(season_id: str) -> dict[int, dict]:
+    return _get_f1_session_details_by_round(season_id, is_sprint=False)
+
+
+def get_f1_sprint_session_details_by_round(season_id: str) -> dict[int, dict]:
+    """Only has an entry for rounds that actually had a sprint weekend —
+    most rounds don't, so this is empty/sparse compared to the race
+    results."""
+    return _get_f1_session_details_by_round(season_id, is_sprint=True)
 
 
 def _parse_lap_time_seconds(text: str | None) -> float | None:
@@ -389,12 +456,15 @@ def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
 
 def _merge_schedule_with_results(
     schedule: list[dict],
-    results_by_round: dict[int, list[dict]],
     now: datetime,
     paid_track_names: set[str] = frozenset(),
     sim_session_details: dict[int, dict] | None = None,
+    f1_session_details: dict[int, dict] | None = None,
+    f1_sprint_session_details: dict[int, dict] | None = None,
 ) -> list[dict]:
     sim_session_details = sim_session_details or {}
+    f1_session_details = f1_session_details or {}
+    f1_sprint_session_details = f1_sprint_session_details or {}
     races = []
     next_assigned = False
     for race in schedule:
@@ -406,9 +476,6 @@ def _merge_schedule_with_results(
         formatted = _format_race(race, race_dt)
         formatted["is_past"] = is_past
         formatted["is_next"] = is_next
-        formatted["results"] = (
-            results_by_round.get(formatted["round_number"], []) if is_past else None
-        )
 
         track_name, _ = _split_track_name(formatted["iracing_track"])
         formatted["iracing_track_is_paid"] = track_name in paid_track_names
@@ -421,11 +488,13 @@ def _merge_schedule_with_results(
         )
         formatted["sim_laps"] = sim_race_laps(formatted["round_number"])
 
-        # Real per-round iRacing session detail (event + full results),
-        # not placeholder data — a round has no entry here (and the
-        # schedule page shows no "i" info button at all) until an actual
-        # CSV import exists for it.
+        # Real per-round session detail (event + full results), not
+        # placeholder data — a round has no entry here (and the schedule
+        # page shows no dropdown at all for it) until an actual iRacing
+        # CSV import / F1 results import exists for it.
         formatted["sim_session_detail"] = sim_session_details.get(formatted["round_number"])
+        formatted["f1_session_detail"] = f1_session_details.get(formatted["round_number"])
+        formatted["f1_sprint_session_detail"] = f1_sprint_session_details.get(formatted["round_number"])
 
         races.append(formatted)
 
@@ -441,22 +510,20 @@ def get_season_timeline(season: int, *, now: datetime | None = None) -> list[dic
     season_row = client.table("seasons").select("id").eq("name", str(season)).execute()
     season_id = season_row.data[0]["id"] if season_row.data else None
 
-    results_by_round: dict[int, list[dict]] = {}
     sim_session_details: dict[int, dict] = {}
+    f1_session_details: dict[int, dict] = {}
+    f1_sprint_session_details: dict[int, dict] = {}
     if season_id:
-        rows = (
-            client.table("f1_race_results")
-            .select("round_number, finish_position, points, status, f1_drivers(full_name, team_name)")
-            .eq("season_id", season_id)
-            .eq("is_sprint", False)
-            .order("round_number")
-            .order("finish_position")
-            .execute()
-        ).data
-        results_by_round = _group_results_by_round(rows)
         sim_session_details = get_sim_session_details_by_round(season_id)
+        f1_session_details = get_f1_session_details_by_round(season_id)
+        f1_sprint_session_details = get_f1_sprint_session_details_by_round(season_id)
 
     paid_track_names = _get_paid_track_names()
     return _merge_schedule_with_results(
-        schedule, results_by_round, now, paid_track_names, sim_session_details
+        schedule,
+        now,
+        paid_track_names,
+        sim_session_details,
+        f1_session_details,
+        f1_sprint_session_details,
     )

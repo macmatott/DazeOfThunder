@@ -70,6 +70,12 @@ def test_maps_race_winner_with_fastest_lap():
         "status": "Finished",
         "points": 25.0,
         "fastest_lap": True,
+        "car_number": 4,
+        "start_position": 1,
+        "interval": "1:42:06.304",
+        "laps": 57,
+        "fastest_lap_time": "1:22.167",
+        "fastest_lap_number": 43,
     }
 
 
@@ -89,6 +95,13 @@ def test_maps_dnf_with_numeric_classification_position():
     assert row["status"] == "Retired"
     assert row["points"] == 0.0
     assert row["fastest_lap"] is False
+    # A retired driver still has no classified race time/gap (no "Time"
+    # key at all in the raw payload), even though laps/car number/fastest
+    # lap are still reported.
+    assert row["interval"] is None
+    assert row["car_number"] == 30
+    assert row["laps"] == 46
+    assert row["fastest_lap_time"] == "1:23.500"
 
 
 def test_normalize_constructor_name_corrects_stale_jolpica_names():
