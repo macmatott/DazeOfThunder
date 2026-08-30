@@ -49,6 +49,19 @@ class Settings(BaseSettings):
     # automatically off of every git push.
     discord_webhook_changelog: str = ""
 
+    # Posted the moment the YouTube channel is detected going live (see
+    # app/services/discord_webhooks.py::check_and_notify_youtube_live).
+    # A dedicated GitHub Actions cron hits /internal/check-youtube-live
+    # every few minutes to trigger the check, since the Fly.io machine
+    # auto-stops when idle and can't run its own background poll loop.
+    discord_webhook_youtube_live: str = ""
+
+    # Shared secret the cron workflow sends as the X-Cron-Secret header
+    # so /internal/check-youtube-live can't be triggered by anyone else
+    # hitting the public URL. Set via .env locally / `fly secrets set`
+    # in production; never commit a real value.
+    internal_cron_secret: str = ""
+
     environment: str = "development"
     log_level: str = "INFO"
 

@@ -27,10 +27,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import httpx
+from postgrest.exceptions import APIError
 
 from app.config import settings
 from app.db.supabase_client import admin_client
 from app.services.standings import constructor_round_points
+from app.services.youtube import get_live_stream_info
 
 MEDALS = ["🥇", "🥈", "🥉"]
 GITHUB_REPO_URL = "https://github.com/macmatott/DazeOfThunder"
@@ -431,3 +433,36 @@ def notify_sim_round(
         settings.discord_webhook_overall,
         format_message("👑", "Overall Championship", round_label, [], overall_deltas),
     )
+
+
+def check_and_notify_youtube_live() -> bool:
+    """Posts a "we're live" message the moment a YouTube stream is first
+    seen — called from /internal/check-youtube-live, hit on a schedule
+    by a GitHub Actions cron (the site's Fly.io machine auto-stops when
+    idle, so it can't run its own background poll loop).
+
+    Idempotent via youtube_live_notifications: a stream's video_id is
+    only ever notified once, tracked in the DB rather than an in-memory
+    flag, since the app process itself can restart mid-stream (the same
+    auto-stop behavior that requires the external cron in the first
+    place) and would otherwise forget it already posted. Returns
+    whether a notification was actually sent, so the endpoint can
+    report it."""
+    info = get_live_stream_info()
+    if not info:
+        return False
+
+    client = admin_client()
+    try:
+        client.table("youtube_live_notifications").insert({"video_id": info["video_id"]}).execute()
+    except APIError as exc:
+        if exc.code == "23505":  # unique_violation — already notified for this video_id
+            return False
+        raise
+
+    url = f"https://www.youtube.com/watch?v={info['video_id']}"
+    post_to_webhook(
+        settings.discord_webhook_youtube_live,
+        f"🔴 **We're live on YouTube!**\n{info['title']}\n{url}",
+    )
+    return True

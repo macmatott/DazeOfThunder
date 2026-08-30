@@ -1,0 +1,22 @@
+name: Check YouTube live status
+
+# Fly.io stops the app's machine when it's been idle, so it can't run
+# its own background poll loop for "did the stream just start" — this
+# cron hits a small internal endpoint every few minutes instead, which
+# both wakes the machine and triggers the check. See
+# frontend/app/routers/internal.py.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the internal check-youtube-live endpoint
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "X-Cron-Secret: ${{ secrets.INTERNAL_CRON_SECRET }}" \
+            https://dazeofthunder.com/internal/check-youtube-live

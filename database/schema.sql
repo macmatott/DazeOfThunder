@@ -371,6 +371,18 @@ create table public.team_event_results (
     unique (team_event_id, participant_id)
 );
 
+-- One row per YouTube stream we've already posted a "we're live"
+-- Discord message for — the unique constraint is what makes the
+-- notification idempotent (safe against overlapping/duplicate cron
+-- hits, and against the app process restarting mid-stream on Fly.io's
+-- auto-stop, which would otherwise forget an in-memory "already
+-- notified" flag). See discord_webhooks.py::check_and_notify_youtube_live.
+create table public.youtube_live_notifications (
+    id uuid primary key default gen_random_uuid(),
+    video_id text not null unique,
+    notified_at timestamptz not null default now()
+);
+
 -- ============================================================
 -- Scoring configuration
 -- ============================================================
@@ -410,6 +422,7 @@ alter table public.team_events enable row level security;
 alter table public.event_rsvps enable row level security;
 alter table public.team_event_results enable row level security;
 alter table public.iracing_tracks enable row level security;
+alter table public.youtube_live_notifications enable row level security;
 
 -- Policies intentionally not defined yet — public vs. private page split
 -- (Section 11 of the design doc) is still open. RLS is enabled by default
