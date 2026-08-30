@@ -1,0 +1,47 @@
+name: CI/CD
+
+# Every push to main: run the test suite, and if it passes, deploy to
+# Fly.io and post the commit message as a changelog entry. There's no
+# separate staging/review step — pushing to main IS the "ship it"
+# decision, so write commit messages with that in mind (a good commit
+# message doubles as the changelog, see scripts/post_deploy_changelog.py).
+on:
+  push:
+    branches: [main]
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  changelog:
+    needs: deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/scripts/post_deploy_changelog.py
+        env:
+          INTERNAL_CRON_SECRET: ${{ secrets.INTERNAL_CRON_SECRET }}
