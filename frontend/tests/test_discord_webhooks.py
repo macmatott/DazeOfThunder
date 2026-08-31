@@ -1,4 +1,6 @@
 from app.services.discord_webhooks import (
+    DISCORD_MESSAGE_LIMIT,
+    _truncate_for_discord,
     compute_constructor_round_details,
     compute_fantasy_round_details,
     compute_standings_deltas,
@@ -294,3 +296,24 @@ def test_compute_constructor_round_details_omits_teams_with_no_results_at_all():
     details = compute_constructor_round_details(pairs, {}, {})
 
     assert details == []
+
+
+def test_truncate_for_discord_leaves_short_content_alone():
+    content = "short and sweet"
+    assert _truncate_for_discord(content) == content
+
+
+def test_truncate_for_discord_shortens_content_over_the_limit():
+    # A real incident: a long, multi-paragraph changelog (2509 chars)
+    # was silently rejected by Discord's API — this is the fix, not
+    # just a safety net for a contrived case.
+    content = "x" * 2509
+    truncated = _truncate_for_discord(content)
+    assert len(truncated) == DISCORD_MESSAGE_LIMIT
+    assert truncated.endswith("(truncated)")
+
+
+def test_truncate_for_discord_is_exactly_at_the_limit_when_needed():
+    content = "x" * (DISCORD_MESSAGE_LIMIT + 1)
+    truncated = _truncate_for_discord(content)
+    assert len(truncated) <= DISCORD_MESSAGE_LIMIT

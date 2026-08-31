@@ -13,10 +13,16 @@ itself after a successful deploy (see
 .github/scripts/post_deploy_changelog.py), not from any app request
 handler.
 
-Fails silently everywhere: a channel whose webhook URL isn't set (e.g.
-local dev) is just skipped, and a Discord outage/HTTP error never
-bubbles up — an admin's results import/upload should never fail
-because Discord posting didn't work.
+Fails silently everywhere, in the sense that a channel whose webhook
+URL isn't set (e.g. local dev) is just skipped, and a Discord outage/
+HTTP error never bubbles up and breaks the caller (an admin's results
+import/upload should never fail because Discord posting didn't work) —
+but post_to_webhook does now log a failure rather than swallowing it
+outright, after a real incident where an over-2000-character changelog
+message was silently rejected by Discord's API with no visible sign
+anything had gone wrong (httpx.post() doesn't raise for a 4xx/5xx
+response unless something calls .raise_for_status(), which nothing
+here did).
 
 notify_fantasy_round scores the round itself (rather than the caller
 calling score_round separately) so it can snapshot standings before and
@@ -27,6 +33,7 @@ per round instead of a bulk summary.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 import httpx
@@ -37,18 +44,47 @@ from app.db.supabase_client import admin_client
 from app.services.standings import constructor_round_points
 from app.services.youtube import get_live_stream_info
 
+logger = logging.getLogger(__name__)
+
 MEDALS = ["🥇", "🥈", "🥉"]
 GITHUB_REPO_URL = "https://github.com/macmatott/DazeOfThunder"
 SITE_URL = "https://dazeofthunder.com"
 
+# Discord rejects any message content over this length outright (a 4xx,
+# not a truncation) — truncating first means a long changelog (or any
+# other webhook post) still goes out, just shortened, instead of not
+# posting at all.
+DISCORD_MESSAGE_LIMIT = 2000
+_TRUNCATION_SUFFIX = "\n… (truncated)"
 
-def post_to_webhook(webhook_url: str, content: str) -> None:
+
+def _truncate_for_discord(content: str) -> str:
+    if len(content) <= DISCORD_MESSAGE_LIMIT:
+        return content
+    return content[: DISCORD_MESSAGE_LIMIT - len(_TRUNCATION_SUFFIX)] + _TRUNCATION_SUFFIX
+
+
+def post_to_webhook(webhook_url: str, content: str) -> bool:
+    """Returns whether the post actually succeeded — every caller today
+    fires-and-forgets this (matching the "Discord posting must never
+    break the caller" rule above), but the return value is there for a
+    caller — like /internal/post-changelog — that wants to reflect a
+    real failure back to whoever's asking, instead of always reporting
+    success regardless of what actually happened."""
     if not webhook_url:
-        return
+        return False
+    content = _truncate_for_discord(content)
     try:
-        httpx.post(webhook_url, json={"content": content}, timeout=10)
+        response = httpx.post(webhook_url, json={"content": content}, timeout=10)
     except httpx.HTTPError:
-        pass
+        logger.warning("Discord webhook post failed (connection error)", exc_info=True)
+        return False
+    if response.status_code >= 400:
+        logger.warning(
+            "Discord webhook post rejected: %s %s", response.status_code, response.text[:500]
+        )
+        return False
+    return True
 
 
 def post_changelog(
@@ -56,20 +92,27 @@ def post_changelog(
     *,
     commit_sha: str | None = None,
     site_url: str = SITE_URL,
-) -> None:
+) -> bool:
     """Posts a brief changelog synopsis to the #changelog channel —
     timestamped, linking to the live site (the homepage by default, or
     a more specific page via `site_url` when the change is localized to
-    one) and to the pushed commit on GitHub (when known).
+    one) and to the pushed commit on GitHub (when known). Returns
+    whether the post actually succeeded (see post_to_webhook) — checked
+    by /internal/post-changelog so a real failure shows up as a failed
+    CI step instead of silently reporting success either way.
 
     `changes` is one or more short bullet lines for whatever shipped in
-    this deploy. Called two ways: manually (a human deploying picks a
-    type emoji per line — ✨ feature, 🐛 fix, 🎨 style/UI, 🔧 config/infra
-    — so a deploy bundling several kinds of change still reads as a
-    clear list) and automatically by the CI/CD pipeline's changelog job
-    (via /internal/post-changelog), which just uses the commit message
-    itself, blank-line-separated paragraphs as the bullets — see
-    .github/scripts/post_deploy_changelog.py."""
+    this deploy — long lines get truncated (see post_to_webhook) rather
+    than rejected outright by Discord's 2000-character message limit,
+    but keeping each one to a sentence or two is still worth doing:
+    that's what actually reads well in Discord, truncation is a safety
+    net, not a style. Called two ways: manually (a human deploying picks
+    a type emoji per line — ✨ feature, 🐛 fix, 🎨 style/UI, 🔧 config/
+    infra — so a deploy bundling several kinds of change still reads as
+    a clear list) and automatically by the CI/CD pipeline's changelog
+    job (via /internal/post-changelog), which just uses the commit
+    message itself, blank-line-separated paragraphs as the bullets —
+    see .github/scripts/post_deploy_changelog.py."""
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     parts = ["📝 **Site Update**", ""]
     parts.extend(f"• {change}" for change in changes)
@@ -78,7 +121,7 @@ def post_changelog(
     parts.append(f"🌐 {site_url}")
     if commit_sha:
         parts.append(f"🔗 {GITHUB_REPO_URL}/commit/{commit_sha}")
-    post_to_webhook(settings.discord_webhook_changelog, "\n".join(parts))
+    return post_to_webhook(settings.discord_webhook_changelog, "\n".join(parts))
 
 
 def compute_standings_deltas(

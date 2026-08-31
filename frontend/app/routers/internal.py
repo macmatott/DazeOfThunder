@@ -67,6 +67,13 @@ def post_changelog_endpoint(payload: PostChangelogPayload):
     already-deployed app, rather than from the GitHub Actions runner
     itself, so discord_webhook_changelog only ever needs to be
     configured once (on Fly) instead of duplicated as a second GitHub
-    secret."""
-    post_changelog(payload.changes, commit_sha=payload.commit_sha)
+    secret. Raises on a genuine post failure (rather than always
+    reporting success) so post_deploy_changelog.py's step — and so the
+    changelog job, though not the deploy job before it — shows red in
+    GitHub Actions instead of silently reporting a changelog that never
+    actually reached Discord, which is exactly how one over-2000-
+    character commit message went unnoticed."""
+    posted = post_changelog(payload.changes, commit_sha=payload.commit_sha)
+    if not posted:
+        raise HTTPException(status_code=502, detail="Failed to post changelog to Discord")
     return {"posted": True}
