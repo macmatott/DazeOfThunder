@@ -341,7 +341,7 @@ def get_pairs(season_id: str) -> list[dict]:
         client.table("constructors")
         .select(
             "id, name, pick_number, paired_at, named_at, "
-            "constructor_members(participant_id, participants(display_name, role))"
+            "constructor_members(participant_id, participants(display_name, role, car_number))"
         )
         .eq("season_id", season_id)
         .order("pick_number")

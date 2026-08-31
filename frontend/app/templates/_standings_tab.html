@@ -58,7 +58,7 @@
                     </span>
                   {% endif %}
                   {% if row.logo_url %}<img src="{{ row.logo_url }}" alt="" class="draft-pick-row__logo draft-pick-row__logo--standings">{% endif %}
-                  {{ row.display_name }}{{ role_badge(row.role) }}
+                  {{ row.display_name }}{% if row.car_number %} <span class="number-badge">#{{ row.car_number }}</span>{% endif %}{{ role_badge(row.role) }}
                 </div>
               </div>
               <div class="tower__points">
@@ -100,23 +100,32 @@
                         <span class="driver-breakdown-table__driver-inner">
                           {% if driver.photo_url %}<span class="driver-photo driver-photo--sm" style="background-image: url('{{ driver.photo_url }}')"></span>{% endif %}
                           {% if driver.logo_url %}<img src="{{ driver.logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
-                          {{ driver.full_name }}
+                          {{ driver.full_name }}{% set number = driver.driver_number or driver.car_number %}{% if number %} <span class="number-badge">#{{ number }}</span>{% endif %}
                         </span>
                       </td>
                       {% for r in row.breakdown_rounds %}
                         {% set is_sprint = (r in row.sprint_rounds) and not (driver.is_sim_entry | default(false)) %}
-                        {% set is_averaged = r in (driver.averaged_rounds | default([])) %}
+                        {% set is_dropped = r in (driver.dropped_rounds | default([])) %}
                         {% set cell_classes = [] %}
                         {% if is_sprint %}{% set _ = cell_classes.append("driver-breakdown-table__sprint-col") %}{% endif %}
-                        {% if is_averaged %}{% set _ = cell_classes.append("driver-breakdown-table__averaged") %}{% endif %}
-                        <td{% if cell_classes %} class="{{ cell_classes | join(' ') }}"{% endif %}{% if is_averaged %} title="Counted as part of a 2-driver average toward the team's total this round, not on its own"{% endif %}>
-                          {{ driver.points_by_round[r] | int }}{% if is_averaged %}<span aria-hidden="true"> †</span>{% endif %}
+                        {% if is_dropped %}{% set _ = cell_classes.append("driver-breakdown-table__dropped") %}{% endif %}
+                        <td{% if cell_classes %} class="{{ cell_classes | join(' ') }}"{% endif %}{% if is_dropped %} title="Not counted toward the half-season total — outside this driver's best 9 races"{% endif %}>
+                          {{ driver.points_by_round[r] | int }}{% if is_dropped %}<span aria-hidden="true"> ✕</span>{% endif %}
                           {% if driver.positions_by_round[r] %}
                             <span class="driver-breakdown-table__position">{% for p in driver.positions_by_round[r] %}P{{ p }}{% if not loop.last %}/{% endif %}{% endfor %}</span>
+                          {% elif active_tab == "sim" %}
+                            {# Drivers' tab only: no race_results row at all for this
+                               round (as opposed to a real DNF/DQ, which still gets a
+                               classified finish position) means they weren't entered
+                               in that race — flagged as withdrawn rather than left
+                               blank, so it reads as "didn't race" not "missing data". #}
+                            <span class="driver-breakdown-table__position">WD</span>
                           {% endif %}
                         </td>
                       {% endfor %}
-                      <td class="driver-breakdown-table__total">{{ driver.total | int }}</td>
+                      <td class="driver-breakdown-table__total">
+                        {{ driver.total | int }}{% if driver.total_is_averaged | default(false) %}<span aria-hidden="true" title="This team's top scorer's half-season total counts in full; the other members' totals are averaged together rather than one being dropped"> †</span>{% endif %}
+                      </td>
                     </tr>
                   {% endfor %}
                 </tbody>
@@ -124,8 +133,11 @@
               {% if row.sprint_rounds %}
                 <p class="driver-breakdown-table__legend">🏁 Sprint weekend — race + sprint scored together</p>
               {% endif %}
-              {% if row.driver_breakdown | selectattr("averaged_rounds") | list %}
-                <p class="driver-breakdown-table__legend">† This team's top scorer that round counts in full; the other two members' points are averaged together rather than one being dropped</p>
+              {% if row.driver_breakdown | selectattr("dropped_rounds") | list %}
+                <p class="driver-breakdown-table__legend">✕ Not counted toward the half-season total — outside this driver's best 9 races</p>
+              {% endif %}
+              {% if row.driver_breakdown | selectattr("total_is_averaged") | list %}
+                <p class="driver-breakdown-table__legend">† This team's top scorer's half-season total counts in full; the other members' totals are averaged together rather than one being dropped</p>
               {% endif %}
             </div>
           </details>

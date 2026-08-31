@@ -31,6 +31,13 @@ create table public.participants (
     iracing_cust_id bigint unique,
     iracing_display_name text,
 
+    -- The member's own iRacing car number, shown next to their name in
+    -- standings. Self-reported via /profile, not unique — unlike
+    -- iracing_cust_id, nothing here actually depends on it matching a
+    -- real iRacing record, so two members picking the same number isn't
+    -- a data-integrity problem.
+    car_number int,
+
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
@@ -170,6 +177,7 @@ create table public.f1_drivers (
     season_id uuid not null references public.seasons(id),
     full_name text not null,
     team_name text not null,
+    driver_number int,
     is_reserve boolean not null default false,
     is_active boolean not null default true,
     unique (season_id, full_name)

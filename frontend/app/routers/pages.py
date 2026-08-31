@@ -20,6 +20,7 @@ from app.services.fantasy_scoring import (
 )
 from app.services.participants import (
     get_participant,
+    parse_car_number,
     parse_iracing_cust_id,
     update_participant,
 )
@@ -158,6 +159,7 @@ def profile_update(
     display_name: str = Form(...),
     iracing_display_name: str = Form(""),
     iracing_cust_id: str = Form(""),
+    car_number: str = Form(""),
 ):
     if not request.state.current_user:
         return RedirectResponse("/auth/login")
@@ -178,11 +180,21 @@ def profile_update(
         )
 
     try:
+        number = parse_car_number(car_number)
+    except ValueError:
+        error = "Car Number must be a number."
+        participant = get_participant(participant_id)
+        return templates.TemplateResponse(
+            request, "profile.html", {"participant": participant, "saved": False, "error": error}
+        )
+
+    try:
         participant = update_participant(
             participant_id,
             display_name=display_name,
             iracing_display_name=iracing_display_name.strip() or None,
             iracing_cust_id=cust_id,
+            car_number=number,
         )
     except APIError as exc:
         if exc.code == "23505":

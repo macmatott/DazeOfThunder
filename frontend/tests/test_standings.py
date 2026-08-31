@@ -1,5 +1,7 @@
 from app.services.standings import (
-    _pair_points,
+    HALF_SEASON_BEST_N,
+    _best_n_total,
+    _entry_before_total,
     _rows_from_totals,
     _sum_points,
     constructor_round_points,
@@ -7,8 +9,8 @@ from app.services.standings import (
 )
 
 PARTICIPANTS = {
-    "a": {"display_name": "Alice", "role": "owner"},
-    "b": {"display_name": "Bob", "role": "member"},
+    "a": {"display_name": "Alice", "role": "owner", "car_number": 7},
+    "b": {"display_name": "Bob", "role": "member", "car_number": None},
 }
 
 
@@ -26,36 +28,83 @@ def test_rows_from_totals_sorts_descending_and_rounds():
     assert rows[0]["points"] == 12.3
 
 
+def test_rows_from_totals_carries_car_number_through():
+    rows = _rows_from_totals({"a": 10, "b": 5}, PARTICIPANTS)
+    by_name = {r["display_name"]: r["car_number"] for r in rows}
+    assert by_name == {"Alice": 7, "Bob": None}
+
+
 def test_rows_from_totals_unknown_participant_falls_back():
     rows = _rows_from_totals({"ghost": 5}, PARTICIPANTS)
     assert rows[0] == {
         "participant_id": "ghost",
         "display_name": "Unknown",
         "role": "member",
+        "car_number": None,
         "points": 5,
     }
 
 
-def _pair(name, member_ids, member_names="A & B"):
-    return {
-        "name": name,
-        "member_names": member_names,
-        "logo_url": None,
-        "constructor_members": [{"participant_id": pid} for pid in member_ids],
-    }
+def test_best_n_total_counts_everything_when_fewer_than_best_n_raced():
+    # Only 3 raced rounds, well under HALF_SEASON_BEST_N (9) — nothing to
+    # drop, they all count.
+    points_by_round = {12: 10, 13: 20, 14: 5}
+    total, dropped = _best_n_total(points_by_round, {12, 13, 14})
+    assert total == 35
+    assert dropped == set()
 
 
-def test_pair_points_sums_both_members_across_rounds():
-    points_by_round = {
-        "r1": {"a": 10, "b": 5},
-        "r2": {"a": 8, "b": 4},
-    }
-    assert _pair_points(_pair(None, ["a", "b"]), points_by_round) == 27
+def test_best_n_total_drops_the_worst_beyond_best_n():
+    # 10 raced rounds (12-21) — one worse than HALF_SEASON_BEST_N (9), so
+    # exactly the single worst-scoring one (round 15, 1 point) is dropped.
+    points_by_round = {r: 10 for r in range(12, 22)}
+    points_by_round[15] = 1
+    raced = set(range(12, 22))
+    total, dropped = _best_n_total(points_by_round, raced)
+    assert dropped == {15}
+    assert total == sum(points_by_round[r] for r in raced if r != 15) == 90
 
 
-def test_pair_points_treats_unscored_member_as_zero():
-    points_by_round = {"r1": {"a": 10}}
-    assert _pair_points(_pair(None, ["a", "c"]), points_by_round) == 10
+def test_best_n_total_ignores_rounds_outside_the_half_season_window():
+    # Round 24 is outside HALF_SEASON_SIM_ROUNDS (12-23) — never counts,
+    # and never shows up as "dropped" either, since it was never a
+    # candidate in the first place.
+    points_by_round = {12: 10, 24: 999}
+    total, dropped = _best_n_total(points_by_round, {12, 24})
+    assert total == 10
+    assert dropped == set()
+
+
+def test_best_n_total_exclude_round_can_reinstate_a_previously_dropped_round():
+    # 10 raced rounds with round 15 the worst (dropped from the full
+    # total). Excluding the newest round (21) to reconstruct "the total
+    # as of last round" means only 9 candidates remain, so round 15 is
+    # no longer anyone's 10th-best — it's back in.
+    points_by_round = {r: 10 for r in range(12, 22)}
+    points_by_round[15] = 1
+    raced = set(range(12, 22))
+    before_total, before_dropped = _best_n_total(points_by_round, raced, exclude_round=21)
+    assert before_dropped == set()
+    assert before_total == sum(points_by_round[r] for r in raced if r != 21) == 81
+
+
+def test_entry_before_total_uses_precomputed_value_when_present():
+    driver = {"before_total": 42, "total": 50, "points_by_round": {12: 8}}
+    assert _entry_before_total(driver, latest_round=12) == 42
+
+
+def test_entry_before_total_falls_back_to_subtraction_without_one():
+    driver = {"total": 50, "points_by_round": {12: 8}}
+    assert _entry_before_total(driver, latest_round=12) == 42
+
+
+def test_entry_before_total_returns_total_when_no_latest_round():
+    driver = {"total": 50, "points_by_round": {}}
+    assert _entry_before_total(driver, latest_round=None) == 50
+
+
+def test_half_season_best_n_is_nine():
+    assert HALF_SEASON_BEST_N == 9
 
 
 def test_round_half_up_rounds_ties_up_not_to_even():
@@ -80,21 +129,14 @@ def test_constructor_round_points_rounds_a_tied_average_up():
     assert constructor_round_points([22, 15, 12]) == 22 + 14
 
 
-def test_pair_points_averages_the_bottom_two_of_three_each_round():
-    # This league's one 3-person team — averaging the other two scorers
-    # each round (rather than dropping the lowest outright) means a weak
-    # night from either of them still pulls the round down somewhat.
-    points_by_round = {
-        "r1": {"a": 20, "b": 15, "c": 5},   # 20 + round(avg(15, 5)) = 20 + 10 = 30
-        "r2": {"a": 3, "b": 25, "c": 10},   # 25 + round(avg(10, 3)) = 25 + 7 = 32
-    }
-    assert _pair_points(_pair(None, ["a", "b", "c"]), points_by_round) == 30 + 32
+def test_constructor_round_points_blends_final_half_season_totals_for_three_person_team():
+    # get_constructor_standings now calls this once on each member's own
+    # half-season best-9-of-12 total (see HALF_SEASON_SIM_ROUNDS), not
+    # per individual round — same formula, applied one level up: the
+    # top total counts in full, the other two are averaged together.
+    member_totals = [120, 90, 60]
+    assert constructor_round_points(member_totals) == 120 + round_half_up((90 + 60) / 2)
 
 
-def test_pair_points_three_person_team_still_averages_in_an_absent_member():
-    # Unlike the old "drop the lowest" rule, a 3rd member scoring 0 (e.g.
-    # didn't race) still gets folded into the average, dragging the
-    # round down below what a 2-person team would've scored: 12 +
-    # round(avg(7, 0)) = 12 + round(3.5) = 12 + 4 = 16, not 12 + 7 = 19.
-    points_by_round = {"r1": {"a": 12, "b": 7}}
-    assert _pair_points(_pair(None, ["a", "b", "c"]), points_by_round) == 16
+def test_constructor_round_points_two_person_team_is_a_plain_sum_of_totals():
+    assert constructor_round_points([120, 90]) == 210

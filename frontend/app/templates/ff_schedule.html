@@ -188,7 +188,7 @@
   {% if race.sim_session_detail or race.f1_session_detail or race.f1_sprint_session_detail %}
     <details
       class="{{ row_classes }} tower-row-toggle"
-      {% if race.is_next %}id="next-race"{% endif %}
+      id="round-{{ race.round_number }}"
       {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
     >
       <summary class="schedule-row tower-row-toggle__summary">{{ _race_row_cells(race) }}</summary>
@@ -197,7 +197,7 @@
   {% else %}
     <div
       class="{{ row_classes }}"
-      {% if race.is_next %}id="next-race"{% endif %}
+      id="round-{{ race.round_number }}"
       {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
     >
       <div class="schedule-row">{{ _race_row_cells(race) }}</div>
@@ -212,6 +212,17 @@
     <div class="schedule-header__titles">
       <h1 class="page-title">2026 Season Schedule</h1>
     </div>
+    {% if races %}
+      <div class="schedule-jump">
+        <label for="round-jump" class="schedule-jump__label">Jump to round</label>
+        <select id="round-jump" class="round-jump">
+          <option value="">Select a round…</option>
+          {% for race in races %}
+            <option value="{{ race.round_number }}">Round {{ race.round_number }} — {{ race.race_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
   </div>
 
   <div class="schedule-meta-grid">

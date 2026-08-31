@@ -615,7 +615,7 @@ main.main--wide {
 
 .scoring-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: auto 7rem auto;
   align-items: start;
   gap: var(--space-5);
@@ -1045,6 +1045,15 @@ main.main--wide {
   gap: var(--space-2);
 }
 
+/* Shared "#N" badge next to a name — an F1 driver's car number in the
+   breakdown tables, or a league member's own iRacing car number in the
+   standings row summary and the Constructors' per-member breakdown. */
+.number-badge {
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 .driver-breakdown-table__total {
   font-weight: 700;
   color: var(--color-accent);
@@ -1054,13 +1063,13 @@ main.main--wide {
   background: rgba(232, 220, 59, 0.08);
 }
 
-/* Constructors' tab only: a 3-person team's non-top scorer that round
-   — their point still counts, just blended into an average with the
-   other non-top member rather than kept in full, so this is dimmed
-   (not struck through — unlike a fully dropped score, it's not
-   discarded). */
-.driver-breakdown-table__averaged {
-  opacity: 0.65;
+/* A raced round outside this driver's half-season best 9 (see
+   HALF_SEASON_SIM_ROUNDS in standings.py) — struck through since,
+   unlike a Constructors' averaged-in total (dimmed only, still
+   counting), this round genuinely doesn't count toward anything. */
+.driver-breakdown-table__dropped {
+  opacity: 0.5;
+  text-decoration: line-through;
 }
 
 .driver-breakdown-table__legend {
@@ -1146,6 +1155,36 @@ main.main--wide {
 
 .schedule-header__titles {
   text-align: center;
+}
+
+.schedule-jump {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.schedule-jump__label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
+.round-jump {
+  font-family: var(--font-data);
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.round-jump:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 /* Grid (not flex-wrap) so the two rows share column widths and line up

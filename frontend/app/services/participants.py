@@ -26,6 +26,13 @@ def parse_iracing_cust_id(raw: str) -> int | None:
     return int(raw)
 
 
+def parse_car_number(raw: str) -> int | None:
+    raw = raw.strip()
+    if not raw:
+        return None
+    return int(raw)
+
+
 def get_participant(participant_id: str) -> dict:
     client = admin_client()
     result = client.table("participants").select("*").eq("id", participant_id).execute()
@@ -135,6 +142,7 @@ def update_participant(
     display_name: str,
     iracing_display_name: str | None,
     iracing_cust_id: int | None,
+    car_number: int | None,
 ) -> dict:
     client = admin_client()
     updated = (
@@ -144,6 +152,7 @@ def update_participant(
                 "display_name": display_name,
                 "iracing_display_name": iracing_display_name,
                 "iracing_cust_id": iracing_cust_id,
+                "car_number": car_number,
             }
         )
         .eq("id", participant_id)

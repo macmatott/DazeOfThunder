@@ -147,6 +147,7 @@ def get_or_create_driver(
     team_name: str,
     cache: dict[str, str],
     dry_run: bool = False,
+    driver_number: int | None = None,
 ) -> str:
     full_name = f"{given_name} {family_name}"
     if full_name in cache:
@@ -154,13 +155,21 @@ def get_or_create_driver(
 
     existing = (
         client.table("f1_drivers")
-        .select("id")
+        .select("id, driver_number")
         .eq("season_id", season_id)
         .eq("full_name", full_name)
         .execute()
     )
     if existing.data:
         driver_id = existing.data[0]["id"]
+        # Self-healing backfill: driver_number was added after this driver
+        # row may have already been created by an earlier import — fill it
+        # in from whatever result we're looking at now instead of needing
+        # a one-off migration script.
+        if not dry_run and driver_number and not existing.data[0]["driver_number"]:
+            client.table("f1_drivers").update({"driver_number": driver_number}).eq(
+                "id", driver_id
+            ).execute()
     elif dry_run:
         driver_id = f"<would-create-driver:{full_name}>"
     else:
@@ -171,6 +180,7 @@ def get_or_create_driver(
                     "season_id": season_id,
                     "full_name": full_name,
                     "team_name": team_name,
+                    "driver_number": driver_number,
                 }
             )
             .execute()
@@ -203,6 +213,7 @@ def _import_results(
             team_name=normalize_constructor_name(result["Constructor"]["name"]),
             cache=driver_cache,
             dry_run=dry_run,
+            driver_number=int(driver["permanentNumber"]) if driver.get("permanentNumber") else None,
         )
         rows.append(
             map_result_to_row(

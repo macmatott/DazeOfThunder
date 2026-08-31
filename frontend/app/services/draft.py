@@ -299,7 +299,7 @@ def get_draft_picks(season_id: str) -> list[dict]:
         client.table("draft_picks")
         .select(
             "pick_number, round_number, participant_id, f1_driver_id, picked_at, "
-            "participants(display_name, role), f1_drivers(full_name, team_name)"
+            "participants(display_name, role), f1_drivers(full_name, team_name, driver_number)"
         )
         .eq("season_id", season_id)
         .order("pick_number")

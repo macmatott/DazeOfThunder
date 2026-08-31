@@ -34,6 +34,12 @@
       <div class="tower__meta">Find this on your iRacing member profile page — it's what actually matches your results, since display names aren't unique.</div>
     </div>
 
+    <div class="form-field">
+      <label for="car_number">Car Number</label>
+      <input type="text" inputmode="numeric" id="car_number" name="car_number" value="{{ participant.car_number or '' }}">
+      <div class="tower__meta">Shown next to your name in the standings.</div>
+    </div>
+
     <button type="submit" class="form-submit">Save</button>
   </form>
 {% endblock %}

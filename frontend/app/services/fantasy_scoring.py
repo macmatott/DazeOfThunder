@@ -367,8 +367,8 @@ def get_fantasy_breakdown_by_participant(
     rather than reading fantasy_points_awarded, so it reflects the
     active points table even if a round hasn't been (re-)scored yet.
 
-    Returns ({participant_id: [{"driver_id", "full_name", "team_name",
-    "logo_url", "photo_url", "points_by_round": {round_number: points},
+    Returns ({participant_id: [{"driver_id", "full_name", "driver_number",
+    "team_name", "logo_url", "photo_url", "points_by_round": {round_number: points},
     "positions_by_round": {round_number: [finish_position, ...]}, "total"},
     ...]}, rounds, sprint_rounds) — `rounds` is every race round with
     results this season, ascending, shared across every participant/
@@ -412,6 +412,7 @@ def get_fantasy_breakdown_by_participant(
             {
                 "driver_id": pick["f1_driver_id"],
                 "full_name": driver["full_name"],
+                "driver_number": driver.get("driver_number"),
                 "team_name": driver["team_name"],
                 "logo_url": driver.get("logo_url"),
                 "photo_url": driver.get("photo_url"),
