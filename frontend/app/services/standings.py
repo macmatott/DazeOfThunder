@@ -291,7 +291,12 @@ def get_constructor_breakdown_by_team(season_id: str | None) -> tuple[dict[str, 
     per-round blend anymore, so `total_is_averaged` flags a non-top
     member on this league's one 3-person team at the whole-total level
     (a 2-person team's "everyone but the top scorer" is just the other
-    member, unchanged, so marking it would be noise)."""
+    member, unchanged, so marking it would be noise). `rank` is each
+    member's 0-indexed position sorted by total descending (0 = top
+    scorer), unconditional on team size — used to pick a team's
+    primary/secondary/tertiary livery color per member's bar on the
+    Team Breakdown chart; ties keep pair["constructor_members"]'s own
+    (alphabetical) order."""
     if not season_id:
         return {}, []
     sim_breakdown, rounds = get_sim_breakdown_by_participant(season_id)
@@ -312,6 +317,8 @@ def get_constructor_breakdown_by_team(season_id: str | None) -> tuple[dict[str, 
         member_ids = [m["participant_id"] for m in pair["constructor_members"]]
         member_totals = {pid: sim_breakdown.get(pid, empty_entry)["total"] for pid in member_ids}
         top_pid = max(member_totals, key=member_totals.get) if member_totals else None
+        ranked_ids = sorted(member_ids, key=lambda pid: member_totals[pid], reverse=True)
+        rank_by_pid = {pid: i for i, pid in enumerate(ranked_ids)}
 
         members_breakdown = []
         for member in pair["constructor_members"]:
@@ -325,6 +332,7 @@ def get_constructor_breakdown_by_team(season_id: str | None) -> tuple[dict[str, 
                     "photo_url": None,
                     "logo_url": None,
                     "total_is_averaged": len(member_ids) > 2 and pid != top_pid,
+                    "rank": rank_by_pid[pid],
                 }
             )
         breakdown[pair["id"]] = members_breakdown
@@ -443,6 +451,9 @@ def get_constructor_standings(season_id: str | None) -> list[dict]:
                 1,
             ),
             "logo_url": pair["logo_url"],
+            "color": pair.get("color"),
+            "secondary_color": pair.get("secondary_color"),
+            "tertiary_color": pair.get("tertiary_color"),
         }
         for pair in pairs
     ]
@@ -468,6 +479,49 @@ def _entry_before_total(driver: dict, latest_round: int | None) -> float:
     if latest_round is None:
         return driver["total"]
     return driver["total"] - driver["points_by_round"].get(latest_round, 0)
+
+
+def _entry_cumulative_at(driver: dict, upto_round: int) -> float:
+    """A driver_breakdown entry's total using only rounds up to and
+    including upto_round — same idea as _entry_before_total, generalized
+    to any round boundary rather than just "the round before latest".
+    Feeds the points-progression chart, so a sim-derived entry replays
+    the half-season best-9-of-12 rule (see _best_n_total) at each round
+    rather than a naive running sum — otherwise the chart would show a
+    number the live standings never actually showed at that point."""
+    points_by_round = driver["points_by_round"]
+    if "before_total" in driver:  # sim-derived entry — best-9-of-12 aware
+        raced_rounds = {r for r, positions in driver["positions_by_round"].items() if positions}
+        candidates = {r for r in raced_rounds if r <= upto_round}
+        return _best_n_total(points_by_round, candidates)[0]
+    return round(sum(v for r, v in points_by_round.items() if r <= upto_round), 1)
+
+
+def get_points_progression(rows: list[dict], rounds: list[int]) -> list[dict]:
+    """Cumulative points per row at each round in `rounds` — feeds the
+    Championship points-progression line chart on the Drivers',
+    Fantasy, and Overall tabs (Constructors' gets its own chart; see
+    the standings-charts.js side). Each row's value at a given round is
+    the sum of its driver_breakdown entries' own cumulative totals at
+    that round (see _entry_cumulative_at), so the chart's last point
+    always matches the number the standings row is currently showing.
+
+    Returns [{"label": display_name, "car_number": ..., "participant_id":
+    ..., "points": [one value per round in `rounds`, in order]}, ...] —
+    `participant_id` lets the page correlate a line back to that row's
+    own dropdown (see standings-charts.js's focus-on-expand behavior)."""
+    return [
+        {
+            "label": row["display_name"],
+            "car_number": row.get("car_number"),
+            "participant_id": row.get("participant_id"),
+            "points": [
+                round(sum(_entry_cumulative_at(driver, r) for driver in row["driver_breakdown"]), 1)
+                for r in rounds
+            ],
+        }
+        for row in rows
+    ]
 
 
 def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = "participant_id") -> None:
@@ -499,7 +553,13 @@ def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = 
         row["rank_change"] = before_rank[row[key_field]] - (i + 1)
 
 
-def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
+def get_standings_rows(tab: str, season_id: str | None) -> tuple[list[dict], list[dict]]:
+    """Returns (rows, progression) — `progression` feeds the points-
+    progression line chart (see get_points_progression) and is only
+    computed for the Drivers', Fantasy, and Overall tabs; Constructors'
+    gets [] here since its chart (a per-team member breakdown, not a
+    progression) is built straight from `rows`' driver_breakdown in the
+    template instead."""
     if tab == "fantasy":
         rows = get_fantasy_only_standings(season_id)
         if season_id and rows:
@@ -518,7 +578,8 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 row["breakdown_rounds"] = rounds
                 row["sprint_rounds"] = sprint_rounds
             _attach_round_metrics(rows, rounds)
-        return rows
+            return rows, get_points_progression(rows, rounds)
+        return rows, []
     if tab == "sim":
         rows = get_sim_only_standings(season_id)
         if season_id and rows:
@@ -546,7 +607,8 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 row["breakdown_rounds"] = rounds
                 row["sprint_rounds"] = set()
             _attach_round_metrics(rows, rounds)
-        return rows
+            return rows, get_points_progression(rows, rounds)
+        return rows, []
     if tab == "constructors":
         rows = get_constructor_standings(season_id)
         if season_id and rows:
@@ -558,7 +620,7 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
                 row["breakdown_rounds"] = rounds
                 row["sprint_rounds"] = set()
             _attach_round_metrics(rows, rounds, key_field="id")
-        return rows
+        return rows, []
     rows = get_formula_fantasy_standings(season_id)
     if season_id and rows:
         # Per-round dropdown on the Overall tab — each participant's 2
@@ -569,4 +631,5 @@ def get_standings_rows(tab: str, season_id: str | None) -> list[dict]:
             row["breakdown_rounds"] = rounds
             row["sprint_rounds"] = sprint_rounds
         _attach_round_metrics(rows, rounds)
-    return rows
+        return rows, get_points_progression(rows, rounds)
+    return rows, []

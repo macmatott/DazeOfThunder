@@ -43,6 +43,7 @@ from app.services.draft import (
     DraftNotLiveError,
     NotYourTurnError,
     build_draft_board_context,
+    color_for_team,
     compute_seconds_remaining,
     get_draft_state,
     get_driver_draft_summary,
@@ -50,6 +51,8 @@ from app.services.draft import (
     is_pick_expired,
     list_active_participants,
     logo_url_for_team,
+    secondary_color_for_team,
+    tertiary_color_for_team,
 )
 
 
@@ -356,6 +359,9 @@ def get_pairs(season_id: str) -> list[dict]:
         row["members"] = members
         row["member_names"] = " & ".join(m["display_name"] for m in members)
         row["logo_url"] = logo_url_for_team(row["name"]) if row["name"] else None
+        row["color"] = color_for_team(row["name"]) if row["name"] else None
+        row["secondary_color"] = secondary_color_for_team(row["name"]) if row["name"] else None
+        row["tertiary_color"] = tertiary_color_for_team(row["name"]) if row["name"] else None
     return rows
 
 

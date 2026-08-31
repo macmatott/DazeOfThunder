@@ -98,6 +98,74 @@ def logo_url_for_team(team_name: str) -> str | None:
     return f"/static/img/constructors/{filename}" if filename else None
 
 
+# Real livery/brand colors — used to color a named Constructors' team's
+# bars on the standings page's Team Breakdown chart by their real F1
+# team, same keys as CONSTRUCTOR_LOGOS above.
+CONSTRUCTOR_COLORS = {
+    "Alpine F1 Team": "#0090FF",
+    "Aston Martin": "#229971",
+    "Audi": "#D50000",
+    "Cadillac F1 Team": "#8B2635",
+    "Ferrari": "#DC0000",
+    "Haas F1 Team": "#B6BABD",
+    "McLaren": "#FF8000",
+    "Mercedes": "#00D2BE",
+    "Racing Bulls": "#6692FF",
+    "Red Bull Racing": "#3671C6",
+    "Williams": "#64C4FF",
+}
+
+
+def color_for_team(team_name: str) -> str | None:
+    return CONSTRUCTOR_COLORS.get(team_name)
+
+
+# Each team's real secondary/accent livery color — colors the Team
+# Breakdown chart's second-highest-scoring member's bar, so a team's
+# bars read as "that team" at a glance without every bar being the
+# exact same color.
+CONSTRUCTOR_SECONDARY_COLORS = {
+    "Alpine F1 Team": "#FF87BC",
+    "Aston Martin": "#CEDC00",
+    "Audi": "#C0C0C0",
+    "Cadillac F1 Team": "#C5A572",
+    "Ferrari": "#FFF200",
+    "Haas F1 Team": "#ED1C24",
+    "McLaren": "#47C7FC",
+    "Mercedes": "#C0C0C0",
+    "Racing Bulls": "#FFFFFF",
+    "Red Bull Racing": "#FFC906",
+    "Williams": "#FFFFFF",
+}
+
+
+def secondary_color_for_team(team_name: str) -> str | None:
+    return CONSTRUCTOR_SECONDARY_COLORS.get(team_name)
+
+
+# A third livery accent, for this league's one 3-person team's lowest-
+# scoring member's bar — only ever needed by a 3+ person team, but kept
+# here for every team the same way the other two are, since who ends
+# up on a 3-person roster isn't fixed.
+CONSTRUCTOR_TERTIARY_COLORS = {
+    "Alpine F1 Team": "#FFFFFF",
+    "Aston Martin": "#FFFFFF",
+    "Audi": "#FFFFFF",
+    "Cadillac F1 Team": "#A9A9A9",
+    "Ferrari": "#FFFFFF",
+    "Haas F1 Team": "#C9A961",
+    "McLaren": "#FFFFFF",
+    "Mercedes": "#DA1F87",
+    "Racing Bulls": "#FF3B3B",
+    "Red Bull Racing": "#DC0000",
+    "Williams": "#041E42",
+}
+
+
+def tertiary_color_for_team(team_name: str) -> str | None:
+    return CONSTRUCTOR_TERTIARY_COLORS.get(team_name)
+
+
 class DraftError(Exception):
     """Base for draft-flow errors the router turns into friendly messages."""
 

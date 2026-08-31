@@ -9,6 +9,7 @@ from app.services.draft import (
     VERSTAPPEN_CELEBRATION_SECONDS,
     _sort_by_fantasy_points,
     celebration_seconds_for_last_pick,
+    color_for_team,
     compute_draft_countdown,
     compute_draft_status,
     compute_seconds_remaining,
@@ -19,6 +20,8 @@ from app.services.draft import (
     is_pick_expired,
     logo_url_for_team,
     parse_draft_scheduled_at,
+    secondary_color_for_team,
+    tertiary_color_for_team,
     validate_draft_order,
 )
 
@@ -165,6 +168,51 @@ def test_logo_url_for_known_team():
 
 def test_logo_url_for_unknown_team_is_none():
     assert logo_url_for_team("Some New Team") is None
+
+
+def test_color_for_known_team():
+    assert color_for_team("Ferrari") == "#DC0000"
+    assert color_for_team("Red Bull Racing") == "#3671C6"
+
+
+def test_color_for_unknown_team_is_none():
+    assert color_for_team("Some New Team") is None
+
+
+def test_secondary_color_for_known_team():
+    assert secondary_color_for_team("Ferrari") == "#FFF200"
+    assert secondary_color_for_team("Red Bull Racing") == "#FFC906"
+    # Distinct from the primary color for every team, or the whole point
+    # (telling the top scorer's bar apart from the rest) falls flat.
+    from app.services.draft import CONSTRUCTOR_COLORS, CONSTRUCTOR_SECONDARY_COLORS
+
+    for team, primary in CONSTRUCTOR_COLORS.items():
+        assert CONSTRUCTOR_SECONDARY_COLORS[team] != primary
+
+
+def test_secondary_color_for_unknown_team_is_none():
+    assert secondary_color_for_team("Some New Team") is None
+
+
+def test_tertiary_color_for_known_team():
+    assert tertiary_color_for_team("Red Bull Racing") == "#DC0000"
+
+
+def test_tertiary_color_for_unknown_team_is_none():
+    assert tertiary_color_for_team("Some New Team") is None
+
+
+def test_all_three_tiers_distinct_per_team():
+    from app.services.draft import (
+        CONSTRUCTOR_COLORS,
+        CONSTRUCTOR_SECONDARY_COLORS,
+        CONSTRUCTOR_TERTIARY_COLORS,
+    )
+
+    for team, primary in CONSTRUCTOR_COLORS.items():
+        secondary = CONSTRUCTOR_SECONDARY_COLORS[team]
+        tertiary = CONSTRUCTOR_TERTIARY_COLORS[team]
+        assert len({primary, secondary, tertiary}) == 3
 
 
 def test_compute_seconds_remaining_counts_down():

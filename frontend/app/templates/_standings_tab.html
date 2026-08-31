@@ -12,6 +12,7 @@
         hx-get="/partials/standings-tab?tab={{ key }}"
         hx-target="#standings-wrap"
         hx-swap="outerHTML"
+        hx-sync="#standings-wrap:replace"
         hx-push-url="/formula-fantasy/standings?tab={{ key }}"
         class="standings-tabs__link{% if active_tab == key %} standings-tabs__link--active{% endif %}"
         {% if active_tab == key %}aria-current="page"{% endif %}
@@ -38,6 +39,34 @@
     {% endfor %}
   </nav>
 
+  {% if progression %}
+    <div class="standings-chart-card">
+      <p class="section-label">Points Progression</p>
+      <div class="chart-canvas-wrap">
+        <canvas id="progression-chart"></canvas>
+      </div>
+      <script type="application/json" id="progression-chart-data">{{ {"rounds": rows[0].breakdown_rounds, "series": progression} | tojson }}</script>
+    </div>
+  {% endif %}
+
+  {% if active_tab == "constructors" and rows %}
+    {% set team_chart = [] %}
+    {% for row in rows %}
+      {% set members = [] %}
+      {% for driver in row.driver_breakdown %}
+        {% set _ = members.append({"name": driver.full_name, "total": driver.total, "averaged": driver.total_is_averaged | default(false), "rank": driver.rank | default(0)}) %}
+      {% endfor %}
+      {% set _ = team_chart.append({"team": row.display_name, "team_total": row.points, "color": row.color, "secondary_color": row.secondary_color, "tertiary_color": row.tertiary_color, "members": members}) %}
+    {% endfor %}
+    <div class="standings-chart-card">
+      <p class="section-label">Team Breakdown</p>
+      <div class="chart-canvas-wrap">
+        <canvas id="team-breakdown-chart"></canvas>
+      </div>
+      <script type="application/json" id="team-breakdown-chart-data">{{ team_chart | tojson }}</script>
+    </div>
+  {% endif %}
+
   <div class="tower">
     {% if rows %}
       {% set max_points = rows[0].points if rows else 0 %}
@@ -45,7 +74,7 @@
         {% set pct = ((row.points / max_points * 100) if max_points else 0) | round(1) %}
         {% set tier = "gold" if loop.index == 1 else ("silver" if loop.index == 2 else ("bronze" if loop.index == 3 else "")) %}
         {% if active_tab in ("fantasy", "sim", "constructors", "overall") %}
-          <details class="tower-row-toggle{% if tier == 'bronze' %} standings-podium-end{% endif %}">
+          <details class="tower-row-toggle{% if tier == 'bronze' %} standings-podium-end{% endif %}"{% if row.participant_id %} data-participant-id="{{ row.participant_id }}"{% endif %}>
             <summary class="tower__row standings-row{% if tier %} standings-row--{{ tier }}{% endif %} tower-row-toggle__summary" style="--bar-pct: {{ pct }}%">
               <div class="tower__pos">{{ loop.index }}</div>
               <div>
@@ -138,6 +167,22 @@
               {% endif %}
               {% if row.driver_breakdown | selectattr("total_is_averaged") | list %}
                 <p class="driver-breakdown-table__legend">† This team's top scorer's half-season total counts in full; the other members' totals are averaged together rather than one being dropped</p>
+              {% endif %}
+              {% if active_tab == "sim" and row.driver_breakdown %}
+                {% set driver = row.driver_breakdown[0] %}
+                {% set raced_chart = [] %}
+                {% for r in row.breakdown_rounds if driver.positions_by_round[r] %}
+                  {% set _ = raced_chart.append({"round": r, "points": driver.points_by_round[r], "dropped": r in (driver.dropped_rounds | default([]))}) %}
+                {% endfor %}
+                {% if raced_chart %}
+                  <div class="standings-chart-card standings-chart-card--sm">
+                    <p class="section-label">Best 9 of 12</p>
+                    <div class="chart-canvas-wrap chart-canvas-wrap--sm">
+                      <canvas id="dropped-chart-{{ row.participant_id }}" class="dropped-round-chart"></canvas>
+                    </div>
+                    <script type="application/json" class="dropped-round-chart-data" data-canvas="dropped-chart-{{ row.participant_id }}">{{ raced_chart | tojson }}</script>
+                  </div>
+                {% endif %}
               {% endif %}
             </div>
           </details>

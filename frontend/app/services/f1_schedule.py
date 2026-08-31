@@ -46,7 +46,7 @@ SIM_TEMPERATURE_BY_ROUND: dict[int, int] = {
     10: 67,
     11: 71,
     12: 69,
-    13: 72,
+    13: 84,
 }
 SIM_CONDITIONS_BY_ROUND: dict[int, str] = {
     1: "No rain",

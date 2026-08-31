@@ -677,6 +677,63 @@ main.main--wide {
   margin: var(--space-5) 0 var(--space-2) 0;
 }
 
+.standings-chart-card {
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  background: var(--color-surface);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.standings-chart-card .section-label {
+  margin-top: 0;
+}
+
+/* The per-driver "best 9 of 12" chart lives inside an already-open
+   dropdown, so it stays compact rather than matching the full-width
+   season-level charts above. */
+.standings-chart-card--sm {
+  margin-top: var(--space-3);
+  margin-bottom: 0;
+  max-width: 26rem;
+}
+
+/* Chart.js (responsive: true) sizes its canvas off this wrapper's own
+   box, not the canvas's HTML width/height attributes — giving it an
+   explicit height here (rather than setting height="" on the <canvas>
+   itself) is what Chart.js's own docs recommend for responsive canvases,
+   and avoids a real bug this app hit: without a stable parent size to
+   measure on creation, the canvas's internal drawing buffer could end
+   up stuck at the browser's bare default (300x150) while its CSS box
+   stretched to fill the card, rendering wildly distorted/"zoomed in"
+   after a re-render (e.g. returning to a previously-visited standings
+   tab, which destroys and recreates the chart on a fresh canvas). */
+.chart-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 280px;
+}
+
+.chart-canvas-wrap--sm {
+  height: 160px;
+}
+
+/* Belt-and-suspenders on top of the fixed-size wrapper above: this app
+   hit a genuine, hard-to-pin-down Chart.js timing issue where a chart
+   re-created after an htmx swap would occasionally end up with its
+   canvas's width/height HTML attributes reverted to the bare browser
+   default (300x150) sometime after creation, well after Chart.js's own
+   internal state still believed it had sized correctly — a real
+   Chart.js/browser race, not anything this app's own code was still
+   doing at that point. Forcing the canvas's *displayed* box to the
+   wrapper's size via CSS (independent of whatever its width/height
+   attributes end up holding) keeps that failure mode purely cosmetic
+   (very rare, mild blur) instead of visibly distorted/"zoomed in". */
+.chart-canvas-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .page-cta {
   text-align: center;
   margin-bottom: var(--space-5);

@@ -2,9 +2,11 @@ from app.services.standings import (
     HALF_SEASON_BEST_N,
     _best_n_total,
     _entry_before_total,
+    _entry_cumulative_at,
     _rows_from_totals,
     _sum_points,
     constructor_round_points,
+    get_points_progression,
     round_half_up,
 )
 
@@ -105,6 +107,43 @@ def test_entry_before_total_returns_total_when_no_latest_round():
 
 def test_half_season_best_n_is_nine():
     assert HALF_SEASON_BEST_N == 9
+
+
+def test_entry_cumulative_at_replays_best_n_for_a_sim_entry():
+    # 10 raced rounds, round 15 the worst (1 pt) — through round 20 (only
+    # 9 raced rounds so far, including the 1-pt one), nothing's dropped
+    # yet; once round 21 (the 10th raced round) is included, the 1-pt
+    # round becomes the worst and gets dropped.
+    points_by_round = {r: 10 for r in range(12, 22)}
+    points_by_round[15] = 1
+    positions_by_round = {r: [5] for r in range(12, 22)}
+    driver = {
+        "points_by_round": points_by_round,
+        "positions_by_round": positions_by_round,
+        "before_total": 0,  # presence of this key marks it sim-derived
+    }
+    assert _entry_cumulative_at(driver, upto_round=20) == 81  # 8 rounds of 10 + the 1-pt round
+    assert _entry_cumulative_at(driver, upto_round=21) == 90  # 9 rounds of 10, 1-pt round dropped
+
+
+def test_entry_cumulative_at_is_a_plain_running_sum_without_before_total():
+    driver = {"points_by_round": {12: 5, 13: 7, 14: 100}}
+    assert _entry_cumulative_at(driver, upto_round=13) == 12
+
+
+def test_get_points_progression_matches_final_row_points():
+    rows = [
+        {
+            "display_name": "Alice",
+            "car_number": 7,
+            "participant_id": "a",
+            "driver_breakdown": [{"points_by_round": {12: 5, 13: 7}}],
+        }
+    ]
+    progression = get_points_progression(rows, [12, 13])
+    assert progression == [
+        {"label": "Alice", "car_number": 7, "participant_id": "a", "points": [5, 12]}
+    ]
 
 
 def test_round_half_up_rounds_ties_up_not_to_even():

@@ -46,9 +46,9 @@ def standings_tab(request: Request, tab: str = "overall"):
     if tab not in STANDINGS_TABS:
         tab = "overall"
     season_id = get_season_id(DRAFT_SEASON)
-    rows = get_standings_rows(tab, season_id)
+    rows, progression = get_standings_rows(tab, season_id)
     return templates.TemplateResponse(
         request,
         "_standings_tab.html",
-        {"active_tab": tab, "rows": rows, "empty_copy": TAB_EMPTY_COPY[tab]},
+        {"active_tab": tab, "rows": rows, "progression": progression, "empty_copy": TAB_EMPTY_COPY[tab]},
     )

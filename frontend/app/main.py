@@ -15,6 +15,22 @@ app = FastAPI(title="Daze of Thunder — Formula Fantasy")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+
+# StaticFiles sends Last-Modified/ETag but no Cache-Control, so browsers
+# fall back to heuristic caching (RFC 7234 §4.2.2) and can silently keep
+# serving a stale JS/CSS file after a deploy with no visible sign
+# anything's wrong — this bit us directly debugging the standings chart
+# fixes, where a hard refresh was needed to see a change take effect.
+# no-cache (not no-store) still lets the browser cache the file — it
+# just forces a conditional GET (If-None-Match) on every load, which is
+# cheap and returns 304 unless the file actually changed.
+@app.middleware("http")
+async def no_cache_for_static(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 # Starlette's add_middleware() inserts at the front of the stack, so the
 # middleware added *last* runs *first* on each request. CurrentUserMiddleware
 # reads request.session, so SessionMiddleware must be added after it (i.e.
