@@ -1,0 +1,23 @@
+name: Check for new F1 results
+
+# Runs the same "import, score, notify" pipeline as the admin hub's
+# "Import F1 Results" button, automatically — every 6 hours is more
+# than enough to catch a Sunday race (or Saturday sprint) without an
+# admin needing to notice and click it. Safe to run this often: the
+# underlying check only ever finds rounds that genuinely have no
+# results imported yet, so an already-processed round is a no-op.
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the internal check-new-f1-results endpoint
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "X-Cron-Secret: ${{ secrets.INTERNAL_CRON_SECRET }}" \
+            https://dazeofthunder.com/internal/check-new-f1-results

@@ -7,9 +7,17 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
 from app.config import settings
-from app.services.discord_webhooks import check_and_notify_youtube_live, post_changelog
+from app.services.discord_webhooks import (
+    check_and_import_new_f1_results,
+    check_and_notify_youtube_live,
+    post_changelog,
+)
 
 router = APIRouter(prefix="/internal")
+
+# Matches admin.py's CURRENT_SEASON — duplicated rather than imported
+# from a router module, same as every other service here that needs it.
+CURRENT_SEASON = "2026"
 
 
 def _require_cron_secret(x_cron_secret: str = Header(default="")) -> None:
@@ -24,6 +32,16 @@ def check_youtube_live():
     machine auto-stops when idle, so it can't run its own background
     poll loop; this cron both wakes the machine and triggers the check."""
     return {"notified": check_and_notify_youtube_live()}
+
+
+@router.post("/check-new-f1-results", dependencies=[Depends(_require_cron_secret)])
+def check_new_f1_results():
+    """Hit on a schedule by a GitHub Actions cron (see
+    .github/workflows/f1-results-check.yml) — the same "import, score,
+    notify" pipeline the admin hub's "Import F1 Results" button runs by
+    hand, just triggered automatically once a real race has actually
+    happened instead of needing someone to notice and click it."""
+    return {"rounds_processed": check_and_import_new_f1_results(int(CURRENT_SEASON))}
 
 
 class PostChangelogPayload(BaseModel):

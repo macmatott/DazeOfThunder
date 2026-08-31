@@ -6,9 +6,12 @@ app.config.settings. A webhook is enough here since this is one-way
 (announce results, nothing reads commands back), so there's no gateway
 connection or second deployment to run — a standings post happens
 directly from the same admin request that triggers an F1 results
-import or an iRacing results upload; a changelog post (post_changelog) is
-a deliberate step taken alongside a deploy instead, since there's no CI
-pipeline here to trigger it automatically off of every git push.
+import or an iRacing results upload (or, for F1 results specifically,
+from a scheduled check — see check_and_import_new_f1_results); a
+changelog post (post_changelog) is triggered by the CI/CD pipeline
+itself after a successful deploy (see
+.github/scripts/post_deploy_changelog.py), not from any app request
+handler.
 
 Fails silently everywhere: a channel whose webhook URL isn't set (e.g.
 local dev) is just skipped, and a Discord outage/HTTP error never
@@ -60,16 +63,13 @@ def post_changelog(
     one) and to the pushed commit on GitHub (when known).
 
     `changes` is one or more short bullet lines for whatever shipped in
-    this deploy. Prefix each with its own type emoji (✨ feature, 🐛 fix,
-    🎨 style/UI, 🔧 config/infra) — the caller (a human deploying, not
-    app code, since there's no CI pipeline here) decides the type, so a
-    deploy bundling several kinds of change still reads as a clear list
-    rather than one blurred sentence.
-
-    Not called by any request handler — a deploy only ever happens
-    because it was explicitly requested, and this is a deliberate step
-    taken in that same breath rather than something triggered
-    automatically off of every git push."""
+    this deploy. Called two ways: manually (a human deploying picks a
+    type emoji per line — ✨ feature, 🐛 fix, 🎨 style/UI, 🔧 config/infra
+    — so a deploy bundling several kinds of change still reads as a
+    clear list) and automatically by the CI/CD pipeline's changelog job
+    (via /internal/post-changelog), which just uses the commit message
+    itself, blank-line-separated paragraphs as the bullets — see
+    .github/scripts/post_deploy_changelog.py."""
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     parts = ["📝 **Site Update**", ""]
     parts.extend(f"• {change}" for change in changes)
@@ -385,6 +385,49 @@ def notify_fantasy_round(season_id: str, round_number: int, round_label: str) ->
         format_message("👑", "Overall Championship", round_label, [], overall_deltas),
     )
     return round_scores
+
+
+def check_and_import_new_f1_results(season_year: int) -> list[int]:
+    """Checks for any real F1 round that's already happened but hasn't
+    been imported yet, and if found: imports it, scores Fantasy F1 for
+    it, and posts to the Fantasy + Overall webhooks (via
+    notify_fantasy_round) — the same pipeline the admin hub's "Import F1
+    Results" button runs by hand, just triggered on a schedule instead
+    of needing someone to notice a race finished (see
+    /internal/check-new-f1-results and
+    .github/workflows/f1-results-check.yml).
+
+    Safe to call as often as you like — get_completed_rounds_needing_import
+    only ever returns rounds with zero existing f1_race_results rows,
+    so an already-processed round is never re-imported or re-notified
+    for. Returns the round numbers actually processed (imported, scored,
+    and posted about) — a round whose scheduled time has passed but
+    that Jolpica doesn't have results for yet (rare, but possible right
+    after a race) is skipped, not counted here, and gets picked up on
+    the next check."""
+    from app.services.draft import get_season_id
+    from app.services.f1_ingest import import_season
+    from app.services.f1_schedule import get_completed_rounds_needing_import, get_season_timeline
+
+    season_id = get_season_id(str(season_year))
+    rounds_needing_import = get_completed_rounds_needing_import(season_year, season_id)
+    if not rounds_needing_import:
+        return []
+
+    timeline = get_season_timeline(season_year)
+    processed: list[int] = []
+    for round_number in rounds_needing_import:
+        summaries = import_season(season_year, round_number=round_number)
+        summary = summaries[0] if summaries else {"race_rows": 0, "sprint_rows": 0}
+        if not (summary["race_rows"] or summary["sprint_rows"]):
+            continue  # not actually run yet despite being past its scheduled time
+        round_label = next(
+            (r["race_name"] for r in timeline if r["round_number"] == round_number),
+            f"Round {round_number}",
+        )
+        notify_fantasy_round(season_id, round_number, round_label)
+        processed.append(round_number)
+    return processed
 
 
 def notify_sim_round(

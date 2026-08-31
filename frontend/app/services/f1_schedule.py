@@ -237,6 +237,33 @@ def get_upcoming_races(season: int, *, now: datetime | None = None) -> list[dict
     return upcoming
 
 
+def get_completed_rounds_needing_import(
+    season: int, season_id: str | None, *, now: datetime | None = None
+) -> list[int]:
+    """Round numbers whose real-world race has already happened (by
+    date/time) but that have no f1_race_results rows yet — what a
+    scheduled auto-import (see discord_webhooks.check_and_import_new_f1_results)
+    should pick up, without needing an admin to notice and click
+    "Import F1 Results" by hand. Ascending, so a backlog (the check
+    hasn't run in a while) imports oldest-first. Empty if there's no
+    season yet — nothing to check against."""
+    from app.services.fantasy_scoring import get_rounds_with_results
+
+    if not season_id:
+        return []
+
+    now = now or datetime.now(timezone.utc)
+    schedule = JolpicaClient().get_full_schedule(season)
+    already_imported = set(get_rounds_with_results(season_id))
+
+    needing_import = [
+        int(race["round"])
+        for race in schedule
+        if _race_datetime(race) < now and int(race["round"]) not in already_imported
+    ]
+    return sorted(needing_import)
+
+
 def _get_f1_session_details_by_round(season_id: str, *, is_sprint: bool) -> dict[int, dict]:
     """Real per-round Formula 1 results, keyed by round_number — shared
     by get_f1_session_details_by_round (race) and
