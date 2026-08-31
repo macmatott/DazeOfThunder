@@ -1,0 +1,29 @@
+name: Race week reminder
+
+# Posts a "Race Week" reminder to Discord ahead of the upcoming Thursday
+# sim race, targeting Monday at noon ET (~3 days before the race). GitHub
+# Actions cron only runs in UTC and has no timezone/DST support, so noon
+# ET is approximated with two schedules — 16:00 UTC (noon EDT) for the
+# March-November stretch, 17:00 UTC (noon EST) for December-February.
+# This drifts an hour early/late for the week or two around each DST
+# changeover (mid-March, early November) — accepted as harmless, same
+# as the other cron workflows in this repo not fussing over DST.
+# Safe to run more than once: the underlying check is idempotent per
+# round (race_reminder_notifications), so a re-run or a manual
+# workflow_dispatch is a no-op once a round's already posted.
+on:
+  schedule:
+    - cron: "0 16 * 3-11 1"
+    - cron: "0 17 * 12,1,2 1"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the internal check-race-week-reminder endpoint
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "X-Cron-Secret: ${{ secrets.INTERNAL_CRON_SECRET }}" \
+            https://dazeofthunder.com/internal/check-race-week-reminder

@@ -383,6 +383,18 @@ create table public.youtube_live_notifications (
     notified_at timestamptz not null default now()
 );
 
+-- One row per round we've already posted a weekly "Race Week" Discord
+-- reminder for — same idempotency purpose as youtube_live_notifications,
+-- guarding a weekly cron against duplicate posts if it's ever manually
+-- re-triggered. See discord_webhooks.py::check_and_post_race_week_reminder.
+create table public.race_reminder_notifications (
+    id uuid primary key default gen_random_uuid(),
+    season_id uuid not null references public.seasons(id),
+    round_number int not null,
+    notified_at timestamptz not null default now(),
+    unique (season_id, round_number)
+);
+
 -- ============================================================
 -- Scoring configuration
 -- ============================================================
@@ -423,6 +435,7 @@ alter table public.event_rsvps enable row level security;
 alter table public.team_event_results enable row level security;
 alter table public.iracing_tracks enable row level security;
 alter table public.youtube_live_notifications enable row level security;
+alter table public.race_reminder_notifications enable row level security;
 
 -- Policies intentionally not defined yet — public vs. private page split
 -- (Section 11 of the design doc) is still open. RLS is enabled by default

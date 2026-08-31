@@ -430,6 +430,75 @@ def check_and_import_new_f1_results(season_year: int) -> list[int]:
     return processed
 
 
+def format_race_week_message(race: dict) -> str:
+    """Deliberately conservative about what it states as fact: no
+    weather (SIM_TEMPERATURE_BY_ROUND is still admin-guessed placeholder
+    data, not real), and no pit-stop/fast-repair/standing-start specifics
+    (never confirmed as constant week to week, just convention observed
+    in hand-written announcements) — only fields genuinely backed by
+    real data: the admin-assigned iRacing track (IRACING_TRACK_BY_ROUND)
+    and the lap count derived from the actual F1 race distance
+    (sim_race_laps)."""
+    parts = [f"🏁 **Race Week — Round {race['round_number']}: {race['race_name']}**"]
+    if settings.discord_role_id_league:
+        parts.append(f"<@&{settings.discord_role_id_league}>")
+
+    parts.append("")
+    parts.append(f"This week's race is **{race['sim_date']}** (Thursday).")
+    parts.append("")
+    parts.append("🟢 Practice: 8:30 PM ET")
+    parts.append("🟡 Qualifying: 9:10 PM ET (10 min)")
+    parts.append("🏎️ Race: 9:15 PM ET")
+    parts.append("")
+
+    if race.get("sim_laps"):
+        parts.append(f"📏 50% of the real F1 race distance — {race['sim_laps']} laps this week")
+    track_line = f"🗺️ Track: {race['iracing_track']}"
+    if race.get("iracing_track_is_paid"):
+        track_line += " 💰 (paid iRacing content — grab it if you don't already own it)"
+    parts.append(track_line)
+    parts.append("🚗 Car: FIA F4")
+    parts.append("")
+    parts.append("📊 Standings: https://dazeofthunder.com/formula-fantasy/standings")
+    parts.append("")
+    parts.append("See you on track! 🏁")
+    return "\n".join(parts)
+
+
+def check_and_post_race_week_reminder(season_year: int) -> int | None:
+    """Posts a "Race Week" reminder for the upcoming Thursday sim race,
+    once per round — idempotent via race_reminder_notifications (same
+    reasoning as youtube_live_notifications: guards a weekly cron
+    against a duplicate post if it's ever manually re-triggered, e.g.
+    via workflow_dispatch). Returns the round number posted about, or
+    None if there's nothing to post (no season yet, no upcoming race on
+    the calendar, or this round's already been posted for)."""
+    from app.services.draft import get_season_id
+    from app.services.f1_schedule import get_season_timeline
+
+    season_id = get_season_id(str(season_year))
+    if not season_id:
+        return None
+
+    timeline = get_season_timeline(season_year)
+    race = next((r for r in timeline if r["is_next"]), None)
+    if not race:
+        return None
+
+    client = admin_client()
+    try:
+        client.table("race_reminder_notifications").insert(
+            {"season_id": season_id, "round_number": race["round_number"]}
+        ).execute()
+    except APIError as exc:
+        if exc.code == "23505":  # unique_violation — already posted for this round
+            return None
+        raise
+
+    post_to_webhook(settings.discord_webhook_race_reminder, format_race_week_message(race))
+    return race["round_number"]
+
+
 def notify_sim_round(
     season_id: str,
     race_event_id: str,

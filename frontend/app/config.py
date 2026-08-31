@@ -41,12 +41,9 @@ class Settings(BaseSettings):
     discord_webhook_constructors: str = ""
     discord_webhook_overall: str = ""
 
-    # Posted manually (not by any app request handler) after a commit is
-    # pushed and deployed to prod — see post_changelog in
-    # discord_webhooks.py. There's no CI pipeline here; deploys only
-    # happen when explicitly requested, so this stays a deliberate step
-    # in that same conversation rather than something triggered
-    # automatically off of every git push.
+    # Posted by the CI/CD pipeline's changelog job after a successful
+    # auto-deploy, via /internal/post-changelog — see post_changelog in
+    # discord_webhooks.py and .github/scripts/post_deploy_changelog.py.
     discord_webhook_changelog: str = ""
 
     # Posted the moment the YouTube channel is detected going live (see
@@ -56,8 +53,19 @@ class Settings(BaseSettings):
     # auto-stops when idle and can't run its own background poll loop.
     discord_webhook_youtube_live: str = ""
 
-    # Shared secret the cron workflow sends as the X-Cron-Secret header
-    # so /internal/check-youtube-live can't be triggered by anyone else
+    # Posted once a week ahead of the upcoming Thursday sim race (see
+    # app/services/discord_webhooks.py::check_and_post_race_week_reminder),
+    # via a GitHub Actions cron hitting /internal/check-race-week-reminder.
+    discord_webhook_race_reminder: str = ""
+
+    # The league's Discord role id, pinged (<@&id>) by the race-week
+    # reminder post. Not a secret in the usual sense (anyone in the
+    # server can see a role's id), but kept in settings rather than
+    # hardcoded so it isn't tied to app code.
+    discord_role_id_league: str = ""
+
+    # Shared secret the cron workflows send as the X-Cron-Secret header
+    # so the /internal/* routes can't be triggered by anyone else
     # hitting the public URL. Set via .env locally / `fly secrets set`
     # in production; never commit a real value.
     internal_cron_secret: str = ""
