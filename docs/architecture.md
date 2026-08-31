@@ -3,17 +3,21 @@
 ## Current direction (supersedes the original Discord-bot-only MVP)
 
 ```
-Website (frontend, TBD framework) ─┐
-                                    ├──▶ Supabase (Postgres + Auth + Realtime + Storage)
-Discord Bot (Python, read-only) ───┘
+Website (FastAPI + Jinja2 + HTMX) ──▶ Supabase (Postgres + Auth + Realtime + Storage)
+        │
+        └──▶ Discord (Incoming Webhooks, posted from the website's own backend)
 ```
 
 Supabase is the single source of truth. The website reads/writes through it
-(direct client queries under RLS, or Supabase Edge Functions for anything
-needing elevated privilege — e.g. CSV import, scoring recalculation). The
-Discord bot is a thin read-only client: it queries Supabase and posts
-formatted messages. It holds no scoring logic, no CSV parsing, no draft
-logic — see Section 16 of the original design doc.
+(direct client queries under RLS, or service_role for admin operations —
+e.g. CSV import, scoring recalculation). Discord posting is a set of
+Incoming Webhooks called directly from the website's backend
+(`app/services/discord_webhooks.py`) — standings updates, results imports,
+deploy changelogs, and scheduled reminders (via secret-gated `/internal/*`
+routes triggered by GitHub Actions crons, since Fly.io's machine
+auto-stops when idle). A standalone read-only Discord bot was scaffolded
+early on but was dropped once the webhook-based approach turned out to
+cover every requirement without a second always-running process to host.
 
 ## Why Supabase over Firebase
 

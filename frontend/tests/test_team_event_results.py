@@ -4,11 +4,7 @@ from app.services.iracing_ingest import parse_event_json
 from app.services.team_event_results import _compute_class_standings
 
 MULTICLASS_TEAM_FIXTURE_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "discord-bot"
-    / "tests"
-    / "fixtures"
-    / "eventresult-87448524.json"
+    Path(__file__).resolve().parent / "fixtures" / "eventresult-87448524.json"
 )
 
 

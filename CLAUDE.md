@@ -6,9 +6,9 @@ members), hosted at dazeofthunder.com ("Daze of Thunder").
 ## Architecture
 
 ```
-Website (FastAPI + Jinja2 + HTMX, no JS framework) ─┐
-                                                      ├─▶ Supabase (Postgres + Auth + Realtime)
-Discord Bot (Python, read-only client) ──────────────┘
+Website (FastAPI + Jinja2 + HTMX, no JS framework) ──▶ Supabase (Postgres + Auth + Realtime)
+        │
+        └──▶ Discord (Incoming Webhooks, posted from the website's own backend)
 ```
 
 - **Supabase over Firebase**: the data model is heavily relational
@@ -24,9 +24,6 @@ Discord Bot (Python, read-only client) ─────────────�
   syncing the draft intro video/audio across polls). New work should stay
   HTMX-first and reach for hand-written JS only when there's no
   declarative way to do it.
-- **Discord bot holds no scoring logic.** It reads Supabase and posts
-  formatted messages. All scoring/business logic lives in the
-  website/backend against the same Supabase project.
 - Full schema is in `database/schema.sql`. Raw results (race_results,
   f1_race_results) are immutable — corrections supersede rather than
   mutate, so standings can always be recomputed from source data.
@@ -45,7 +42,7 @@ Discord Bot (Python, read-only client) ─────────────�
   (`eventresult_<id>_0.csv`), not the CSV body. `Cust ID` is the stable
   per-driver identifier (equals `Team ID` in solo races); display names
   are NOT unique (iRacing appends digits on collision) — always match by
-  Cust ID. A real sample is at `discord-bot/tests/fixtures/eventresult_87601875_0.csv`.
+  Cust ID. A real sample is at `frontend/tests/fixtures/eventresult_87601875_0.csv`.
 - iRacing has paused acceptance of new API applications, so CSV
   export/import is the permanent results path here, not a placeholder
   pending a future live API connection — don't propose building live
@@ -54,11 +51,9 @@ Discord Bot (Python, read-only client) ─────────────�
 
 ## Environment / credentials
 
-Supabase project ref: `lsafzzyriftbvinrcmfa` (us-east-1). Both
-`frontend/.env` and `discord-bot/.env` need `SUPABASE_URL` +
-appropriate key (anon for frontend public reads, service_role for
-backend/bot admin operations) — these are gitignored, set them up locally,
-never commit them.
+Supabase project ref: `lsafzzyriftbvinrcmfa` (us-east-1). `frontend/.env`
+needs `SUPABASE_URL` + both keys (anon for public reads, service_role for
+admin operations) — this is gitignored, set it up locally, never commit it.
 
 ## Current status
 
@@ -71,8 +66,10 @@ Built and deployed: dashboard; 4-tab standings; the merged, live
 turn-based Driver + Constructor Draft (pick timers, an intro video, and
 per-driver easter-egg celebration audio); F1 real-world results import
 from Jolpica-F1 (single round or backfill-all); iRacing CSV race-results
-upload; the full point-structure scoring page; and a member role
-hierarchy (Owner/Admin/Daze of Thunder Member/Member) with an admin hub.
-
-Discord bot is still just scaffolded — no bot token created, not
-deployed.
+upload; the full point-structure scoring page; a member role hierarchy
+(Owner/Admin/Daze of Thunder Member/Member) with an admin hub; and Discord
+webhook automation (`app/services/discord_webhooks.py`) covering standings
+posts, deploy changelogs, YouTube-live and new-F1-results notifications,
+and a weekly race-week reminder — a standalone Discord bot was scaffolded
+early on but was removed once webhooks turned out to cover every
+requirement.

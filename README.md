@@ -7,14 +7,14 @@ Combines:
 1. A real-world F1 fantasy driver draft (11 members, 2 drivers each)
 2. An iRacing sim racing league following the F1 calendar
 3. Four championships: Formula Fantasy (combined), Sim Racing, Fantasy, Constructors
-4. A website (central source of truth) + a read-only Discord bot
+4. A website (central source of truth), posting to Discord via webhooks
 
 ## Architecture
 
 ```
-Website (frontend) ──┐
-                      ├──▶ Supabase (Postgres + Auth + Realtime)
-Discord Bot (Python) ─┘
+Website (frontend) ──▶ Supabase (Postgres + Auth + Realtime)
+        │
+        └──▶ Discord (Incoming Webhooks — standings, changelog, live/results notifications)
 ```
 
 See `docs/architecture.md` for the full reasoning, including why Supabase
@@ -23,8 +23,7 @@ was chosen over Firebase and what's still undecided.
 ## Repository structure
 
 ```
-frontend/       Website (framework TBD)
-discord-bot/     Python bot — reads Supabase, posts to Discord. No scoring logic.
+frontend/       Website (FastAPI + Jinja2 + HTMX) — includes Discord webhook posting
 database/        schema.sql + migrations — Supabase/Postgres source of truth
 docs/            architecture.md and other design docs
 ```
@@ -40,5 +39,4 @@ draft order mechanism, scoring weights).
 
 1. Create a Supabase project, apply `database/schema.sql`.
 2. Copy `.env.example` to `.env` and fill in Supabase + Discord credentials.
-3. `cd discord-bot && pip install -r requirements.txt && python -m bot.main`
-   (frontend setup TBD once a framework is chosen)
+3. `cd frontend && pip install -r requirements.txt && uvicorn app.main:app --reload`

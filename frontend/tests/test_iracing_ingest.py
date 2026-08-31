@@ -1,8 +1,8 @@
 """
 Pure-function tests for iRacing JSON parsing — run against real
-exports (discord-bot/tests/fixtures/), per that fixture directory's own
-README: build and test against an actual export, not an assumed
-format. No network, no Supabase.
+exports (tests/fixtures/), per that fixture directory's own README:
+build and test against an actual export, not an assumed format. No
+network, no Supabase.
 
 Three real fixtures, three different shapes:
 - eventresult-88113080.json: a Hosted session (this league's actual
@@ -30,7 +30,7 @@ from app.services.iracing_ingest import (
     parse_event_json,
 )
 
-FIXTURE_DIR = Path(__file__).resolve().parents[2] / "discord-bot" / "tests" / "fixtures"
+FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 FIXTURE_PATH = FIXTURE_DIR / "eventresult-88113080.json"
 TEAM_FIXTURE_PATH = FIXTURE_DIR / "eventresult-87103907.json"
 MULTICLASS_TEAM_FIXTURE_PATH = FIXTURE_DIR / "eventresult-87448524.json"
