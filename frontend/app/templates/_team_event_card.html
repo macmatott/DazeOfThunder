@@ -92,19 +92,19 @@
         <div class="event-rsvp-group">
           <div class="event-rsvp-group__label">Sign me up! ({{ event.rsvps_by_status.signed_up | length }})</div>
           {% for p in event.rsvps_by_status.signed_up %}
-            <div class="event-rsvp-group__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+            <div class="event-rsvp-group__name">{{ p.display_name }}{% if p.car_number %} <span class="number-badge">#{{ p.car_number }}</span>{% endif %}{{ role_badge(p.role) }}</div>
           {% endfor %}
         </div>
         <div class="event-rsvp-group">
           <div class="event-rsvp-group__label">Interested ({{ event.rsvps_by_status.interested | length }})</div>
           {% for p in event.rsvps_by_status.interested %}
-            <div class="event-rsvp-group__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+            <div class="event-rsvp-group__name">{{ p.display_name }}{% if p.car_number %} <span class="number-badge">#{{ p.car_number }}</span>{% endif %}{{ role_badge(p.role) }}</div>
           {% endfor %}
         </div>
         <div class="event-rsvp-group">
           <div class="event-rsvp-group__label">Not Interested ({{ event.rsvps_by_status.not_interested | length }})</div>
           {% for p in event.rsvps_by_status.not_interested %}
-            <div class="event-rsvp-group__name">{{ p.display_name }}{{ role_badge(p.role) }}</div>
+            <div class="event-rsvp-group__name">{{ p.display_name }}{% if p.car_number %} <span class="number-badge">#{{ p.car_number }}</span>{% endif %}{{ role_badge(p.role) }}</div>
           {% endfor %}
         </div>
       </div>
@@ -169,7 +169,7 @@
           </div>
           {% for r in event.team_results %}
             <div class="team-results-row">
-              <span>{{ r.participants.display_name }}{{ role_badge(r.participants.role) }}</span>
+              <span>{{ r.participants.display_name }}{% if r.participants.car_number %} <span class="number-badge">#{{ r.participants.car_number }}</span>{% endif %}{{ role_badge(r.participants.role) }}</span>
               <span>{{ r.laps_completed }}</span>
               <span>{{ r.incidents }}</span>
               <span{% if r.is_fastest_lap %} class="team-results-row__fastest-lap"{% endif %}>{{ r.fastest_lap_time or "—" }}</span>

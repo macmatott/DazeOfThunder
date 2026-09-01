@@ -153,7 +153,7 @@ def get_team_event_results(team_event_id: str) -> list[dict]:
             "finish_position, start_position, car_name, laps_completed, incidents, "
             "average_lap_time, fastest_lap_time, session_start_time, split_number, split_total, "
             "strength_of_field, "
-            "participants:participants!team_event_results_participant_id_fkey(display_name, role)"
+            "participants:participants!team_event_results_participant_id_fkey(display_name, role, car_number)"
         )
         .eq("team_event_id", team_event_id)
         .order("finish_position")

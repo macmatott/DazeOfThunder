@@ -94,7 +94,7 @@ def resolve_track_background_url(track_name: str | None) -> str | None:
 
 _SELECT_WITH_RSVPS = (
     "id, title, description, start_date, end_date, car_classes, track_name, image_url, "
-    "external_link, event_rsvps(status, participant_id, participants(display_name, role))"
+    "external_link, event_rsvps(status, participant_id, participants(display_name, role, car_number))"
 )
 
 
