@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -6,6 +8,7 @@ from postgrest.exceptions import APIError
 from app.services.constructor_draft import get_pairs
 from app.services.draft import (
     CONSTRUCTOR_LOGOS,
+    compute_draft_countdown,
     get_draft_picks,
     get_ranked_drivers,
     get_season_id,
@@ -76,7 +79,17 @@ def formula_fantasy_how_it_works(request: Request):
 @router.get("/formula-fantasy/schedule")
 def ff_schedule(request: Request):
     races = get_season_timeline(CURRENT_SEASON)
-    return templates.TemplateResponse(request, "ff_schedule.html", {"races": races})
+    next_sim_race = next((r for r in races if r["is_next_sim_race"]), None)
+    sim_countdown = (
+        compute_draft_countdown(next_sim_race["sim_datetime"], datetime.now(timezone.utc))
+        if next_sim_race
+        else None
+    )
+    return templates.TemplateResponse(
+        request,
+        "ff_schedule.html",
+        {"races": races, "next_sim_race": next_sim_race, "sim_countdown": sim_countdown},
+    )
 
 
 @router.get("/formula-fantasy/draft-recap")

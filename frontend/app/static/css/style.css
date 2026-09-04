@@ -1267,6 +1267,57 @@ main.main--wide {
   white-space: nowrap;
 }
 
+.sim-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  background: rgba(232, 220, 59, 0.08);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+.sim-countdown__label {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sim-countdown__soon {
+  font-family: var(--font-data);
+  font-size: 1.2rem;
+  color: var(--color-accent);
+}
+
+.sim-countdown__clock {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.sim-countdown__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3.5rem;
+}
+
+.sim-countdown__value {
+  font-family: var(--font-data);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.sim-countdown__unit-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
 .schedule-meta-card--highlight {
   border-color: var(--color-accent);
   color: var(--color-accent);

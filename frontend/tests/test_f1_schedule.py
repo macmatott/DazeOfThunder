@@ -94,6 +94,25 @@ def test_merge_marks_past_next_and_future():
     assert by_round[3]["is_next"] is False
 
 
+def test_is_next_sim_race_decoupled_from_is_next():
+    # Round 1's real race is Sunday 2026-03-08; its sim race is the
+    # Thursday before, 2026-03-05 (already past by test time). Round 2's
+    # real race isn't until 2026-03-22, but is_next (real-race-based)
+    # still points at round 1 the whole time up through its Sunday —
+    # the schedule page's countdown needs the *sim* race's own next-up
+    # round instead, which by now should already be round 2.
+    now = datetime(2026, 3, 7, 12, 0, tzinfo=timezone.utc)  # Saturday, between rounds 1's sim and real races
+
+    races = _merge_schedule_with_results(SCHEDULE, now)
+    by_round = {r["round_number"]: r for r in races}
+
+    assert by_round[1]["is_next"] is True
+    assert by_round[1]["is_next_sim_race"] is False  # round 1's Thursday sim race already happened
+
+    assert by_round[2]["is_next"] is False
+    assert by_round[2]["is_next_sim_race"] is True  # round 2's sim race is the next one up
+
+
 def test_thursday_before_sunday_race():
     # 2026-03-08 is a Sunday; the Thursday before it is 2026-03-05.
     race_dt = datetime(2026, 3, 8, 4, 0, tzinfo=timezone.utc)

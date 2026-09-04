@@ -15,7 +15,7 @@ from pathlib import Path
 
 from app.db.supabase_client import admin_client, public_client
 from app.services.constructor_draft import get_pairs
-from app.services.draft import logo_url_for_team
+from app.services.draft import LEAGUE_TIMEZONE, logo_url_for_team
 from app.services.driver_photos import driver_photo_url, slugify_name
 from app.services.f1_ingest import JolpicaClient
 from app.services.fantasy_scoring import (
@@ -158,6 +158,22 @@ def _thursday_before(race_dt: datetime) -> date:
     return race_dt.date() - timedelta(days=days_since_thursday)
 
 
+# Matches the schedule page's own "📅 Thursdays • 9:15PM EST" meta card —
+# not read from there (that's a hardcoded template string, like the rest
+# of that card's admin-known session times), just kept in sync with it
+# by hand since nothing on the site treats race start time as real data
+# beyond this one countdown's need for an actual instant to count down
+# to.
+SIM_RACE_HOUR = 21
+SIM_RACE_MINUTE = 15
+
+
+def _sim_race_datetime(sim_date: date) -> datetime:
+    return datetime(
+        sim_date.year, sim_date.month, sim_date.day, SIM_RACE_HOUR, SIM_RACE_MINUTE, tzinfo=LEAGUE_TIMEZONE
+    )
+
+
 def _split_track_name(iracing_track: str | None) -> tuple[str, str]:
     """"Circuit Park Zandvoort — Grand Prix" -> ("Circuit Park Zandvoort",
     "Grand Prix") — the track itself vs. which layout/config a round uses.
@@ -219,6 +235,7 @@ def _format_race(race: dict, race_dt: datetime) -> dict:
         "track_image_url": track_image_url(iracing_track),
         "track_background_url": track_background_url(iracing_track),
         "sim_date": f"{sim_date:%b} {sim_date.day}, {sim_date:%Y}",
+        "sim_datetime": _sim_race_datetime(sim_date),
     }
 
 
@@ -494,6 +511,7 @@ def _merge_schedule_with_results(
     f1_sprint_session_details = f1_sprint_session_details or {}
     races = []
     next_assigned = False
+    next_sim_assigned = False
     for race in schedule:
         race_dt = _race_datetime(race)
         is_past = race_dt < now
@@ -503,6 +521,16 @@ def _merge_schedule_with_results(
         formatted = _format_race(race, race_dt)
         formatted["is_past"] = is_past
         formatted["is_next"] = is_next
+
+        # Deliberately its own flag, not is_next above: is_next tracks
+        # the real F1 race weekend (Sunday), which is_past is based on —
+        # for the ~3 days between a round's Thursday sim race and its
+        # Sunday F1 race, is_next still points at that same round even
+        # though its sim race has already happened. The schedule page's
+        # countdown needs the sim race's own actual next-up round instead.
+        is_next_sim_race = (formatted["sim_datetime"] >= now) and (not next_sim_assigned)
+        next_sim_assigned = next_sim_assigned or is_next_sim_race
+        formatted["is_next_sim_race"] = is_next_sim_race
 
         track_name, _ = _split_track_name(formatted["iracing_track"])
         formatted["iracing_track_is_paid"] = track_name in paid_track_names
