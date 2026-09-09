@@ -94,9 +94,24 @@ F1_LAPS_BY_ROUND: dict[int, int] = {
 }
 
 
+# Manual override for rounds whose sim race distance can't be derived from
+# the real F1 race (e.g. the sim track was swapped to something with a
+# different length than the real-world circuit — see IRACING_TRACK_BY_ROUND).
+# Set by league admin; takes precedence over the 50%-of-F1-distance formula.
+SIM_LAPS_OVERRIDE_BY_ROUND: dict[int, int] = {
+    14: 48,  # Tsukuba swap — no longer 50% of Spain's real 57-lap distance
+}
+
+
 def sim_race_laps(round_number: int) -> int | None:
+    if round_number in SIM_LAPS_OVERRIDE_BY_ROUND:
+        return SIM_LAPS_OVERRIDE_BY_ROUND[round_number]
     f1_laps = F1_LAPS_BY_ROUND.get(round_number)
     return f1_laps // 2 if f1_laps else None  # round down for odd F1 lap counts
+
+
+def sim_laps_is_override(round_number: int) -> bool:
+    return round_number in SIM_LAPS_OVERRIDE_BY_ROUND
 
 
 # iRacing track assigned to each round's sim race — set by league admin,
@@ -116,14 +131,14 @@ IRACING_TRACK_BY_ROUND: dict[int, str] = {
     11: "Hungaroring",
     12: "Circuit Park Zandvoort — Grand Prix",
     13: "Autodromo Nazionale Monza — Grand Prix",
-    14: "Circuito de Navarra — Speed Circuit",
+    14: "Tsukuba Circuit — 2000 Full",
     15: "Summit Point Raceway — Summit Point Raceway",
     16: "Motorsport Arena Oschersleben — Grand Prix",
-    17: "Circuit de Lédenon — Grand Prix",
+    17: "Snetterton Circuit — 300",
     18: "Circuit of the Americas — Grand Prix",
     19: "Autódromo Hermanos Rodríguez — Grand Prix",
     20: "Autódromo José Carlos Pace — Grand Prix",
-    21: "Charlotte Motor Speedway — Roval 2025",
+    21: "Oulton Park Circuit — International",
     22: "Virginia International Raceway — Full Course",
     23: "Rudskogen Motorsenter",
 }
@@ -542,6 +557,7 @@ def _merge_schedule_with_results(
             formatted["round_number"], SIM_CONDITIONS
         )
         formatted["sim_laps"] = sim_race_laps(formatted["round_number"])
+        formatted["sim_laps_is_override"] = sim_laps_is_override(formatted["round_number"])
 
         # Real per-round session detail (event + full results), not
         # placeholder data — a round has no entry here (and the schedule
