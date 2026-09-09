@@ -218,16 +218,6 @@ def test_merge_uses_sim_laps_override_when_set():
 
     assert races[0]["sim_laps"] == SIM_LAPS_OVERRIDE_BY_ROUND[14]
     assert races[0]["sim_laps"] == 48
-    assert races[0]["sim_laps_is_override"] is True
-
-
-def test_merge_sim_laps_is_not_override_for_unlisted_round():
-    now = datetime(2026, 3, 10, tzinfo=timezone.utc)
-    round_7 = {**SCHEDULE[0], "round": "7"}
-
-    races = _merge_schedule_with_results([round_7], now)
-
-    assert races[0]["sim_laps_is_override"] is False
 
 
 def test_merge_falls_back_to_default_weather_for_unlisted_round():

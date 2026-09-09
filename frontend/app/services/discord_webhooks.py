@@ -483,9 +483,9 @@ def format_race_week_message(race: dict) -> str:
     and the lap count derived from the actual F1 race distance
     (sim_race_laps). A round can override that lap count directly
     (SIM_LAPS_OVERRIDE_BY_ROUND, e.g. a swapped sim track that isn't the
-    same length as the real circuit) — the "50% of the real F1 race
-    distance" framing is dropped for those rounds since it wouldn't be
-    true."""
+    same length as the real circuit) — still framed as "50% of the real
+    F1 race distance" since the override is chosen to land close to
+    that mark, just not the exact halved value."""
     parts = [f"🏁 **Race Week — Round {race['round_number']}: {race['race_name']}**"]
     if settings.discord_role_id_league:
         parts.append(f"<@&{settings.discord_role_id_league}>")
@@ -499,10 +499,7 @@ def format_race_week_message(race: dict) -> str:
     parts.append("")
 
     if race.get("sim_laps"):
-        if race.get("sim_laps_is_override"):
-            parts.append(f"📏 {race['sim_laps']} laps this week")
-        else:
-            parts.append(f"📏 50% of the real F1 race distance — {race['sim_laps']} laps this week")
+        parts.append(f"📏 50% of the real F1 race distance — {race['sim_laps']} laps this week")
     track_line = f"🗺️ Track: {race['iracing_track']}"
     if race.get("iracing_track_is_paid"):
         track_line += " 💰 (paid iRacing content — grab it if you don't already own it)"
