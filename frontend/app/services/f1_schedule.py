@@ -132,12 +132,12 @@ IRACING_TRACK_BY_ROUND: dict[int, str] = {
     14: "Tsukuba Circuit — 2000 Full",
     15: "Summit Point Raceway — Summit Point Raceway",
     16: "Motorsport Arena Oschersleben — Grand Prix",
-    17: "Snetterton Circuit — 300",
+    17: "Virginia International Raceway — Full Course",
     18: "Circuit of the Americas — Grand Prix",
     19: "Autódromo Hermanos Rodríguez — Grand Prix",
     20: "Autódromo José Carlos Pace — Grand Prix",
     21: "Oulton Park Circuit — International",
-    22: "Virginia International Raceway — Full Course",
+    22: "Snetterton Circuit — 300",
     23: "Rudskogen Motorsenter",
 }
 
