@@ -1,0 +1,29 @@
+name: Race-day admin check reminder
+
+# Posts a pre-session setup checklist to the admin channel on race day,
+# targeting Thursday 8:00 PM ET — ~30 minutes before the 8:30 PM practice
+# session. GitHub Actions cron only runs in UTC with no timezone/DST
+# support, so 8 PM ET is approximated with two schedules — 00:00 UTC
+# Friday (8 PM EDT) for the March-November stretch, 01:00 UTC Friday
+# (8 PM EST) for December-February. This drifts an hour early/late for
+# the week or two around each DST changeover (mid-March, early November)
+# — accepted as harmless, same as the other cron workflows in this repo.
+# Safe to run more than once: the underlying check is idempotent per
+# round (race_check_reminder_notifications), so a re-run or a manual
+# workflow_dispatch is a no-op once a round's already posted.
+on:
+  schedule:
+    - cron: "0 0 * 3-11 5"
+    - cron: "0 1 * 12,1,2 5"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the internal check-race-check-reminder endpoint
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "X-Cron-Secret: ${{ secrets.INTERNAL_CRON_SECRET }}" \
+            https://dazeofthunder.com/internal/check-race-check-reminder

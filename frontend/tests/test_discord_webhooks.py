@@ -7,6 +7,7 @@ from app.services.discord_webhooks import (
     format_breakdown_message,
     format_message,
     format_points_lines,
+    format_race_check_message,
     format_standings_lines,
 )
 
@@ -317,3 +318,40 @@ def test_truncate_for_discord_is_exactly_at_the_limit_when_needed():
     content = "x" * (DISCORD_MESSAGE_LIMIT + 1)
     truncated = _truncate_for_discord(content)
     assert len(truncated) <= DISCORD_MESSAGE_LIMIT
+
+
+def test_format_race_check_message_shows_round_specifics_and_the_checklist():
+    race = {
+        "round_number": 14,
+        "race_name": "Spanish Grand Prix",
+        "iracing_track": "Tsukuba Circuit — 2000 Full",
+        "sim_laps": 48,
+    }
+
+    msg = format_race_check_message(race)
+
+    assert "Admin Check — Round 14: Spanish Grand Prix" in msg
+    assert "@here" in msg
+    assert "🗺️ Track: Tsukuba Circuit" in msg
+    assert "📐 Layout: 2000 Full" in msg
+    assert "🏁 Laps: 48" in msg
+    assert "☐ Race is set to the track's lap count (48 this round) + 1hr 15min cap" in msg
+    assert "8:30 PM ET" in msg
+    assert "Fuel capacity: 35%" in msg
+    assert "17x before first penalty, then every 10x after" in msg
+
+
+def test_format_race_check_message_handles_a_track_with_no_explicit_layout():
+    race = {
+        "round_number": 6,
+        "race_name": "Monaco Grand Prix",
+        "iracing_track": "Adelaide Street Circuit",
+        "sim_laps": None,
+    }
+
+    msg = format_race_check_message(race)
+
+    assert "🗺️ Track: Adelaide Street Circuit" in msg
+    assert "📐 Layout: —" in msg
+    assert "🏁 Laps:" not in msg
+    assert "☐ Race is set to the track's lap count + 1hr 15min cap" in msg

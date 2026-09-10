@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # via a GitHub Actions cron hitting /internal/check-race-week-reminder.
     discord_webhook_race_reminder: str = ""
 
+    # Posted on race day ~30 min before the practice session, to the
+    # admin channel — a pre-session checklist to verify the iRacing
+    # session is built to the league's fixed conventions (see
+    # app/services/discord_webhooks.py::check_and_post_race_check_reminder),
+    # via a GitHub Actions cron hitting /internal/check-race-check-reminder.
+    discord_webhook_race_check: str = ""
+
     # The league's Discord role id, pinged (<@&id>) by the race-week
     # reminder post. Not a secret in the usual sense (anyone in the
     # server can see a role's id), but kept in settings rather than

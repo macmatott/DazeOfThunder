@@ -546,6 +546,90 @@ def check_and_post_race_week_reminder(season_year: int) -> int | None:
     return race["round_number"]
 
 
+def format_race_check_message(race: dict) -> str:
+    """Race-day pre-session checklist for the admins building the iRacing
+    session. The track, layout and lap count are the round's real
+    expected values (from IRACING_TRACK_BY_ROUND + the lap override), so
+    whoever's setting up can cross-check them; everything under "Session
+    timing" / "Session setup" is fixed league convention, hardcoded here
+    the same way format_race_week_message hardcodes its session times."""
+    full_track = race.get("iracing_track") or "—"
+    if " — " in full_track:
+        track_name, track_layout = full_track.split(" — ", 1)
+    else:
+        track_name, track_layout = full_track, "—"
+    laps = race.get("sim_laps")
+
+    parts = [f"🛠️ **Admin Check — Round {race['round_number']}: {race['race_name']}**"]
+    parts.append(
+        "@here — session starts in ~30 minutes. Run through the iRacing "
+        "setup against this list before we go green."
+    )
+    parts.append("")
+    parts.append("**Expected for this round**")
+    parts.append(f"🗺️ Track: {track_name}")
+    parts.append(f"📐 Layout: {track_layout}")
+    if laps:
+        parts.append(f"🏁 Laps: {laps}")
+    parts.append("")
+    parts.append("**Session timing**")
+    parts.append("☐ Session start time is 8:30 PM ET (start of practice)")
+    parts.append("☐ Practice session is 35 min long")
+    parts.append("☐ Qualifying is 10 min long")
+    laps_hint = f" ({laps} this round)" if laps else ""
+    parts.append(f"☐ Race is set to the track's lap count{laps_hint} + 1hr 15min cap")
+    parts.append("")
+    parts.append("**Session setup**")
+    parts.append("☐ Track + layout match the above")
+    parts.append("☐ Fixed setup enabled, with this track's race + qualifying setups selected")
+    parts.append("☐ Fuel capacity: 35%")
+    parts.append("☐ Standing start selected")
+    parts.append("☐ Fast repairs: 2")
+    parts.append("☐ Incidents: 17x before first penalty, then every 10x after")
+    parts.append("☐ Chance of rain: none")
+    return "\n".join(parts)
+
+
+def check_and_post_race_check_reminder(season_year: int) -> int | None:
+    """Posts the race-day admin setup checklist for the round whose sim
+    race is *today*, once per round — idempotent via
+    race_check_reminder_notifications (same guard as
+    check_and_post_race_week_reminder: a re-run or manual
+    workflow_dispatch is a no-op once a round's been posted). Returns
+    the round number posted about, or None if there's nothing to post
+    (no season, no sim race today, or already posted for this round).
+    Meant to be hit by a Thursday-8 PM-ET cron — a Thursday with no race
+    on the calendar just finds no round for today and no-ops."""
+    from app.services.draft import LEAGUE_TIMEZONE, get_season_id
+    from app.services.f1_schedule import get_season_timeline
+
+    season_id = get_season_id(str(season_year))
+    if not season_id:
+        return None
+
+    timeline = get_season_timeline(season_year)
+    race = next((r for r in timeline if r["is_next_sim_race"]), None)
+    if not race:
+        return None
+
+    today = datetime.now(LEAGUE_TIMEZONE).date()
+    if race["sim_datetime"].astimezone(LEAGUE_TIMEZONE).date() != today:
+        return None
+
+    client = admin_client()
+    try:
+        client.table("race_check_reminder_notifications").insert(
+            {"season_id": season_id, "round_number": race["round_number"]}
+        ).execute()
+    except APIError as exc:
+        if exc.code == "23505":  # unique_violation — already posted for this round
+            return None
+        raise
+
+    post_to_webhook(settings.discord_webhook_race_check, format_race_check_message(race))
+    return race["round_number"]
+
+
 def notify_sim_round(
     season_id: str,
     race_event_id: str,

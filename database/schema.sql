@@ -403,6 +403,19 @@ create table public.race_reminder_notifications (
     unique (season_id, round_number)
 );
 
+-- One row per round we've already posted the race-day admin
+-- session-setup checklist for — same idempotency purpose as
+-- race_reminder_notifications, guarding the Thursday-8 PM-ET cron
+-- against a duplicate post on a re-run / manual dispatch. See
+-- discord_webhooks.py::check_and_post_race_check_reminder.
+create table public.race_check_reminder_notifications (
+    id uuid primary key default gen_random_uuid(),
+    season_id uuid not null references public.seasons(id),
+    round_number int not null,
+    notified_at timestamptz not null default now(),
+    unique (season_id, round_number)
+);
+
 -- ============================================================
 -- Scoring configuration
 -- ============================================================
@@ -444,6 +457,7 @@ alter table public.team_event_results enable row level security;
 alter table public.iracing_tracks enable row level security;
 alter table public.youtube_live_notifications enable row level security;
 alter table public.race_reminder_notifications enable row level security;
+alter table public.race_check_reminder_notifications enable row level security;
 
 -- Policies intentionally not defined yet — public vs. private page split
 -- (Section 11 of the design doc) is still open. RLS is enabled by default

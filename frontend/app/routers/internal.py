@@ -10,6 +10,7 @@ from app.config import settings
 from app.services.discord_webhooks import (
     check_and_import_new_f1_results,
     check_and_notify_youtube_live,
+    check_and_post_race_check_reminder,
     check_and_post_race_week_reminder,
     post_changelog,
 )
@@ -52,6 +53,15 @@ def check_race_week_reminder():
     reminder for the upcoming Thursday sim race, once per round (see
     check_and_post_race_week_reminder for the idempotency guard)."""
     return {"round_posted": check_and_post_race_week_reminder(int(CURRENT_SEASON))}
+
+
+@router.post("/check-race-check-reminder", dependencies=[Depends(_require_cron_secret)])
+def check_race_check_reminder():
+    """Hit on a schedule by a GitHub Actions cron (see
+    .github/workflows/race-check-reminder.yml) — posts the race-day
+    admin session-setup checklist for today's sim race, once per round
+    (see check_and_post_race_check_reminder for the idempotency guard)."""
+    return {"round_posted": check_and_post_race_check_reminder(int(CURRENT_SEASON))}
 
 
 class PostChangelogPayload(BaseModel):
