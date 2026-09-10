@@ -107,7 +107,7 @@ SIM_LAPS_OVERRIDE_BY_ROUND: dict[int, int] = {
     17: 39,  # Virginia International Raceway — Full Course
     21: 35,  # Oulton Park Circuit — International
     22: 28,  # Snetterton Circuit — 300
-    23: 48,  # Rudskogen Motorsenter
+    23: 48,  # Lime Rock Park — Chicanes
 }
 
 
@@ -144,7 +144,7 @@ IRACING_TRACK_BY_ROUND: dict[int, str] = {
     20: "Autódromo José Carlos Pace — Grand Prix",
     21: "Oulton Park Circuit — International",
     22: "Snetterton Circuit — 300",
-    23: "Rudskogen Motorsenter",
+    23: "Lime Rock Park — Chicanes",
 }
 
 def _get_paid_track_names() -> set[str]:
