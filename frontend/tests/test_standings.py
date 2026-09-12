@@ -1,5 +1,6 @@
 from app.services.standings import (
     HALF_SEASON_BEST_N,
+    _attach_round_metrics,
     _best_n_total,
     _entry_before_total,
     _entry_cumulative_at,
@@ -179,3 +180,91 @@ def test_constructor_round_points_blends_final_half_season_totals_for_three_pers
 
 def test_constructor_round_points_two_person_team_is_a_plain_sum_of_totals():
     assert constructor_round_points([120, 90]) == 210
+
+
+def _sim_driver(before_total, total, latest_positions):
+    """A minimal driver_breakdown entry for _attach_round_metrics tests —
+    only the fields it actually reads (before_total/total for the blend,
+    positions_by_round to tell a no-show from a real result)."""
+    return {
+        "before_total": before_total,
+        "total": total,
+        "positions_by_round": {14: latest_positions},
+    }
+
+
+def test_attach_round_metrics_constructor_round_credit_excludes_a_no_show_member():
+    # Mirrors a real scenario: a 3-person team's third member has no
+    # result at all for the latest round (not just a bad one) — their
+    # before_total and total are identical (32, 32) since a round they
+    # didn't race can't move their own best-9 total either way.
+    row = {
+        "id": "red-bull",
+        "points": 101.0,
+        "driver_breakdown": [
+            _sim_driver(44, 64, [2]),  # raced, P2
+            _sim_driver(26, 41, [7]),  # raced, P7
+            _sim_driver(32, 32, []),  # no-show
+        ],
+    }
+
+    _attach_round_metrics([row], [13, 14], key_field="id")
+
+    # Full credit for both members who actually raced (20 + 15), not the
+    # no-show's unchanged total dragging the "averaged" half down to 8.
+    assert row["this_round_points"] == 35.0
+
+
+def test_attach_round_metrics_constructor_round_credit_still_blends_when_everyone_raced():
+    # No no-show this time — every member has a real latest-round result,
+    # so the fair-credit recompute should land on the same blended
+    # number the plain points-minus-before_total formula already gives.
+    row = {
+        "id": "red-bull",
+        "points": 105.0,
+        "driver_breakdown": [
+            _sim_driver(44, 64, [2]),
+            _sim_driver(26, 41, [7]),
+            _sim_driver(32, 40, [9]),  # raced this time, gained 8
+        ],
+    }
+
+    _attach_round_metrics([row], [13, 14], key_field="id")
+
+    assert row["this_round_points"] == 32.0
+
+
+def test_attach_round_metrics_rank_change_still_reflects_the_full_roster():
+    # The no-show fix only touches this_round_points — rank_change and
+    # gap_to_leader should still be based on the true prior standings
+    # (the no-show's total included), not the filtered round-credit view.
+    # Rows come in already sorted by points descending, same as every
+    # real caller (get_constructor_standings sorts before this runs).
+    full_roster_team = {
+        "id": "racing-bulls",
+        "points": 104.0,
+        "driver_breakdown": [
+            _sim_driver(40, 60, [1]),
+            _sim_driver(28, 44, [5]),
+        ],
+    }
+    no_show_team = {
+        "id": "red-bull",
+        "points": 101.0,
+        "driver_breakdown": [
+            _sim_driver(44, 64, [2]),
+            _sim_driver(26, 41, [7]),
+            _sim_driver(32, 32, []),
+        ],
+    }
+
+    _attach_round_metrics([full_roster_team, no_show_team], [13, 14], key_field="id")
+
+    # True before-totals: red-bull 44+round_half_up((26+32)/2)=73, racing-bulls
+    # 40+28=68 — red-bull was already ahead before this round (not the
+    # filtered 70 the round-credit calc uses internally), so it's racing-bulls
+    # that moved up a spot and red-bull that slipped, even though red-bull's
+    # this_round_points (35, from the test above) beats racing-bulls' gain.
+    assert no_show_team["rank_change"] == -1
+    assert full_roster_team["rank_change"] == 1
+    assert no_show_team["gap_to_leader"] == 3.0

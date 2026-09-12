@@ -532,7 +532,15 @@ def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = 
     constructor_round_points) every driver_breakdown entry's own
     before-total (see _entry_before_total), rather than subtracting the
     latest round's raw points back out directly — the two aren't always
-    the same once the half-season best-9-of-12 rule is involved."""
+    the same once the half-season best-9-of-12 rule is involved.
+
+    before_totals/rank_change/gap_to_leader deliberately keep blending
+    every rostered member regardless of whether they raced latest_round
+    — that reflects the team's real prior standings, no-show member
+    included. this_round_points is corrected afterward for Constructors'
+    rows only (see _attach_fair_constructor_round_credit) since it's a
+    different question ("what did the team earn this round") that a
+    no-show should stay out of entirely, not drag down as a scored 0."""
     if not rows:
         return
     latest_round = max(rounds) if rounds else None
@@ -544,6 +552,9 @@ def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = 
         before_totals[row[key_field]] = before_total
         row["this_round_points"] = round(row["points"] - before_total, 1)
 
+    if key_field == "id":
+        _attach_fair_constructor_round_credit(rows, latest_round)
+
     before_rank = {
         key: i + 1
         for i, (key, _) in enumerate(sorted(before_totals.items(), key=lambda kv: kv[1], reverse=True))
@@ -551,6 +562,35 @@ def _attach_round_metrics(rows: list[dict], rounds: list[int], key_field: str = 
     for i, row in enumerate(rows):
         row["gap_to_leader"] = round(leader_points - row["points"], 1)
         row["rank_change"] = before_rank[row[key_field]] - (i + 1)
+
+
+def _attach_fair_constructor_round_credit(rows: list[dict], latest_round: int | None) -> None:
+    """Overwrites this_round_points for Constructors' rows so a member
+    who has no result at all for latest_round (a no-show — an empty
+    positions_by_round entry, not just a bad finish) is excluded from
+    that round's blend entirely, rather than folded in as a scored 0.
+
+    The plain before/after blend above double-counts a no-show's
+    unchanged total on both sides of the subtraction, which softens the
+    round's credit even for teammates who did race — e.g. one member
+    sitting a round out shouldn't dilute what the other member(s)
+    actually earned, the way averaging in a genuinely weak (but real)
+    result is supposed to. Re-blending using only the members who
+    raced latest_round gives every present member's result full credit,
+    same as it would for a 2-person team missing nobody.
+
+    Only this display metric changes — rank_change/gap_to_leader still
+    come from the real, full-roster blend above, since those describe
+    the team's actual standing, not one round's credit."""
+    if latest_round is None:
+        return
+    for row in rows:
+        raced = [d for d in row["driver_breakdown"] if d["positions_by_round"].get(latest_round)]
+        if not raced:
+            continue
+        current = constructor_round_points([d["total"] for d in raced])
+        before = constructor_round_points([_entry_before_total(d, latest_round) for d in raced])
+        row["this_round_points"] = round(current - before, 1)
 
 
 def get_standings_rows(tab: str, season_id: str | None) -> tuple[list[dict], list[dict]]:
