@@ -518,9 +518,24 @@ def check_and_post_race_week_reminder(season_year: int) -> int | None:
     reasoning as youtube_live_notifications: guards a weekly cron
     against a duplicate post if it's ever manually re-triggered, e.g.
     via workflow_dispatch). Returns the round number posted about, or
-    None if there's nothing to post (no season yet, no upcoming race on
-    the calendar, or this round's already been posted for)."""
-    from app.services.draft import get_season_id
+    None if there's nothing to post (no season yet, no sim race coming
+    up soon, or this round's already been posted for).
+
+    Selects by is_next_sim_race, not is_next — is_next tracks the next
+    real F1 Sunday weekend, which is a different thing from the next
+    sim Thursday race whenever there's a gap between one round's sim
+    race and the following F1 race weekend (e.g. round 14's Sep-10 sim
+    race but Sep-13 F1 race, with round 15's sim race not until Sep 24).
+    is_next flips to the following round the moment that F1 weekend
+    passes, so the Monday-noon cron would grab round 15 ten days early
+    instead of the ~3 days this reminder is meant to give — a real
+    incident (round 15 got announced 10 days out on 2026-09-14, deleted
+    and manually re-sent for the correct week). The (sim_datetime -
+    today).days <= 6 guard below is the actual fix: it keeps the cron's
+    weekly Monday firing harmless on a week with no sim race due soon,
+    the same way check_and_post_race_check_reminder's same-day guard
+    keeps its cron harmless on a week with no race at all."""
+    from app.services.draft import LEAGUE_TIMEZONE, get_season_id
     from app.services.f1_schedule import get_season_timeline
 
     season_id = get_season_id(str(season_year))
@@ -528,8 +543,13 @@ def check_and_post_race_week_reminder(season_year: int) -> int | None:
         return None
 
     timeline = get_season_timeline(season_year)
-    race = next((r for r in timeline if r["is_next"]), None)
+    race = next((r for r in timeline if r["is_next_sim_race"]), None)
     if not race:
+        return None
+
+    today = datetime.now(LEAGUE_TIMEZONE).date()
+    days_out = (race["sim_datetime"].astimezone(LEAGUE_TIMEZONE).date() - today).days
+    if not (0 <= days_out <= 6):
         return None
 
     client = admin_client()
