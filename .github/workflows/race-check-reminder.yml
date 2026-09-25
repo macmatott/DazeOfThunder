@@ -1,20 +1,35 @@
 name: Race-day admin check reminder
 
 # Posts a pre-session setup checklist to the admin channel on race day,
-# targeting Thursday 8:00 PM ET — ~30 minutes before the 8:30 PM practice
-# session. GitHub Actions cron only runs in UTC with no timezone/DST
-# support, so 8 PM ET is approximated with two schedules — 00:00 UTC
-# Friday (8 PM EDT) for the March-November stretch, 01:00 UTC Friday
-# (8 PM EST) for December-February. This drifts an hour early/late for
-# the week or two around each DST changeover (mid-March, early November)
-# — accepted as harmless, same as the other cron workflows in this repo.
-# Safe to run more than once: the underlying check is idempotent per
-# round (race_check_reminder_notifications), so a re-run or a manual
-# workflow_dispatch is a no-op once a round's already posted.
+# aiming to land shortly before the 8:30 PM ET practice session.
+#
+# This used to be a single exact-time cron (00:00/01:00 UTC Friday, for
+# 8:00 PM ET Thursday) — but every run so far has fired 3-3.5+ hours
+# late (see git history), a known GitHub Actions issue where an exact
+# hour-boundary cron is the most congested slot on their shared queue
+# and can be delayed for hours. By the time those delayed runs actually
+# fired, the race had already happened, so the "is there a race *today*"
+# check correctly declined to post a now-stale reminder — meaning this
+# never actually reached Discord automatically before this fix.
+#
+# Now polls every ~10 minutes through a ~70-minute window ending before
+# the 8:30 PM practice start (minutes offset from :00 to avoid the same
+# hour-boundary congestion), same approach as youtube-live-check.yml's
+# frequent polling. The underlying check is idempotent per round
+# (race_check_reminder_notifications), so once any tick in the window
+# succeeds, the rest are harmless no-ops — a single delayed tick no
+# longer sinks the whole week, since the next one 10 minutes later
+# almost certainly gets through.
+#
+# Two DST halves, since GitHub Actions cron is UTC-only:
+#   EDT (Mar-Nov): ~7:03-8:13 PM EDT -> 23:03-23:53 UTC Thu + 00:03-00:13 UTC Fri
+#   EST (Dec-Feb): ~7:03-8:13 PM EST -> 00:03-00:53 UTC Fri + 01:03-01:13 UTC Fri
 on:
   schedule:
-    - cron: "0 0 * 3-11 5"
-    - cron: "0 1 * 12,1,2 5"
+    - cron: "3,13,23,33,43,53 23 * 3-11 4"
+    - cron: "3,13 0 * 3-11 5"
+    - cron: "3,13,23,33,43,53 0 * 12,1,2 5"
+    - cron: "3,13 1 * 12,1,2 5"
   workflow_dispatch: {}
 
 jobs:

@@ -582,8 +582,8 @@ def format_race_check_message(race: dict) -> str:
 
     parts = [f"🛠️ **Admin Check — Round {race['round_number']}: {race['race_name']}**"]
     parts.append(
-        "@here — session starts in ~30 minutes. Run through the iRacing "
-        "setup against this list before we go green."
+        "@here — tonight's practice session starts at 8:30 PM ET. Run "
+        "through the iRacing setup against this list before we go green."
     )
     parts.append("")
     parts.append("**Expected for this round**")
