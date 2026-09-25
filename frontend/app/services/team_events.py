@@ -15,15 +15,23 @@ that already verified the requester via the signed session cookie.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from pathlib import Path
 
 from app.db.supabase_client import admin_client
-from app.services.draft import LEAGUE_TIMEZONE
+from app.services.draft import LEAGUE_TIMEZONE, compute_draft_countdown
 from app.services.driver_photos import slugify_name
 from app.services.team_event_results import get_team_event_results
 
 EVENT_IMAGE_BUCKET = "team-event-images"
+
+# team_events only stores a start *date* (no time-of-day), so a live
+# countdown needs an assumed start time — 6 PM ET is the convention for
+# when a special event's first race usually goes green. Shared by
+# dashboard.html's Next Team Event card and the /schedule page's own
+# next-event card (both read event_countdown_target's result below)
+# rather than each picking their own hour.
+TEAM_EVENT_START_HOUR = 18
 
 # Bundled track art (static/img/tracks/<slug>.png, same slug rule and
 # same files f1_schedule.py's track_image_url uses) — lets a Team Event
@@ -131,6 +139,14 @@ def format_session_datetime(start_time_iso: str) -> str:
     return f"{dt:%a, %b} {dt.day}, {dt:%Y} · {hour12}:{dt:%M %p} ET"
 
 
+def event_countdown_target(start_date: str) -> datetime:
+    """The assumed instant a team event's first race goes green — see
+    TEAM_EVENT_START_HOUR — as a league-timezone-aware datetime ready
+    for compute_draft_countdown or to hand a template as a countdown
+    widget's target."""
+    return datetime.combine(date.fromisoformat(start_date), time(TEAM_EVENT_START_HOUR, 0), tzinfo=LEAGUE_TIMEZONE)
+
+
 def _enrich_with_rsvps(events: list[dict], viewer_participant_id: str | None) -> list[dict]:
     """Attaches rsvps_by_status ({"not_interested": [...], "interested":
     [...], "signed_up": [...]}, participant dicts with display_name/role
@@ -142,6 +158,9 @@ def _enrich_with_rsvps(events: list[dict], viewer_participant_id: str | None) ->
         event["event_date_display"] = format_event_date_range(
             event["start_date"], event["end_date"]
         )
+        countdown_target = event_countdown_target(event["start_date"])
+        event["countdown_target"] = countdown_target.isoformat()
+        event["countdown"] = compute_draft_countdown(countdown_target, datetime.now(timezone.utc))
         # A track's bundled art (if any) is shown alongside the manually
         # uploaded photo, not instead of it — both can be present at once.
         event["track_image_url"] = resolve_track_image_url(event.get("track_name"))

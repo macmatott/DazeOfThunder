@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import finish_position_cell %}
+{% from "_macros.html" import finish_position_cell, race_countdown_banner %}
 {% block title %}Schedule — Daze of Thunder{% endblock %}
 {% block main_class %}main--wide{% endblock %}
 
@@ -225,30 +225,17 @@
   {% include "_league_banner.html" %}
 
   {% if sim_countdown %}
-    <div class="sim-countdown" id="sim-countdown" data-target="{{ next_sim_race.sim_datetime.isoformat() }}">
-      <div class="sim-countdown__label">
-        🏁 Next Sim Race — Round {{ next_sim_race.round_number }}: {{ next_sim_race.race_name }}
-      </div>
-      <div class="sim-countdown__clock" id="sim-countdown-clock"{% if sim_countdown.total_seconds <= 0 %} hidden{% endif %}>
-        <div class="sim-countdown__unit">
-          <span class="sim-countdown__value" data-unit="days">{{ "%02d" | format(sim_countdown.days) }}</span>
-          <span class="sim-countdown__unit-label">Days</span>
-        </div>
-        <div class="sim-countdown__unit">
-          <span class="sim-countdown__value" data-unit="hours">{{ "%02d" | format(sim_countdown.hours) }}</span>
-          <span class="sim-countdown__unit-label">Hours</span>
-        </div>
-        <div class="sim-countdown__unit">
-          <span class="sim-countdown__value" data-unit="minutes">{{ "%02d" | format(sim_countdown.minutes) }}</span>
-          <span class="sim-countdown__unit-label">Minutes</span>
-        </div>
-        <div class="sim-countdown__unit">
-          <span class="sim-countdown__value" data-unit="seconds">{{ "%02d" | format(sim_countdown.total_seconds % 60) }}</span>
-          <span class="sim-countdown__unit-label">Seconds</span>
-        </div>
-      </div>
-      <div class="sim-countdown__soon" id="sim-countdown-soon"{% if sim_countdown.total_seconds > 0 %} hidden{% endif %}>Starting any moment</div>
-    </div>
+    {{ race_countdown_banner(
+      sim_countdown,
+      next_sim_race.sim_datetime.isoformat(),
+      "🏁 Round " ~ next_sim_race.round_number ~ ": " ~ next_sim_race.race_name,
+      soon_label=("Sim Race Complete" if sim_race_complete else "Starting any moment"),
+      countdown2=f1_countdown,
+      target_iso2=f1_countdown_target,
+      heading="Sim Race",
+      heading2="F1 Race",
+      soon_label2=("F1 Race Complete" if f1_race_complete else "Starting any moment")
+    ) }}
   {% endif %}
 
   {% set completed = races | selectattr("is_past") | list | length %}
@@ -306,5 +293,6 @@
   </div>
 {% endblock %}
 {% block scripts %}
+  <script src="/static/js/countdown_widgets.js"></script>
   <script src="/static/js/schedule.js"></script>
 {% endblock %}

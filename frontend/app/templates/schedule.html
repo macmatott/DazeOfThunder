@@ -1,10 +1,15 @@
 {% extends "base.html" %}
+{% from "_macros.html" import race_countdown_banner %}
 {% block title %}Team Events — Daze of Thunder{% endblock %}
 {% block content %}
   <div class="team-events-intro">
     <h1 class="page-title">Team Events</h1>
     <p class="page-subtitle">Upcoming iRacing special events — let us know if you're in</p>
   </div>
+
+  {% if next_event %}
+    {{ race_countdown_banner(next_event.countdown, next_event.countdown_target, "🏁 Next Team Event — " ~ next_event.title) }}
+  {% endif %}
 
   {# Jinja's {% if %} doesn't open a new scope, so a {% set %} inside the
      Past Events block below would otherwise leak forward and affect the
@@ -40,4 +45,7 @@
       </div>
     </div>
   {% endif %}
+{% endblock %}
+{% block scripts %}
+  <script src="/static/js/countdown_widgets.js"></script>
 {% endblock %}

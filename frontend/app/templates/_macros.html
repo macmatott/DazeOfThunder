@@ -14,3 +14,80 @@
 {% macro finish_position_cell(start_position, finish_position) %}
   {{ finish_position }}{% if start_position %}{% set gain = start_position - finish_position %}{% if gain > 0 %} <span class="session-results-table__qual-gain">(+{{ gain }})</span>{% elif gain < 0 %} <span class="session-results-table__qual-loss">({{ gain }})</span>{% endif %}{% endif %}
 {% endmacro %}
+
+{% macro stat_card_countdown(countdown, target_iso, units, soon_label="Starting any moment", heading=None) %}
+  {# Compact live-ticking countdown, for sitting inside a card alongside
+     other content (the dashboard's Next League Race / Next Team Event
+     cards) — see race_countdown_banner below for the standalone full-
+     width version. Server renders the correct initial digits so
+     there's no flash before JS takes over every second (see
+     countdown_widgets.js's generalized querySelectorAll("[data-
+     countdown-target]") handler, loaded on every page that uses either
+     of these macros). `soon_label` is what shows once the countdown
+     hits zero — callers swap in something like "Sim Race Complete"
+     once real results exist for whatever this is counting down to,
+     since "Starting any moment" reads wrong once it's already
+     happened. `heading` labels which thing this one's counting down
+     to, for a card showing more than one countdown side by side (the
+     dashboard's Next League Race card has both a sim-race and a
+     real-F1-race countdown). #}
+  <div class="countdown-widget-block">
+    {% if heading %}<div class="countdown-widget-heading">{{ heading }}</div>{% endif %}
+    <div class="countdown-widget" data-countdown-target="{{ target_iso }}">
+      <div class="sim-countdown__clock" data-countdown-clock{% if countdown.total_seconds <= 0 %} hidden{% endif %}>
+        {% for unit in units %}
+          <div class="sim-countdown__unit">
+            <span class="sim-countdown__value" data-unit="{{ unit }}">{{ "%02d" | format(countdown[unit] if unit in countdown else (countdown.total_seconds % 60)) }}</span>
+            <span class="sim-countdown__unit-label">{{ unit | capitalize }}</span>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="sim-countdown__soon" data-countdown-soon{% if countdown.total_seconds > 0 %} hidden{% endif %}>{{ soon_label }}</div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro _countdown_clock_section(countdown, target_iso, soon_label, heading) %}
+  <div class="sim-countdown__section" data-countdown-target="{{ target_iso }}">
+    {% if heading %}<div class="sim-countdown__section-heading">{{ heading }}</div>{% endif %}
+    <div class="sim-countdown__clock" data-countdown-clock{% if countdown.total_seconds <= 0 %} hidden{% endif %}>
+      <div class="sim-countdown__unit">
+        <span class="sim-countdown__value" data-unit="days">{{ "%02d" | format(countdown.days) }}</span>
+        <span class="sim-countdown__unit-label">Days</span>
+      </div>
+      <div class="sim-countdown__unit">
+        <span class="sim-countdown__value" data-unit="hours">{{ "%02d" | format(countdown.hours) }}</span>
+        <span class="sim-countdown__unit-label">Hours</span>
+      </div>
+      <div class="sim-countdown__unit">
+        <span class="sim-countdown__value" data-unit="minutes">{{ "%02d" | format(countdown.minutes) }}</span>
+        <span class="sim-countdown__unit-label">Minutes</span>
+      </div>
+      <div class="sim-countdown__unit">
+        <span class="sim-countdown__value" data-unit="seconds">{{ "%02d" | format(countdown.total_seconds % 60) }}</span>
+        <span class="sim-countdown__unit-label">Seconds</span>
+      </div>
+    </div>
+    <div class="sim-countdown__soon" data-countdown-soon{% if countdown.total_seconds > 0 %} hidden{% endif %}>{{ soon_label }}</div>
+  </div>
+{% endmacro %}
+
+{% macro race_countdown_banner(countdown, target_iso, label, soon_label="Starting any moment", countdown2=None, target_iso2=None, heading=None, heading2=None, soon_label2="Starting any moment") %}
+  {# Standalone full-width banner, for the top of a page — the Formula
+     Fantasy schedule page's "Next Sim Race" banner and the Team Events
+     page's "Next Team Event" banner both use this. Pass countdown2 (the
+     Formula Fantasy schedule page's real-F1-race countdown, alongside
+     the sim one) to render two labeled clocks side by side instead of
+     just one — same sim-race/F1-race pairing as the dashboard's Next
+     League Race card, just full-size here. Same live-ticking mechanics
+     as stat_card_countdown above (same countdown_widgets.js handler). #}
+  <div class="sim-countdown">
+    <div class="sim-countdown__label">{{ label }}</div>
+    <div class="sim-countdown__group">
+      {{ _countdown_clock_section(countdown, target_iso, soon_label, heading) }}
+      {% if countdown2 %}
+        {{ _countdown_clock_section(countdown2, target_iso2, soon_label2, heading2) }}
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}

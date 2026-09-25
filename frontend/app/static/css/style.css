@@ -43,6 +43,18 @@
   box-sizing: border-box;
 }
 
+/* Any element also styled with `display` needs this to keep [hidden]
+   actually hiding it — an author-stylesheet display rule (even one no
+   more specific than this) otherwise beats the browser's own default
+   [hidden] { display: none }, since author origin always wins over
+   user-agent origin regardless of specificity. Bit the dashboard's new
+   countdown widgets: .sim-countdown__clock sets display: flex, so
+   toggling its hidden attribute silently did nothing and both the
+   ticking clock and the "Starting any moment" text showed at once. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   color-scheme: dark;
 }
@@ -1290,6 +1302,32 @@ main.main--wide {
   color: var(--color-text);
 }
 
+/* Holds one or two .sim-countdown__section blocks — a page counting
+   down to just one thing (Team Events' next-event banner) gets a
+   single section with no heading, same look as before this existed;
+   the Formula Fantasy schedule page's banner passes two (sim race +
+   real F1 race), each labeled, side by side. */
+.sim-countdown__group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-6);
+}
+
+.sim-countdown__section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sim-countdown__section-heading {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
 .sim-countdown__soon {
   font-family: var(--font-data);
   font-size: 1.2rem;
@@ -1577,9 +1615,24 @@ main.main--wide {
   margin-top: var(--space-1);
 }
 
+/* 3 deterministic rows — title+details, then the track badge (if any),
+   then the CTA — rather than 4 flat flex-wrap items whose stacking used
+   to depend on whether that card's text happened to be long enough to
+   force a wrap. That's how the Next Race and Next Team Event cards
+   ended up looking different despite sharing the exact same markup:
+   Next Race's longer title/track text forced the badge onto its own
+   row, Next Team Event's shorter text didn't, so it sat crammed onto
+   the first row instead. Explicit rows fix that regardless of content
+   length. */
 .stat-card--wide {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stat-card__top {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-3);
@@ -1589,9 +1642,49 @@ main.main--wide {
   text-align: right;
 }
 
-.stat-card__cta {
-  flex-basis: 100%;
-  margin-top: var(--space-2);
+/* Row 2 — track badge (left) + live countdown clock (right), same
+   split as .stat-card__top's title/details row above it. Either side
+   can be absent (no bundled track art, or no countdown data) without
+   breaking the row. */
+.stat-card__middle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* stat_card_countdown's own markup (_macros.html) — shared by the
+   dashboard's Next League Race / Next Team Event cards and the Team
+   Events page's next-event card, so these aren't scoped under
+   .stat-card. */
+.countdown-widget .sim-countdown__clock {
+  gap: var(--space-3);
+}
+
+.countdown-widget .sim-countdown__value {
+  font-size: 1.5rem;
+}
+
+/* Holds one or more stat_card_countdown blocks side by side — the
+   league race card has two (sim race + real F1 race), everywhere else
+   just one, so this collapses to a single block cleanly either way. */
+.countdown-widget-group {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.countdown-widget-block {
+  text-align: right;
+}
+
+.countdown-widget-heading {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-1);
 }
 
 /* Homepage's Next Race card, same track-background-behind-logo
@@ -1610,7 +1703,9 @@ main.main--wide {
 }
 
 .stat-card--has-bg .stat-card__label,
-.stat-card--has-bg .stat-card__meta {
+.stat-card--has-bg .stat-card__meta,
+.stat-card--has-bg .sim-countdown__unit-label,
+.stat-card--has-bg .countdown-widget-heading {
   color: rgba(255, 255, 255, 0.8);
 }
 

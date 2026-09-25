@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% from "_macros.html" import role_badge %}
+{% from "_macros.html" import role_badge, stat_card_countdown %}
 {% block title %}Daze of Thunder{% endblock %}
+
 {% block content %}
   <div class="home-hero">
     <img src="/static/img/badge.png" alt="Daze of Thunder" class="home-hero__badge">
@@ -42,6 +43,37 @@
         line.
       </div>
       <a href="/formula-fantasy/how-it-works" class="form-submit">Explore Formula Fantasy</a>
+    </div>
+  </div>
+
+  <div
+    class="stat-card stat-card--wide{% if next_team_event and next_team_event.track_background_url %} stat-card--has-bg{% endif %}"
+    {% if next_team_event and next_team_event.track_background_url %}style="--row-bg: url('{{ next_team_event.track_background_url }}')"{% endif %}
+  >
+    <div class="stat-card__top">
+      <div>
+        <div class="stat-card__label">Next Team Event</div>
+        <div class="stat-card__value">{{ next_team_event.title if next_team_event else "—" }}</div>
+      </div>
+      {% if next_team_event %}
+        <div class="stat-card__details">
+          {% if next_team_event.track_name %}<div class="stat-card__meta">{{ next_team_event.track_name }}</div>{% endif %}
+          <div class="stat-card__meta">{{ next_team_event.event_date_display }}</div>
+        </div>
+      {% endif %}
+    </div>
+    {% if next_team_event and (next_team_event.track_image_url or next_team_event_countdown) %}
+      <div class="stat-card__middle">
+        {% if next_team_event.track_image_url %}
+          <span class="race-track__image{% if next_team_event.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_team_event.track_image_url }}')"></span>
+        {% endif %}
+        {% if next_team_event_countdown %}
+          {{ stat_card_countdown(next_team_event_countdown, next_team_event_countdown_target, ["days", "hours", "minutes", "seconds"]) }}
+        {% endif %}
+      </div>
+    {% endif %}
+    <div class="stat-card__cta">
+      <a href="/schedule" class="form-submit">See Team Events</a>
     </div>
   </div>
 
@@ -95,21 +127,50 @@
     class="stat-card stat-card--wide{% if next_race and next_race.track_background_url %} stat-card--has-bg{% endif %}"
     {% if next_race and next_race.track_background_url %}style="--row-bg: url('{{ next_race.track_background_url }}')"{% endif %}
   >
-    <div>
-      <div class="stat-card__label">Next Race</div>
-      <div class="stat-card__value">{{ next_race.race_name if next_race else "—" }}</div>
-    </div>
-    {% if next_race %}
-      <div class="stat-card__details">
-        <div class="stat-card__meta">{{ next_race.iracing_track or next_race.circuit_name }}</div>
-        <div class="stat-card__meta">{{ next_race.sim_date }}</div>
+    <div class="stat-card__top">
+      <div>
+        <div class="stat-card__label">Next League Race</div>
+        <div class="stat-card__value">{{ next_race.race_name if next_race else "—" }}</div>
       </div>
-      {% if next_race.track_image_url %}
-        <span class="race-track__image{% if next_race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_race.track_image_url }}')"></span>
+      {% if next_race %}
+        <div class="stat-card__details">
+          <div class="stat-card__meta">{{ next_race.iracing_track or next_race.circuit_name }}</div>
+          <div class="stat-card__meta">{{ next_race.sim_date }}</div>
+        </div>
       {% endif %}
+    </div>
+    {% if next_race and (next_race.track_image_url or next_race_countdown or next_f1_countdown) %}
+      <div class="stat-card__middle">
+        {% if next_race.track_image_url %}
+          <span class="race-track__image{% if next_race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_race.track_image_url }}')"></span>
+        {% endif %}
+        <div class="countdown-widget-group">
+          {% if next_race_countdown %}
+            {{ stat_card_countdown(
+              next_race_countdown,
+              next_race.sim_datetime.isoformat(),
+              ["days", "hours", "minutes", "seconds"],
+              soon_label=("Sim Race Complete" if next_race_results_uploaded else "Starting any moment"),
+              heading="Sim Race"
+            ) }}
+          {% endif %}
+          {% if next_f1_countdown %}
+            {{ stat_card_countdown(
+              next_f1_countdown,
+              next_f1_countdown_target,
+              ["days", "hours", "minutes", "seconds"],
+              soon_label=("F1 Race Complete" if next_f1_race_results_uploaded else "Starting any moment"),
+              heading="F1 Race"
+            ) }}
+          {% endif %}
+        </div>
+      </div>
     {% endif %}
     <div class="stat-card__cta">
       <a href="/formula-fantasy/schedule" class="form-submit">See League Schedule</a>
     </div>
   </div>
+{% endblock %}
+{% block scripts %}
+  <script src="/static/js/countdown_widgets.js"></script>
 {% endblock %}

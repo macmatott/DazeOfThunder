@@ -1,11 +1,16 @@
+from datetime import datetime
+
 import pytest
 
+from app.services.draft import LEAGUE_TIMEZONE
 from app.services.team_events import (
     MAX_IMAGE_SIZE_BYTES,
+    TEAM_EVENT_START_HOUR,
     InvalidEventDateRangeError,
     InvalidImageError,
     InvalidRsvpStatusError,
     create_team_event,
+    event_countdown_target,
     format_event_date_range,
     parse_car_classes,
     resolve_track_image_url,
@@ -40,6 +45,21 @@ def test_format_event_date_range_multi_day():
         format_event_date_range("2026-09-01", "2026-09-05")
         == "Tue, Sep 1 – Sat, Sep 5, 2026"
     )
+
+
+def test_event_countdown_target_is_6pm_eastern_on_the_start_date():
+    target = event_countdown_target("2026-09-25")
+
+    assert target == datetime(2026, 9, 25, TEAM_EVENT_START_HOUR, 0, tzinfo=LEAGUE_TIMEZONE)
+    assert target.tzinfo is LEAGUE_TIMEZONE
+
+
+def test_event_countdown_target_uses_the_start_date_not_the_end_date():
+    # A multi-day event's countdown is to when it *starts*, not when it
+    # wraps up — start_date is the only date this function ever reads.
+    target = event_countdown_target("2026-09-25")
+
+    assert target.date().isoformat() == "2026-09-25"
 
 
 def test_create_team_event_rejects_end_before_start():

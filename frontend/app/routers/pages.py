@@ -8,13 +8,19 @@ from postgrest.exceptions import APIError
 from app.services.constructor_draft import get_pairs
 from app.services.draft import (
     CONSTRUCTOR_LOGOS,
+    LEAGUE_TIMEZONE,
     compute_draft_countdown,
     get_draft_picks,
     get_ranked_drivers,
     get_season_id,
     logo_url_for_team,
 )
-from app.services.f1_schedule import get_season_timeline, get_upcoming_races
+from app.services.f1_schedule import (
+    get_f1_session_details_by_round,
+    get_season_timeline,
+    get_sim_session_details_by_round,
+    get_upcoming_races,
+)
 from app.services.fantasy_scoring import (
     MultipleActiveScoringRuleVersionsError,
     ScoringRulesNotSeededError,
@@ -36,6 +42,7 @@ from app.services.standings import (
     get_sim_only_standings,
     get_standings_rows,
 )
+from app.services.team_events import list_upcoming_events
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -51,6 +58,50 @@ def dashboard(request: Request):
     sim_standings = get_sim_only_standings(season_id)
     constructor_standings = get_constructor_standings(season_id)
     upcoming_races = get_upcoming_races(CURRENT_SEASON)
+    upcoming_team_events = list_upcoming_events()
+    next_race = upcoming_races[0] if upcoming_races else None
+    next_team_event = upcoming_team_events[0] if upcoming_team_events else None
+
+    now = datetime.now(timezone.utc)
+    next_race_countdown = compute_draft_countdown(next_race["sim_datetime"], now) if next_race else None
+    # Once next_race's sim race has actually happened, the countdown
+    # clamps to 0 same as any other expired countdown — but "Starting
+    # any moment" reads wrong at that point if we already have real
+    # results for it (round's done, not about to start), so the card
+    # swaps in "Sim Race Complete" instead. See stat_card_countdown's
+    # soon_label param.
+    next_race_results_uploaded = False
+    next_f1_race_results_uploaded = False
+    if next_race and season_id:
+        sim_details_by_round = get_sim_session_details_by_round(season_id)
+        next_race_results_uploaded = next_race["round_number"] in sim_details_by_round
+        f1_details_by_round = get_f1_session_details_by_round(season_id)
+        next_f1_race_results_uploaded = next_race["round_number"] in f1_details_by_round
+
+    # The real F1 race — separate from the sim race above (same round,
+    # different day: the sim race runs the Thursday before). Jolpica
+    # gives every round a real start time, past and future, so this is
+    # actual data, not an assumed one like the team event's 6 PM.
+    # Converted to the league's own Eastern timezone (same as the sim
+    # race and team event targets) rather than left in Jolpica's raw
+    # UTC — the countdown math itself doesn't change (a duration is the
+    # same regardless of which timezone the two ends are expressed in),
+    # but this keeps all three targets consistently Eastern-anchored.
+    next_f1_countdown = None
+    next_f1_countdown_target = None
+    if next_race:
+        f1_race_datetime_et = next_race["race_datetime"].astimezone(LEAGUE_TIMEZONE)
+        next_f1_countdown = compute_draft_countdown(f1_race_datetime_et, now)
+        next_f1_countdown_target = f1_race_datetime_et.isoformat()
+
+    # list_upcoming_events already attaches countdown/countdown_target to
+    # every event (see team_events.py::event_countdown_target) — the
+    # same 6 PM ET convention the /schedule page's own next-event card
+    # uses, computed in one place instead of each caller picking its own
+    # assumed start hour.
+    next_team_event_countdown = next_team_event["countdown"] if next_team_event else None
+    next_team_event_countdown_target = next_team_event["countdown_target"] if next_team_event else None
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -59,7 +110,15 @@ def dashboard(request: Request):
             "fantasy_leader": fantasy_standings[0] if fantasy_standings else None,
             "sim_racing_leader": sim_standings[0] if sim_standings else None,
             "constructor_leader": constructor_standings[0] if constructor_standings else None,
-            "next_race": upcoming_races[0] if upcoming_races else None,
+            "next_race": next_race,
+            "next_race_countdown": next_race_countdown,
+            "next_race_results_uploaded": next_race_results_uploaded,
+            "next_f1_countdown": next_f1_countdown,
+            "next_f1_countdown_target": next_f1_countdown_target,
+            "next_f1_race_results_uploaded": next_f1_race_results_uploaded,
+            "next_team_event": next_team_event,
+            "next_team_event_countdown": next_team_event_countdown,
+            "next_team_event_countdown_target": next_team_event_countdown_target,
         },
     )
 
@@ -80,15 +139,36 @@ def formula_fantasy_how_it_works(request: Request):
 def ff_schedule(request: Request):
     races = get_season_timeline(CURRENT_SEASON)
     next_sim_race = next((r for r in races if r["is_next_sim_race"]), None)
-    sim_countdown = (
-        compute_draft_countdown(next_sim_race["sim_datetime"], datetime.now(timezone.utc))
-        if next_sim_race
-        else None
-    )
+    now = datetime.now(timezone.utc)
+    sim_countdown = compute_draft_countdown(next_sim_race["sim_datetime"], now) if next_sim_race else None
+
+    # Same sim-race/real-F1-race pairing as the dashboard's Next League
+    # Race card, in one banner instead of two separate ones (see
+    # race_countdown_banner's countdown2 param). get_season_timeline
+    # already attaches sim_session_detail/f1_session_detail to every
+    # race, so "is this round actually done" reuses that instead of a
+    # separate query the way the dashboard route needs to.
+    f1_countdown = None
+    f1_countdown_target = None
+    if next_sim_race:
+        f1_race_datetime_et = next_sim_race["race_datetime"].astimezone(LEAGUE_TIMEZONE)
+        f1_countdown = compute_draft_countdown(f1_race_datetime_et, now)
+        f1_countdown_target = f1_race_datetime_et.isoformat()
+    sim_race_complete = bool(next_sim_race and next_sim_race.get("sim_session_detail"))
+    f1_race_complete = bool(next_sim_race and next_sim_race.get("f1_session_detail"))
+
     return templates.TemplateResponse(
         request,
         "ff_schedule.html",
-        {"races": races, "next_sim_race": next_sim_race, "sim_countdown": sim_countdown},
+        {
+            "races": races,
+            "next_sim_race": next_sim_race,
+            "sim_countdown": sim_countdown,
+            "f1_countdown": f1_countdown,
+            "f1_countdown_target": f1_countdown_target,
+            "sim_race_complete": sim_race_complete,
+            "f1_race_complete": f1_race_complete,
+        },
     )
 
 

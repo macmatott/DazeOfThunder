@@ -21,10 +21,21 @@ def schedule_page(request: Request):
         viewer_participant_id = request.state.current_user.get("participant_id")
     events = list_upcoming_events(viewer_participant_id)
     past_events = list_past_events(viewer_participant_id)
+    # list_upcoming_events already marks the soonest event is_next=True
+    # and attaches its countdown/countdown_target — see
+    # team_events.py::event_countdown_target — for the page's own
+    # "Next Team Event" banner, same pattern as the Formula Fantasy
+    # schedule page's "Next Sim Race" one.
+    next_event = next((e for e in events if e.get("is_next")), None)
     return templates.TemplateResponse(
         request,
         "schedule.html",
-        {"events": events, "past_events": past_events, "can_rsvp": bool(viewer_participant_id)},
+        {
+            "events": events,
+            "past_events": past_events,
+            "can_rsvp": bool(viewer_participant_id),
+            "next_event": next_event,
+        },
     )
 
 
