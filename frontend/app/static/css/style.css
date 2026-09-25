@@ -613,13 +613,26 @@ main.main--wide {
   margin: 0 auto;
 }
 
+/* 3 real column groups (label + intro + tower each stay DOM-adjacent
+   within their own .scoring-column), not 9 flat grid items relying on
+   auto-placement to land in the right cell — that's what "jumbled"
+   used to mean here: this used to be a 2-column grid (1fr 1fr) holding
+   3 sets of 3 items, so auto-placement scattered every label/intro/
+   tower across the wrong cells, and collapsing to 1 column on mobile
+   made it worse (all 3 labels together, then all 3 intros, then all 3
+   towers, in that flat order). Grouping into real columns means the
+   layout can't scramble regardless of column count or viewport. */
 .scoring-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 7rem auto;
+  grid-template-columns: repeat(3, 1fr);
   align-items: start;
   gap: var(--space-5);
   margin-bottom: var(--space-5);
+}
+
+.scoring-column {
+  display: flex;
+  flex-direction: column;
 }
 
 .draft-columns {
@@ -629,18 +642,10 @@ main.main--wide {
   gap: var(--space-5);
 }
 
+/* Fill the column instead of being capped at .ff-intro's usual 640px;
+   its own bottom margin still stands, for the gap before the tower. */
 .scoring-columns .ff-intro {
   max-width: none;
-  min-height: 0;
-  margin: 0;
-}
-
-/* .tower + .tower's margin-top (for towers stacked in normal flow
-   elsewhere) also matches here, since the two towers are DOM-adjacent
-   siblings even though the grid places them side by side — that stray
-   margin was pushing the right-hand tower down out of row alignment. */
-.scoring-columns .tower + .tower {
-  margin-top: 0;
 }
 
 .scoring-columns .tower__row {
@@ -2590,7 +2595,6 @@ main.main--wide {
 
   .scoring-columns {
     grid-template-columns: 1fr;
-    grid-template-rows: auto;
   }
 
   .topbar__brand-logo {

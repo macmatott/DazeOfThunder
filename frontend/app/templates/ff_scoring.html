@@ -33,31 +33,37 @@
   {% endmacro %}
 
   <div class="scoring-columns">
-    <p class="section-label">Fantasy F1 Scoring</p>
-    <p class="section-label">Fantasy F1 Sprint Scoring</p>
-    <p class="section-label">Sim Racing Scoring</p>
+    <div class="scoring-column">
+      <p class="section-label">Fantasy F1 Scoring</p>
+      <p class="ff-intro">
+        Every classified finisher scores under our own NASCAR-inspired
+        scale — no cutoff at 10th like real F1. The win is worth the full
+        grid size, then points drop by one per position, down to 1 point
+        for last.
+      </p>
+      {{ points_tower(fantasy_points) }}
+    </div>
 
-    <p class="ff-intro">
-      Every classified finisher scores under our own NASCAR-inspired
-      scale — no cutoff at 10th like real F1. The win is worth the full
-      grid size, then points drop by one per position, down to 1 point
-      for last.
-    </p>
-    <p class="ff-intro">
-      Real F1 pays a sprint at roughly a third of a full race, so ours
-      does too — the full race scale, thirded and rounded, with the win
-      bumped a point above 2nd so they don't tie. Still every finisher
-      scores, same as the race.
-    </p>
-    <p class="ff-intro">
-      Same NASCAR-inspired shape, scaled to our own 11-person grid
-      instead of F1's — every finisher scores, the win is worth 11
-      points, and points drop by one per position after a small bonus
-      over 2nd place.
-    </p>
+    <div class="scoring-column">
+      <p class="section-label">Fantasy F1 Sprint Scoring</p>
+      <p class="ff-intro">
+        Real F1 pays a sprint at roughly a third of a full race, so ours
+        does too — the full race scale, thirded and rounded, with the win
+        bumped a point above 2nd so they don't tie. Still every finisher
+        scores, same as the race.
+      </p>
+      {{ points_tower(sprint_points) }}
+    </div>
 
-    {{ points_tower(fantasy_points) }}
-    {{ points_tower(sprint_points) }}
-    {{ points_tower(sim_points) }}
+    <div class="scoring-column">
+      <p class="section-label">Sim Racing Scoring</p>
+      <p class="ff-intro">
+        Same NASCAR-inspired shape, scaled to our own 11-person grid
+        instead of F1's — every finisher scores, the win is worth 11
+        points, and points drop by one per position after a small bonus
+        over 2nd place.
+      </p>
+      {{ points_tower(sim_points) }}
+    </div>
   </div>
 {% endblock %}
