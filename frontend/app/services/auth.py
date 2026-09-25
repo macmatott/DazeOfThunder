@@ -15,6 +15,7 @@ app/routers/auth.py).
 
 from __future__ import annotations
 
+import asyncio
 from urllib.parse import urlencode
 
 from supabase import create_client
@@ -65,3 +66,43 @@ def refresh_session(refresh_token: str) -> Session:
     client = create_client(settings.supabase_url, settings.supabase_anon_key)
     response = client.auth.refresh_session(refresh_token)
     return response.session
+
+
+# In-process only (single Fly machine, no cross-process coordination
+# needed) — see refresh_session_deduped.
+_pending_refreshes: dict[str, asyncio.Task] = {}
+
+
+async def refresh_session_deduped(refresh_token: str) -> Session | None:
+    """Wraps refresh_session so concurrent callers holding the *same*
+    refresh_token share one underlying call instead of racing it.
+
+    Supabase invalidates a refresh_token the instant it's used and
+    issues a new one — so two nearly-simultaneous requests (e.g. the
+    header's 60s poll landing alongside an ordinary page load, right as
+    the ~1hr access token is due to expire) would otherwise both try to
+    redeem it: one succeeds, the other fails with an "already used"
+    error. CurrentUserMiddleware used to treat that failure exactly
+    like a genuinely dead token and wipe the whole session, signing the
+    user out — a real, reproducible bug caused by request timing, not
+    actual token expiry.
+
+    The first caller for a given refresh_token starts the real refresh
+    and every other caller racing it just awaits that same in-flight
+    task, so they all resolve to the one successful (or one failed)
+    result together instead of stepping on each other. A failure still
+    surfaces as None here, same as the old try/except-around-the-call
+    did for its single caller."""
+
+    async def _do_refresh() -> Session | None:
+        try:
+            return await asyncio.to_thread(refresh_session, refresh_token)
+        except Exception:
+            return None
+
+    task = _pending_refreshes.get(refresh_token)
+    if task is None:
+        task = asyncio.ensure_future(_do_refresh())
+        _pending_refreshes[refresh_token] = task
+        task.add_done_callback(lambda _t: _pending_refreshes.pop(refresh_token, None))
+    return await task

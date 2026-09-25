@@ -13,7 +13,7 @@ import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.services.auth import refresh_session
+from app.services.auth import refresh_session_deduped
 from app.services.youtube import is_channel_live
 
 
@@ -54,10 +54,7 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
         # and has to redo Discord OAuth. Swap it for a fresh one via the
         # long-lived refresh_token instead of treating this as a real logout.
         if expires_at and session.get("refresh_token") and expires_at <= time.time() + REFRESH_LEEWAY_SECONDS:
-            try:
-                refreshed = await asyncio.to_thread(refresh_session, session["refresh_token"])
-            except Exception:
-                refreshed = None
+            refreshed = await refresh_session_deduped(session["refresh_token"])
             if refreshed:
                 session["access_token"] = refreshed.access_token
                 session["refresh_token"] = refreshed.refresh_token
