@@ -1393,12 +1393,38 @@ main.main--wide {
   border: 1px solid var(--color-rule);
 }
 
+.race-detail-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .race-detail-strip {
   font-size: 0.9rem;
   color: var(--color-text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Top-3 sim finishers for a past round, shown right on the row instead
+   of needing to open it — the full results table (every finisher, plus
+   F1's own top 3) is still one click away via the existing row toggle. */
+.race-podium {
+  display: flex;
+  gap: var(--space-3);
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.race-podium__entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 .race-row--past {
@@ -1442,7 +1468,8 @@ main.main--wide {
 }
 
 .race-row--has-bg .tower__meta,
-.race-row--has-bg .race-detail-strip {
+.race-row--has-bg .race-detail-strip,
+.race-row--has-bg .race-podium {
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -2578,12 +2605,12 @@ main.main--wide {
 
   /* Medium: every schedule row needs ~630px+ of fixed columns, so it
      requires horizontal scrolling to read even though it doesn't
-     clip. Drop the two least-essential columns — weather/date detail
-     and the track thumbnail — full detail is still one tap away via
-     the existing session-detail modal. Scoped to .schedule-row so it
-     doesn't also hide the reused .race-track__image on Team Event
+     clip. Drop the two least-essential columns — weather/date/podium
+     detail and the track thumbnail — full detail is still one tap away
+     via the existing session-detail modal. Scoped to .schedule-row so
+     it doesn't also hide the reused .race-track__image on Team Event
      cards, which have plenty of room for it. */
-  .race-detail-strip,
+  .race-detail-cell,
   .schedule-row .race-track__image {
     display: none;
   }

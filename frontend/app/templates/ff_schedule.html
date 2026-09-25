@@ -23,8 +23,24 @@
     </span>
   </span>
   <span class="tower__points">{{ race.sim_date }}</span>
-  <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }} &nbsp;·&nbsp; {% if race.sim_laps %}🏁 {{ race.sim_laps }} laps &nbsp;·&nbsp; {% endif %}📅 {{ race.race_date_iso }}</span>
+  <span class="race-detail-cell">
+    <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }} &nbsp;·&nbsp; {% if race.sim_laps %}🏁 {{ race.sim_laps }} laps &nbsp;·&nbsp; {% endif %}📅 {{ race.race_date_iso }}</span>
+    {% if race.sim_session_detail and race.sim_session_detail.results %}
+      {{ _race_podium(race.sim_session_detail.results) }}
+    {% endif %}
+  </span>
   <span class="race-row-actions"></span>
+{% endmacro %}
+
+{% macro _race_podium(results) %}
+  {% set medals = ["🥇", "🥈", "🥉"] %}
+  <span class="race-podium">
+    {% for r in results[:3] %}
+      <span class="race-podium__entry">
+        {{ medals[loop.index0] }} {{ r.driver_name }}{% if r.car_number %}<span class="number-badge">#{{ r.car_number }}</span>{% endif %}{% if r.is_ai %} <span class="tower__meta">(AI)</span>{% endif %}
+      </span>
+    {% endfor %}
+  </span>
 {% endmacro %}
 
 {% macro _race_row_team_cell(team_name, team_logo_url) %}
