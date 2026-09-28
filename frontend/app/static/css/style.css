@@ -539,6 +539,36 @@ main.main--wide {
   max-width: 1300px;
 }
 
+/* Page-open/refresh entrance — fade-in.js tags each of main's direct
+   children with this class and sets --fade-delay per element so they
+   cascade in top to bottom instead of all popping in at once, then
+   strips the class once each element's animation ends (see that file
+   for why: a completed fill-mode "both" animation would otherwise keep
+   overriding `transform` and silently break these elements' own :hover
+   effects). Site-wide via base.html, not per-template markup. Disabled
+   outright for anyone who has motion reduction turned on. */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.45s ease-out both;
+  animation-delay: var(--fade-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up {
+    animation: none;
+  }
+}
+
 .league-banner {
   display: block;
   width: 100%;
