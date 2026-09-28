@@ -2283,12 +2283,11 @@ main.main--wide {
   padding: var(--space-2) var(--space-3);
 }
 
-/* Three stacked photo/scrim layers behind the content, back to front:
-   the track's bundled background photo, the manually-uploaded event
-   photo (semi-transparent, so the track photo shows through it), then
-   a dark gradient scrim so text stays readable over both. Separate
-   absolutely-positioned elements rather than a single background-image
-   stack, since per-layer opacity isn't otherwise possible in CSS. */
+/* Track's bundled background photo plus a dark gradient scrim so text
+   stays readable over it. The manually-uploaded event photo is a small
+   corner badge instead (see .event-card__uploaded-badge) — it used to
+   be a second full-bleed layer here, but that made the card too busy
+   and hard to read. */
 .event-card--has-image {
   transition: transform 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease;
 }
@@ -2300,20 +2299,14 @@ main.main--wide {
 }
 
 .event-card__track-bg,
-.event-card__uploaded-bg,
 .event-card__scrim {
   position: absolute;
   inset: 0;
 }
 
-.event-card__track-bg,
-.event-card__uploaded-bg {
+.event-card__track-bg {
   background-size: cover;
   background-position: center;
-}
-
-.event-card__uploaded-bg {
-  opacity: 0.55;
 }
 
 .event-card__scrim {
@@ -2328,7 +2321,7 @@ main.main--wide {
 
 .event-card__header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   flex-wrap: wrap;
@@ -2339,12 +2332,50 @@ main.main--wide {
   font-size: 1.2rem;
 }
 
+/* Title+track-logo (left) and date+event-badge (right) are twin
+   columns so the track logo and the uploaded event badge — both
+   fairly large image blocks — land in the same row instead of the
+   track logo trailing lower down in the body underneath everything
+   else. */
+.event-card__header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.event-card__header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .event-card__date {
   font-family: var(--font-data);
   font-size: 0.85rem;
   color: var(--color-accent);
   white-space: nowrap;
   text-align: right;
+}
+
+/* Manually-uploaded event photo, shrunk to a small corner badge below
+   the date instead of the old full-bleed background layer (see the
+   comment above .event-card--has-image) — most uploads are wide
+   promo-style graphics, so a short, wide box crops less than a
+   square one would. Semi-transparent and border/fill-free (like the
+   old full-bleed layer was) rather than a solid framed box, so it
+   reads as part of the photo rather than a separate UI chip. */
+.event-card__uploaded-badge {
+  display: block;
+  width: 224px;
+  height: 126px;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.75;
+  flex-shrink: 0;
 }
 
 /* Which split of a big multi-split enduro we raced in (e.g. "Split
@@ -2360,7 +2391,6 @@ main.main--wide {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-2);
 }
 
 /* Headline finish/car for a past event, visible without opening the
