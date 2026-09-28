@@ -46,9 +46,13 @@
     </div>
   </div>
 
+  {# next_team_event, like next_race below, is always upcoming, so this
+     always prefers the sharp photo over the blurred one when the track
+     has one. #}
+  {% set next_team_event_bg = (next_team_event.track_background_sharp_url or next_team_event.track_background_url) if next_team_event else none %}
   <div
-    class="stat-card stat-card--wide{% if next_team_event and next_team_event.track_background_url %} stat-card--has-bg{% endif %}"
-    {% if next_team_event and next_team_event.track_background_url %}style="--row-bg: url('{{ next_team_event.track_background_url }}')"{% endif %}
+    class="stat-card stat-card--wide{% if next_team_event_bg %} stat-card--has-bg{% endif %}"
+    {% if next_team_event_bg %}style="--row-bg: url('{{ next_team_event_bg }}')"{% endif %}
   >
     <div class="stat-card__top">
       <div>
@@ -65,7 +69,7 @@
     {% if next_team_event and (next_team_event.track_image_url or next_team_event_countdown) %}
       <div class="stat-card__middle">
         {% if next_team_event.track_image_url %}
-          <span class="race-track__image{% if next_team_event.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_team_event.track_image_url }}')"></span>
+          <span class="race-track__image{% if next_team_event_bg %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_team_event.track_image_url }}')"></span>
         {% endif %}
         {% if next_team_event_countdown %}
           {{ stat_card_countdown(next_team_event_countdown, next_team_event_countdown_target, ["days", "hours", "minutes", "seconds"]) }}
@@ -123,9 +127,14 @@
     </a>
   </div>
 
+  {# Every race here is by definition not yet run (get_upcoming_races
+     only returns future ones), so this always prefers the sharp photo
+     over the blurred one when a track has one — same rule as the
+     schedule page's rows, see ff_schedule.html's race_row. #}
+  {% set next_race_bg = (next_race.track_background_sharp_url or next_race.track_background_url) if next_race else none %}
   <div
-    class="stat-card stat-card--wide{% if next_race and next_race.track_background_url %} stat-card--has-bg{% endif %}"
-    {% if next_race and next_race.track_background_url %}style="--row-bg: url('{{ next_race.track_background_url }}')"{% endif %}
+    class="stat-card stat-card--wide{% if next_race_bg %} stat-card--has-bg{% endif %}"
+    {% if next_race_bg %}style="--row-bg: url('{{ next_race_bg }}')"{% endif %}
   >
     <div class="stat-card__top">
       <div>
@@ -142,7 +151,7 @@
     {% if next_race and (next_race.track_image_url or next_race_countdown or next_f1_countdown) %}
       <div class="stat-card__middle">
         {% if next_race.track_image_url %}
-          <span class="race-track__image{% if next_race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_race.track_image_url }}')"></span>
+          <span class="race-track__image{% if next_race_bg %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ next_race.track_image_url }}')"></span>
         {% endif %}
         <div class="countdown-widget-group">
           {% if next_race_countdown %}

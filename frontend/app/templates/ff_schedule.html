@@ -3,12 +3,12 @@
 {% block title %}Schedule — Daze of Thunder{% endblock %}
 {% block main_class %}main--wide{% endblock %}
 
-{% macro _race_row_cells(race) %}
+{% macro _race_row_cells(race, effective_bg) %}
   <span class="race-status-icon" aria-hidden="true">{% if race.is_past %}✓{% else %}●{% endif %}</span>
   <span class="tower__pos">{{ race.round_number }}</span>
   <span class="race-track">
     {% if race.track_image_url %}
-      <span class="race-track__image{% if race.track_background_url %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ race.track_image_url }}')"></span>
+      <span class="race-track__image{% if effective_bg %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ race.track_image_url }}')"></span>
     {% endif %}
     <span class="race-track__info">
       <span class="tower__name">{{ race.race_name }}</span>
@@ -200,23 +200,28 @@
 {% endmacro %}
 
 {% macro race_row(race) %}
-  {% set row_classes = "race-row" ~ (" race-row--past" if race.is_past else "") ~ (" race-row--next" if race.is_next else "") ~ (" race-row--has-bg" if race.track_background_url else "") %}
+  {# Sharp (unblurred) photo for anything not yet run, blurred for
+     anything already run — sharp is opt-in per track (most won't have
+     one yet), so this always has the existing blurred photo to fall
+     back to. See f1_schedule.py's track_background_sharp_url. #}
+  {% set effective_bg = (race.track_background_sharp_url if not race.is_past else none) or race.track_background_url %}
+  {% set row_classes = "race-row" ~ (" race-row--past" if race.is_past else "") ~ (" race-row--next" if race.is_next else "") ~ (" race-row--has-bg" if effective_bg else "") %}
   {% if race.sim_session_detail or race.f1_session_detail or race.f1_sprint_session_detail %}
     <details
       class="{{ row_classes }} tower-row-toggle"
       id="round-{{ race.round_number }}"
-      {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
+      {% if effective_bg %}style="--row-bg: url('{{ effective_bg }}')"{% endif %}
     >
-      <summary class="schedule-row tower-row-toggle__summary">{{ _race_row_cells(race) }}</summary>
+      <summary class="schedule-row tower-row-toggle__summary">{{ _race_row_cells(race, effective_bg) }}</summary>
       {{ _race_row_results(race) }}
     </details>
   {% else %}
     <div
       class="{{ row_classes }}"
       id="round-{{ race.round_number }}"
-      {% if race.track_background_url %}style="--row-bg: url('{{ race.track_background_url }}')"{% endif %}
+      {% if effective_bg %}style="--row-bg: url('{{ effective_bg }}')"{% endif %}
     >
-      <div class="schedule-row">{{ _race_row_cells(race) }}</div>
+      <div class="schedule-row">{{ _race_row_cells(race, effective_bg) }}</div>
     </div>
   {% endif %}
 {% endmacro %}

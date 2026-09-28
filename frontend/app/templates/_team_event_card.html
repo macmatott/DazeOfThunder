@@ -4,14 +4,19 @@
    (hx-target scoped to #event-{{ event.id }}), so it must stay
    self-contained (no base.html deps), same rule as the draft partials. #}
 {% from "_macros.html" import finish_position_cell, role_badge %}
-<div class="event-card{% if event.image_url or event.track_background_url %} event-card--has-image{% endif %}{% if event.is_next %} event-card--next{% endif %}" id="event-{{ event.id }}">
-  {% if event.track_background_url %}
-    <span class="event-card__track-bg" style="background-image: url('{{ event.track_background_url }}')"></span>
+{# Sharp (unblurred) track photo for anything not yet run, blurred for
+   anything already run — same rule as the Formula Fantasy schedule page,
+   see f1_schedule.py's track_background_sharp_url. is_past comes from
+   the including template's scope (schedule.html). #}
+{% set effective_track_bg = (event.track_background_sharp_url if not is_past else none) or event.track_background_url %}
+<div class="event-card{% if event.image_url or effective_track_bg %} event-card--has-image{% endif %}{% if event.is_next %} event-card--next{% endif %}" id="event-{{ event.id }}">
+  {% if effective_track_bg %}
+    <span class="event-card__track-bg" style="background-image: url('{{ effective_track_bg }}')"></span>
   {% endif %}
   {% if event.image_url %}
     <span class="event-card__uploaded-bg" style="background-image: url('{{ event.image_url }}')"></span>
   {% endif %}
-  {% if event.image_url or event.track_background_url %}
+  {% if event.image_url or effective_track_bg %}
     <span class="event-card__scrim"></span>
   {% endif %}
   <div class="event-card__body">

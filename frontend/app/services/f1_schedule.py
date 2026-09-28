@@ -236,6 +236,23 @@ def track_background_url(iracing_track: str | None) -> str | None:
     return f"/static/img/tracks/{slug}-bg.jpg"
 
 
+def track_background_sharp_url(iracing_track: str | None) -> str | None:
+    """Optional *unblurred* counterpart to track_background_url
+    (<slug>-bg-sharp.jpg), for rounds that haven't happened yet — the
+    schedule page prefers this one over the blurred version for any
+    round that isn't past, falling back to the blurred version (or
+    nothing) if a track doesn't have a sharp photo yet. Same existence-
+    check reasoning as track_background_url: most tracks won't have one
+    for a while, this is being rolled in one track at a time."""
+    if not iracing_track:
+        return None
+    track_name, _ = _split_track_name(iracing_track)
+    slug = slugify_name(track_name)
+    if not (TRACK_IMAGE_DIR / f"{slug}-bg-sharp.jpg").is_file():
+        return None
+    return f"/static/img/tracks/{slug}-bg-sharp.jpg"
+
+
 def _format_race(race: dict, race_dt: datetime) -> dict:
     circuit = race["Circuit"]
     location = circuit["Location"]
@@ -253,6 +270,7 @@ def _format_race(race: dict, race_dt: datetime) -> dict:
         "iracing_track": iracing_track,
         "track_image_url": track_image_url(iracing_track),
         "track_background_url": track_background_url(iracing_track),
+        "track_background_sharp_url": track_background_sharp_url(iracing_track),
         "sim_date": f"{sim_date:%b} {sim_date.day}, {sim_date:%Y}",
         "sim_datetime": _sim_race_datetime(sim_date),
     }
