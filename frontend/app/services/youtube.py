@@ -15,6 +15,7 @@ hiccup, quota exceeded — so a YouTube outage never breaks the page.
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 import httpx
@@ -28,6 +29,7 @@ CACHE_SECONDS = 15 * 60
 
 _channel_id_cache: str | None = None
 _live_cache: dict = {"checked_at": 0.0, "is_live": False, "video_id": None, "title": None}
+_background_refresh_task: "asyncio.Task | None" = None
 
 
 def _resolve_channel_id(client: httpx.Client) -> str | None:
@@ -84,8 +86,39 @@ def _refresh_live_cache() -> None:
     _live_cache.update(checked_at=now, is_live=live, video_id=video_id, title=title)
 
 
+def ensure_live_cache_fresh_soon() -> None:
+    """Kicks off a background refresh if the cache is stale and nothing
+    is already refreshing it — never awaited by the caller, so a cold
+    cache (a fresh process that's never checked yet, or just the
+    15-minute mark) never blocks the page request that happens to
+    trigger it.
+
+    This matters because _live_cache is a plain in-memory dict: it
+    resets to empty on every process restart, so — before this existed
+    — the very first request after any deploy or Fly.io cold start
+    (the app's machine auto-stops when idle) paid the *real* API round
+    trip (up to two sequential calls, each with a 5s timeout) inline,
+    stacked right on top of however long the cold start itself already
+    took. Now that request just sees the last-known (or default
+    "offline") value immediately, same as every other request; correct
+    data shows up on the *next* request once the background refresh
+    finishes, typically well under a second later.
+
+    Only the nav indicator (is_channel_live, called from
+    CurrentUserMiddleware on every request) needs this — the Discord
+    "went live" check (get_live_stream_info) is only ever called from a
+    cron-triggered background job, not a page response, so it still
+    calls _refresh_live_cache directly and waits for a real answer."""
+    global _background_refresh_task
+    now = time.time()
+    if now - _live_cache["checked_at"] < CACHE_SECONDS:
+        return
+    if _background_refresh_task is None or _background_refresh_task.done():
+        _background_refresh_task = asyncio.ensure_future(asyncio.to_thread(_refresh_live_cache))
+
+
 def is_channel_live() -> bool:
-    _refresh_live_cache()
+    ensure_live_cache_fresh_soon()
     return bool(_live_cache["is_live"])
 
 

@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Form, Request
@@ -51,14 +52,33 @@ CURRENT_SEASON = 2026
 
 
 @router.get("/")
-def dashboard(request: Request):
+async def dashboard(request: Request):
     season_id = get_season_id(str(CURRENT_SEASON))
-    overall_standings = get_formula_fantasy_standings(season_id)
-    fantasy_standings = get_fantasy_only_standings(season_id)
-    sim_standings = get_sim_only_standings(season_id)
-    constructor_standings = get_constructor_standings(season_id)
-    upcoming_races = get_upcoming_races(CURRENT_SEASON)
-    upcoming_team_events = list_upcoming_events()
+
+    # Each of these is its own independent Supabase (or, for
+    # get_upcoming_races, Jolpica) round trip, and none of them depend
+    # on each other's result — sequentially, that's 6 network calls
+    # back to back on every homepage load, which is exactly why it used
+    # to take 6-10 seconds. Firing them concurrently instead means the
+    # page waits on however long the *slowest* one takes, not the sum
+    # of all six. asyncio.to_thread since these are all plain
+    # synchronous calls (sync Supabase/httpx clients), same pattern
+    # CurrentUserMiddleware already uses for the same reason.
+    (
+        overall_standings,
+        fantasy_standings,
+        sim_standings,
+        constructor_standings,
+        upcoming_races,
+        upcoming_team_events,
+    ) = await asyncio.gather(
+        asyncio.to_thread(get_formula_fantasy_standings, season_id),
+        asyncio.to_thread(get_fantasy_only_standings, season_id),
+        asyncio.to_thread(get_sim_only_standings, season_id),
+        asyncio.to_thread(get_constructor_standings, season_id),
+        asyncio.to_thread(get_upcoming_races, CURRENT_SEASON),
+        asyncio.to_thread(list_upcoming_events),
+    )
     next_race = upcoming_races[0] if upcoming_races else None
     next_team_event = upcoming_team_events[0] if upcoming_team_events else None
 
@@ -73,9 +93,11 @@ def dashboard(request: Request):
     next_race_results_uploaded = False
     next_f1_race_results_uploaded = False
     if next_race and season_id:
-        sim_details_by_round = get_sim_session_details_by_round(season_id)
+        sim_details_by_round, f1_details_by_round = await asyncio.gather(
+            asyncio.to_thread(get_sim_session_details_by_round, season_id),
+            asyncio.to_thread(get_f1_session_details_by_round, season_id),
+        )
         next_race_results_uploaded = next_race["round_number"] in sim_details_by_round
-        f1_details_by_round = get_f1_session_details_by_round(season_id)
         next_f1_race_results_uploaded = next_race["round_number"] in f1_details_by_round
 
     # The real F1 race — separate from the sim race above (same round,

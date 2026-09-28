@@ -8,7 +8,6 @@ Must run after Starlette's SessionMiddleware (registered in app/main.py),
 since it reads `request.session`.
 """
 
-import asyncio
 import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -44,10 +43,15 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
         # redirect to "/" but shows at most once.
         request.state.auth_error = session.pop("auth_error", None)
 
-        # In-memory-cached (see app/services/youtube.py) so this is a no-op
-        # on most requests — only actually hits the YouTube API once per
-        # CACHE_SECONDS. Runs off-thread since it's a blocking httpx call.
-        request.state.youtube_live = await asyncio.to_thread(is_channel_live)
+        # In-memory-cached (see app/services/youtube.py) so this never
+        # blocks this request — a stale/cold cache just kicks off its own
+        # refresh in the background and this request sees the last-known
+        # value immediately (see ensure_live_cache_fresh_soon's docstring
+        # for why that matters: a plain in-memory cache resets to empty
+        # on every process restart, so without this the first request
+        # after a deploy or a Fly.io cold start used to pay a real,
+        # possibly-slow API round trip inline).
+        request.state.youtube_live = is_channel_live()
 
         # The Supabase access token itself only lives ~1hr — without this,
         # anyone idle (or asleep) longer than that gets silently signed out
