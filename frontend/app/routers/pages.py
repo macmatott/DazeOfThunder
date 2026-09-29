@@ -256,6 +256,21 @@ def ff_standings(request: Request, tab: str = "overall"):
     )
 
 
+@router.get("/formula-fantasy/results")
+def ff_results(request: Request):
+    return templates.TemplateResponse(request, "ff_results.html", {})
+
+
+@router.get("/formula-fantasy/drivers")
+def ff_drivers(request: Request):
+    return templates.TemplateResponse(request, "ff_drivers.html", {})
+
+
+@router.get("/formula-fantasy/teams")
+def ff_teams(request: Request):
+    return templates.TemplateResponse(request, "ff_teams.html", {})
+
+
 @router.get("/profile")
 def profile_page(request: Request):
     if not request.state.current_user:

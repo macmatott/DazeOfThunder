@@ -617,7 +617,10 @@ main.main--wide {
 .profile-intro,
 .admin-intro,
 .draft-intro-header,
-.draft-recap-intro {
+.draft-recap-intro,
+.results-intro,
+.drivers-intro,
+.teams-intro {
   text-align: center;
 }
 
