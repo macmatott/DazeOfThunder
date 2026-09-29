@@ -253,6 +253,56 @@ def track_background_sharp_url(iracing_track: str | None) -> str | None:
     return f"/static/img/tracks/{slug}-bg-sharp.jpg"
 
 
+# Jolpica's Circuit.Location.country strings -> ISO 3166-1 alpha-2 code,
+# for the Results page's Grand Prix column. Covers every country hosting
+# a round across the seasons we track (2025 and 2026); a country not
+# listed here (a future season adding a new host) just gets no flag
+# rather than a broken image.
+COUNTRY_ISO_CODE: dict[str, str] = {
+    "Australia": "AU",
+    "Austria": "AT",
+    "Azerbaijan": "AZ",
+    "Bahrain": "BH",
+    "Belgium": "BE",
+    "Brazil": "BR",
+    "Canada": "CA",
+    "China": "CN",
+    "Hungary": "HU",
+    "Italy": "IT",
+    "Japan": "JP",
+    "Malaysia": "MY",
+    "Mexico": "MX",
+    "Monaco": "MC",
+    "Netherlands": "NL",
+    "Qatar": "QA",
+    "Saudi Arabia": "SA",
+    "Singapore": "SG",
+    "Spain": "ES",
+    "UAE": "AE",
+    "UK": "GB",
+    "USA": "US",
+}
+
+# Twemoji's SVG flags, pinned to a specific tag — same graphics behind
+# the 🇦🇺-style flag emoji, but as actual images. Needed because Windows'
+# emoji font has no flag glyphs at all: a country's two-letter "regional
+# indicator" emoji just renders as plain letters there (AU, CN, ...)
+# instead of a flag, on every browser that uses the OS font (Chrome,
+# Edge, Firefox). Images render identically everywhere regardless of the
+# viewer's OS/font. The codepoint math (regional indicator = U+1F1E6 +
+# letter's offset from 'A') is standard emoji flag construction, not
+# specific to Twemoji.
+TWEMOJI_VERSION = "17.0.3"
+
+
+def country_flag_url(country: str) -> str | None:
+    code = COUNTRY_ISO_CODE.get(country)
+    if not code:
+        return None
+    codepoints = "-".join(f"{0x1F1E6 + (ord(letter) - ord('A')):x}" for letter in code)
+    return f"https://cdn.jsdelivr.net/gh/jdecked/twemoji@{TWEMOJI_VERSION}/assets/svg/{codepoints}.svg"
+
+
 def _format_race(race: dict, race_dt: datetime) -> dict:
     circuit = race["Circuit"]
     location = circuit["Location"]
@@ -263,6 +313,8 @@ def _format_race(race: dict, race_dt: datetime) -> dict:
         "round_number": round_number,
         "race_name": race["raceName"],
         "circuit_name": circuit["circuitName"],
+        "country": location["country"],
+        "country_flag_url": country_flag_url(location["country"]),
         "location": f"{location['locality']}, {location['country']}",
         "race_datetime": race_dt,
         "race_date": f"{race_dt:%b} {race_dt.day}, {race_dt:%Y}",
@@ -405,6 +457,17 @@ def _parse_lap_time_seconds(text: str | None) -> float | None:
         return seconds + int(minutes) * 60 if sep else seconds
     except ValueError:
         return None
+
+
+def list_seasons_with_sim_results() -> list[str]:
+    """Season names (e.g. ["2026"]) that have at least one race_events
+    row — for the Results page's season picker, so it doesn't offer a
+    season (like 2025, which only exists as F1 scoring reference data
+    for the mock draft) that could never show anything but an empty
+    state."""
+    rows = admin_client().table("race_events").select("seasons(name)").execute().data
+    names = {row["seasons"]["name"] for row in rows if row.get("seasons")}
+    return sorted(names, key=int, reverse=True)
 
 
 def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:

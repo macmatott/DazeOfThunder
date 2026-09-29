@@ -1,13 +1,55 @@
 {% extends "base.html" %}
 {% block title %}Results — Daze of Thunder{% endblock %}
+{% block main_class %}main--wide{% endblock %}
 {% block content %}
   {% include "_league_banner.html" %}
   <div class="results-intro">
-    <h1 class="page-title">Results</h1>
-    <p class="page-subtitle">Every round's real F1 and Sim Racing results, side by side</p>
+    <h1 class="page-title">{{ selected_season }} Race Results - {{ "F1" if results_type == "f1" else "League" }}</h1>
   </div>
 
-  <div class="tower">
-    <div class="tower__empty">Coming soon.</div>
+  {% include "_results_pickers.html" %}
+
+  <div class="tower results-table-wrap">
+    {% if races %}
+      <div class="results-row results-row--header">
+        <span>Grand Prix</span>
+        <span>Date</span>
+        <span>Winner</span>
+        <span>Team</span>
+        <span>Laps</span>
+        <span>{{ "Time" if results_type == "f1" else "Avg Lap" }}</span>
+      </div>
+      {% for race in races %}
+        {% if results_type == "f1" %}
+          {% set winner = race.f1_session_detail.results[0] %}
+        {% else %}
+          {% set winner = race.sim_session_detail.results[0] %}
+        {% endif %}
+        <a class="results-row" href="/formula-fantasy/results/{{ selected_season }}/{{ race.round_number }}?type={{ results_type }}">
+          <span class="results-race">
+            {% if race.country_flag_url %}<img src="{{ race.country_flag_url }}" alt="" class="results-race__flag">{% endif %}
+            {{ race.country or race.race_name }}
+          </span>
+          <span class="results-date">{{ (race.race_datetime if results_type == "f1" else race.sim_datetime).strftime("%d %b") }}</span>
+          <span class="results-winner">
+            {% if results_type == "f1" %}<span class="driver-photo driver-photo--xs" style="background-image: url('{{ winner.photo_url }}')"></span>{% endif %}
+            {{ winner.driver_name }}{% if winner.car_number %}<span class="number-badge">#{{ winner.car_number }}</span>{% endif %}
+          </span>
+          <span class="session-results-table__team">
+            {% if winner.team_logo_url %}<img src="{{ winner.team_logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+            {{ winner.team_name or "—" }}
+          </span>
+          {% if results_type == "f1" %}
+            <span class="results-laps">{{ winner.laps or "—" }}</span>
+            <span class="results-time">{{ winner.interval or "—" }}</span>
+          {% else %}
+            <span class="results-laps">{{ winner.laps_completed or "—" }}</span>
+            <span class="results-time">{{ winner.average_lap_time or "—" }}</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    {% else %}
+      <div class="tower__empty">No {{ "F1" if results_type == "f1" else "sim" }} race results yet for {{ selected_season }}.</div>
+    {% endif %}
   </div>
 {% endblock %}

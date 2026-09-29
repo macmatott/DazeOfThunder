@@ -15,6 +15,113 @@
   {{ finish_position }}{% if start_position %}{% set gain = start_position - finish_position %}{% if gain > 0 %} <span class="session-results-table__qual-gain">(+{{ gain }})</span>{% elif gain < 0 %} <span class="session-results-table__qual-loss">({{ gain }})</span>{% endif %}{% endif %}
 {% endmacro %}
 
+{% macro race_row_team_cell(team_name, team_logo_url) %}
+  {% if team_name %}
+    <span class="session-results-table__team">
+      {% if team_logo_url %}<img src="{{ team_logo_url }}" alt="" class="draft-pick-row__logo">{% endif %}
+      {{ team_name }}
+    </span>
+  {% else %}
+    —
+  {% endif %}
+{% endmacro %}
+
+{% macro sim_results_table(detail) %}
+  {% set extra_meta = [] %}
+  {% if detail.iracing_season_year %}
+    {% set _ = extra_meta.append(
+      detail.iracing_season_year ~ " S" ~ detail.iracing_season_quarter
+      ~ (" Wk " ~ detail.race_week if detail.race_week else "")
+    ) %}
+  {% endif %}
+  {% if detail.strength_of_field %}
+    {% set _ = extra_meta.append("SoF " ~ detail.strength_of_field) %}
+  {% endif %}
+  {% if detail.special_event_type %}
+    {% set _ = extra_meta.append(detail.special_event_type) %}
+  {% endif %}
+
+  <p class="tower__meta">
+    {{ detail.track }} — {{ detail.series }}{% if extra_meta %} · {{ extra_meta | join(" · ") }}{% endif %}
+  </p>
+  <div class="race-row-results__scroll">
+    <table class="session-results-table">
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>No.</th>
+          <th>Driver</th>
+          <th>Team</th>
+          <th>Qual</th>
+          <th>Interval</th>
+          <th>Laps</th>
+          <th>Inc</th>
+          <th>Fastest Lap</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in detail.results %}
+          <tr>
+            <td class="session-results-table__num">{{ finish_position_cell(r.start_position, r.position) }}</td>
+            <td class="session-results-table__num">{{ r.car_number or "—" }}</td>
+            <td>{{ r.driver_name }}{% if r.is_ai %} <span class="tower__meta">(AI)</span>{% endif %}</td>
+            <td>{{ race_row_team_cell(r.team_name, r.team_logo_url) }}</td>
+            <td class="session-results-table__num">{{ r.start_position or "—" }}</td>
+            <td class="session-results-table__num">{{ r.interval or "—" }}</td>
+            <td class="session-results-table__num">
+              {{ r.laps_completed }}{% if r.laps_led %}<span class="tower__meta"> ({{ r.laps_led }} led)</span>{% endif %}
+            </td>
+            <td class="session-results-table__num">{{ r.incidents }}</td>
+            <td class="session-results-table__num{% if r.is_fastest_lap %} session-results-table__fastest-lap{% endif %}">
+              {{ r.fastest_lap_time or "—" }}{% if r.fastest_lap_number %}<span class="tower__meta"> (L{{ r.fastest_lap_number }})</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
+{% macro f1_results_table(detail) %}
+  <div class="race-row-results__scroll">
+    <table class="session-results-table">
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>No.</th>
+          <th>Driver</th>
+          <th>Team</th>
+          <th>Qual</th>
+          <th>Interval</th>
+          <th>Laps</th>
+          <th>Fastest Lap</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in detail.results %}
+          <tr>
+            <td class="session-results-table__num">{{ finish_position_cell(r.start_position, r.position) }}</td>
+            <td class="session-results-table__num">{{ r.car_number or "—" }}</td>
+            <td>
+              <span class="session-results-table__driver">
+                <span class="driver-photo driver-photo--xs" style="background-image: url('{{ r.photo_url }}')"></span>
+                {{ r.driver_name }}
+              </span>
+            </td>
+            <td>{{ race_row_team_cell(r.team_name, r.team_logo_url) }}</td>
+            <td class="session-results-table__num">{{ r.start_position or "—" }}</td>
+            <td class="session-results-table__num">{{ r.interval or "DNF" }}</td>
+            <td class="session-results-table__num">{{ r.laps or "—" }}</td>
+            <td class="session-results-table__num{% if r.is_fastest_lap %} session-results-table__fastest-lap{% endif %}">
+              {{ r.fastest_lap_time or "—" }}{% if r.fastest_lap_number %}<span class="tower__meta"> (L{{ r.fastest_lap_number }})</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
 {% macro stat_card_countdown(countdown, target_iso, units, soon_label="Starting any moment", heading=None) %}
   {# Compact live-ticking countdown, for sitting inside a card alongside
      other content (the dashboard's Next League Race / Next Team Event

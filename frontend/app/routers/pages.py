@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from postgrest.exceptions import APIError
@@ -21,6 +21,7 @@ from app.services.f1_schedule import (
     get_season_timeline,
     get_sim_session_details_by_round,
     get_upcoming_races,
+    list_seasons_with_sim_results,
 )
 from app.services.fantasy_scoring import (
     MultipleActiveScoringRuleVersionsError,
@@ -158,8 +159,9 @@ def formula_fantasy_how_it_works(request: Request):
 
 
 @router.get("/formula-fantasy/schedule")
-def ff_schedule(request: Request):
-    races = get_season_timeline(CURRENT_SEASON)
+def ff_schedule(request: Request, season: int | None = None):
+    seasons, selected_season = _resolve_active_season(season)
+    races = get_season_timeline(int(selected_season))
     next_sim_race = next((r for r in races if r["is_next_sim_race"]), None)
     now = datetime.now(timezone.utc)
     sim_countdown = compute_draft_countdown(next_sim_race["sim_datetime"], now) if next_sim_race else None
@@ -183,6 +185,8 @@ def ff_schedule(request: Request):
         request,
         "ff_schedule.html",
         {
+            "seasons": seasons,
+            "season": selected_season,
             "races": races,
             "next_sim_race": next_sim_race,
             "sim_countdown": sim_countdown,
@@ -256,9 +260,94 @@ def ff_standings(request: Request, tab: str = "overall"):
     )
 
 
+def _resolve_active_season(season: int | None) -> tuple[list[str], str]:
+    """(seasons on record with sim results, the one to actually show) —
+    shared by the schedule and results routes so their season dropdowns/
+    fallback behavior can't drift apart. Keyed off sim results (not just
+    a seasons table row) so a season that only exists for mock-draft
+    reference data (2025) never shows up as a real, selectable season."""
+    seasons = list_seasons_with_sim_results()
+    if season and str(season) in seasons:
+        return seasons, str(season)
+    if str(CURRENT_SEASON) in seasons:
+        return seasons, str(CURRENT_SEASON)
+    return seasons, (seasons[0] if seasons else str(CURRENT_SEASON))
+
+
+def _completed_sim_races(season: int) -> list[dict]:
+    # Our own sim race results, not F1's — only rounds with an actual
+    # iRacing CSV import have a winner to show. The Grand Prix column
+    # still borrows the real F1 round's flag (this is still "round N,
+    # paired with the Belgian GP"), but Date is our own sim race date,
+    # not the F1 date.
+    races = get_season_timeline(season)
+    return [r for r in races if r["sim_session_detail"] and r["sim_session_detail"]["results"]]
+
+
+def _completed_f1_races(season: int) -> list[dict]:
+    # The real F1 results counterpart to _completed_sim_races — only
+    # rounds with an actual F1 results import have a winner to show.
+    races = get_season_timeline(season)
+    return [r for r in races if r["f1_session_detail"] and r["f1_session_detail"]["results"]]
+
+
+def _resolve_results_type(type: str | None) -> str:
+    return type if type in ("league", "f1") else "league"
+
+
+def _races_for_type(results_type: str, season: int) -> list[dict]:
+    return _completed_sim_races(season) if results_type == "league" else _completed_f1_races(season)
+
+
 @router.get("/formula-fantasy/results")
-def ff_results(request: Request):
-    return templates.TemplateResponse(request, "ff_results.html", {})
+def ff_results(request: Request, season: int | None = None, type: str = "league"):
+    results_type = _resolve_results_type(type)
+    seasons, selected_season = _resolve_active_season(season)
+    races = _races_for_type(results_type, int(selected_season))
+
+    return templates.TemplateResponse(
+        request,
+        "ff_results.html",
+        {
+            "seasons": seasons,
+            "selected_season": selected_season,
+            "races": races,
+            "gp_races": races,
+            "results_type": results_type,
+        },
+    )
+
+
+@router.get("/formula-fantasy/results/{season}/{round_number}")
+def ff_result_detail(
+    request: Request, season: int, round_number: int, type: str = "league", session: str = "race"
+):
+    results_type = _resolve_results_type(type)
+    seasons, selected_season = _resolve_active_season(season)
+    races = _races_for_type(results_type, int(selected_season))
+    race = next((r for r in races if r["round_number"] == round_number), None)
+    if not race:
+        raise HTTPException(status_code=404)
+
+    # Sprint is F1-only and only meaningful for a round that actually had
+    # one — anything else (league, or an f1 round with no sprint) always
+    # falls back to the main race, regardless of what ?session= asked for.
+    results_session = (
+        "sprint" if session == "sprint" and results_type == "f1" and race["f1_sprint_session_detail"] else "race"
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "ff_result_detail.html",
+        {
+            "race": race,
+            "seasons": seasons,
+            "selected_season": selected_season,
+            "gp_races": races,
+            "results_type": results_type,
+            "results_session": results_session,
+        },
+    )
 
 
 @router.get("/formula-fantasy/drivers")

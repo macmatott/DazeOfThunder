@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import f1_results_table, sim_results_table %}
+{% block title %}{{ race.country or race.race_name }} Results — Daze of Thunder{% endblock %}
+{% block main_class %}main--wide{% endblock %}
+{% block content %}
+  {% include "_league_banner.html" %}
+  <div class="results-intro">
+    <h1 class="page-title">
+      <span class="results-race">
+        {% if race.country_flag_url %}<img src="{{ race.country_flag_url }}" alt="" class="results-race__flag">{% endif %}
+        {{ race.race_name }} {{ selected_season }} - {{ "Sprint" if results_session == "sprint" else "Race Result" }} - {{ "F1" if results_type == "f1" else "League" }}
+      </span>
+    </h1>
+    <p class="page-subtitle">
+      Round {{ race.round_number }} · {{ (race.race_datetime if results_type == "f1" else race.sim_datetime).strftime("%d %b %Y") }}
+    </p>
+  </div>
+
+  {% set current_round = race.round_number %}
+  {% include "_results_pickers.html" %}
+
+  <div class="tower race-row-results">
+    {% if results_type == "f1" %}
+      {{ f1_results_table(race.f1_sprint_session_detail if results_session == "sprint" else race.f1_session_detail) }}
+    {% else %}
+      {{ sim_results_table(race.sim_session_detail) }}
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1271,19 +1271,8 @@ main.main--wide {
   text-align: center;
 }
 
-.schedule-jump {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.schedule-jump__label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-dim);
+.schedule-season-picker {
+  margin-bottom: var(--space-3);
 }
 
 .round-jump {
@@ -1455,8 +1444,105 @@ main.main--wide {
   border-bottom: 1px solid var(--color-rule);
 }
 
+/* ── Results table (Results page) ────────────────────────────
+   Modeled on the real F1 results page: one row per round's winner,
+   not a full classification — grand prix, date, winner, team, laps,
+   time. Same compact-grid-table shape as .schedule-row. */
+
+.results-table-wrap {
+  overflow-x: auto;
+}
+
+.results-pickers {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* The season and results-type <select>s each need their own <form> to
+   submit/reload on change — display: contents drops the form itself
+   out of the flex layout so only its child <select> counts as a
+   .results-pickers item, keeping every picker inline in one row
+   regardless of which ones are actually forms. */
+.results-picker-form {
+  display: contents;
+}
+
+.results-row {
+  display: grid;
+  grid-template-columns: 1.5fr 6rem 1.5fr 1.1fr 3.5rem 7rem;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-rule);
+  color: inherit;
+  text-decoration: none;
+}
+
+.results-row:last-child {
+  border-bottom: none;
+}
+
+.results-row:not(.results-row--header):hover {
+  background: var(--color-surface-raised);
+}
+
+.results-row--header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.results-race,
+.results-winner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.results-race__flag {
+  width: 20px;
+  height: 14px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.results-date {
+  color: var(--color-text-dim);
+  font-family: var(--font-data);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.results-laps,
+.results-time {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .race-row {
   border-bottom: 1px solid var(--color-rule);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.race-row:hover,
+a.race-row:focus-visible {
+  text-decoration: none;
+}
+
+a.race-row:not(.race-row--has-bg):hover {
+  background: var(--color-surface-raised);
 }
 
 .race-row:last-child {
@@ -1749,11 +1835,12 @@ main.main--wide {
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* ── Session results dropdown (Schedule page) ────────────────
-   A round with a real iRacing import expands inline via native
-   <details>/<summary> (reusing .tower-row-toggle's chevron/cursor from
-   the standings page for a consistent interaction) rather than a
-   separate popout — everything else here is CSS-only, no JS needed. */
+/* ── Results link (Schedule page) ────────────────────────────
+   A round with a real import (sim or F1) is a plain link to that
+   round's own page under /formula-fantasy/results — see race_row in
+   ff_schedule.html. .race-row-results/__scroll are still shared with
+   that page's own table markup (see sim_results_table/f1_results_table
+   in _macros.html), not schedule-specific despite the name. */
 
 .race-row-actions {
   display: flex;
@@ -1784,12 +1871,12 @@ main.main--wide {
 .session-results-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 1rem;
 }
 
 .session-results-table th,
 .session-results-table td {
-  padding: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   text-align: left;
   white-space: nowrap;
   border-bottom: 1px solid var(--color-rule);
@@ -1838,57 +1925,6 @@ main.main--wide {
 
 .session-results-table__qual-loss {
   color: var(--color-negative);
-}
-
-/* Sim Racing / F1 Race Results / F1 Sprint Results toggle inside a
-   past race's dropdown — pure CSS (radio + sibling selectors), no JS,
-   same "declarative over hand-written JS" approach as everywhere else
-   on this page. Only rendered at all when a round has 2+ real data
-   sources; a round with just one shows that table directly with no
-   toggle (sprint results in particular only exist for the handful of
-   rounds with a sprint weekend). */
-.race-row-results__toggle-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.race-row-results__toggle-labels {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.race-row-results__toggle-labels label {
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--color-rule);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--color-text-dim);
-  cursor: pointer;
-  user-select: none;
-}
-
-.race-row-results__toggle-input--sim:checked ~ .race-row-results__toggle-labels label[for$="-sim"],
-.race-row-results__toggle-input--f1:checked ~ .race-row-results__toggle-labels label[for$="-f1"],
-.race-row-results__toggle-input--f1-sprint:checked ~ .race-row-results__toggle-labels label[for$="-f1-sprint"] {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-ground);
-}
-
-.race-row-results--has-toggle .race-row-results__panel {
-  display: none;
-}
-
-.race-row-results__toggle-input--sim:checked ~ .race-row-results__panel--sim,
-.race-row-results__toggle-input--f1:checked ~ .race-row-results__panel--f1,
-.race-row-results__toggle-input--f1-sprint:checked ~ .race-row-results__panel--f1-sprint {
-  display: block;
 }
 
 /* ── Forms (Profile Settings) ────────────────────────────── */

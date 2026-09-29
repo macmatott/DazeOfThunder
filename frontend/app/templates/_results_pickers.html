@@ -1,0 +1,61 @@
+{# Season + Grand Prix + League/F1 type quick-nav, shared by the
+   Results listing and detail pages so they stay identical.
+
+   Season always goes back to the listing page (explicit action) — a
+   round number from the old season has no guaranteed match in the new
+   one, so "stay on this detail page" isn't a safe default the way it
+   is for Grand Prix/Type. Grand Prix jumps straight to that round's
+   own detail page for the *current* results type ("All" goes back to
+   the listing); Type has no action, so it resubmits to whichever page
+   is currently showing (listing or a specific round) with just the
+   type swapped.
+
+   Context: seasons, selected_season, gp_races, results_type always —
+   current_round (so Grand Prix shows it selected) only on the detail
+   page; undefined there is falsy, so listing's "All" just works
+   without it. #}
+{% if seasons %}
+  <div class="results-pickers">
+    <form method="get" action="/formula-fantasy/results" class="results-picker-form">
+      <input type="hidden" name="type" value="{{ results_type }}">
+      <select name="season" class="round-jump" aria-label="Season" onchange="this.form.submit()">
+        {% for s in seasons %}
+          <option value="{{ s }}"{% if s == selected_season %} selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% if gp_races %}
+      <select
+        class="round-jump"
+        aria-label="Grand Prix"
+        onchange="window.location.href = this.value || '/formula-fantasy/results?season={{ selected_season }}&type={{ results_type }}'"
+      >
+        <option value=""{% if not current_round %} selected{% endif %}>All</option>
+        {% for race in gp_races %}
+          <option value="/formula-fantasy/results/{{ selected_season }}/{{ race.round_number }}?type={{ results_type }}"{% if race.round_number == current_round %} selected{% endif %}>{{ race.country or race.race_name }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
+    <form method="get" class="results-picker-form">
+      <input type="hidden" name="season" value="{{ selected_season }}">
+      <select name="type" class="round-jump" aria-label="Results type" onchange="this.form.submit()">
+        <option value="league"{% if results_type == "league" %} selected{% endif %}>League</option>
+        <option value="f1"{% if results_type == "f1" %} selected{% endif %}>F1</option>
+      </select>
+    </form>
+    {# Detail page only, and only for an F1 round that actually had a
+       sprint — race is undefined on the listing page. Undefined is
+       falsy in a plain {% if %}, but *attribute access* on it
+       (race.f1_sprint_session_detail) raises even so, hence the
+       explicit "is defined" check first. #}
+    {% if results_type == "f1" and race is defined and race.f1_sprint_session_detail %}
+      <form method="get" class="results-picker-form">
+        <input type="hidden" name="type" value="f1">
+        <select name="session" class="round-jump" aria-label="Session" onchange="this.form.submit()">
+          <option value="race"{% if results_session != "sprint" %} selected{% endif %}>Race Result</option>
+          <option value="sprint"{% if results_session == "sprint" %} selected{% endif %}>Sprint</option>
+        </select>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
