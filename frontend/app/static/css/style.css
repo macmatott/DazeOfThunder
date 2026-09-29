@@ -672,6 +672,13 @@ main.main--wide {
   margin-bottom: var(--space-5);
 }
 
+/* How It Works' condensed teaser only shows 2 of the full Scoring
+   page's 3 groups (no Sprint), so it needs an even 2-column split
+   instead of 2 columns of a 3-column grid leaving an empty gap. */
+.scoring-columns--two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .scoring-column {
   display: flex;
   flex-direction: column;
