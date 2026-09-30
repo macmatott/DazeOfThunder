@@ -543,6 +543,7 @@ def get_sim_session_details_by_round(season_id: str) -> dict[int, dict]:
 
         results = [
             {
+                "participant_id": row["participant_id"],
                 "position": row["finish_position"],
                 "start_position": row["start_position"],
                 "driver_name": (

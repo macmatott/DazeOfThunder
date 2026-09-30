@@ -1,13 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Drivers — Daze of Thunder{% endblock %}
+{% block main_class %}main--wide{% endblock %}
 {% block content %}
   {% include "_league_banner.html" %}
   <div class="drivers-intro">
     <h1 class="page-title">Drivers</h1>
-    <p class="page-subtitle">Every drafted F1 driver and how they're scoring this season</p>
+    <p class="page-subtitle">Every league member currently racing this season</p>
   </div>
 
-  <div class="tower">
-    <div class="tower__empty">Coming soon.</div>
-  </div>
+  {% if drivers %}
+    <div class="driver-card-grid">
+      {% for d in drivers %}
+        <a
+          class="driver-card"
+          href="/formula-fantasy/drivers/{{ d.id }}"
+          style="--team-color: {{ d.team_color or 'var(--color-surface-raised)' }};"
+        >
+          <span class="driver-card__photo" style="background-image: url('{{ d.photo_url }}')"></span>
+          {% if d.car_number %}<span class="driver-card__number">{{ d.car_number }}</span>{% endif %}
+          <span class="driver-card__body">
+            <span class="driver-card__name">
+              {% if d.first_name %}<span class="driver-card__first">{{ d.first_name }}</span>{% endif %}
+              <span class="driver-card__last">{{ d.last_name }}</span>
+            </span>
+            {% if d.team_name %}<span class="driver-card__team">{{ d.team_name }}</span>{% endif %}
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="tower">
+      <div class="tower__empty">No drivers yet — the Constructors' pairing draft hasn't happened.</div>
+    </div>
+  {% endif %}
 {% endblock %}

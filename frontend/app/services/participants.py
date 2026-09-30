@@ -9,6 +9,7 @@ against our own signed session cookie, never from unverified input.
 from __future__ import annotations
 
 from app.db.supabase_client import admin_client
+from app.services.driver_photos import slugify_name
 
 ROLE_OWNER = "owner"
 ROLE_ADMIN = "admin"
@@ -17,6 +18,17 @@ ROLE_MEMBER = "member"
 
 # Owner is excluded — it's a permanent singleton, never settable through the UI.
 ASSIGNABLE_ROLES = {ROLE_ADMIN, ROLE_DOT_MEMBER, ROLE_MEMBER}
+
+
+def participant_photo_url(display_name: str) -> str:
+    """/static/img/drivers/league/<slug>.png — a separate directory from
+    driver_photos.py's real-F1 headshots (same slug convention, reused
+    via slugify_name) so the two photo sets can't collide/get confused
+    with each other. Rendered as a CSS background-image wherever it's
+    used, same reasoning as driver_photo_url: a missing file just shows
+    the empty placeholder underneath instead of a broken-image icon, so
+    the Drivers page looks fine while photos are still being collected."""
+    return f"/static/img/drivers/league/{slugify_name(display_name)}.png"
 
 
 def parse_iracing_cust_id(raw: str) -> int | None:

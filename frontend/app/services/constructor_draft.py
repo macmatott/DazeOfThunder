@@ -337,8 +337,9 @@ def get_pairs(season_id: str) -> list[dict]:
     """Formed pairs, ascending by formation order (pick_number). Each row
     is tagged with member_names (e.g. "Alice & Bob", for inline
     sentence-style labels like on_the_clock_team_label), members (the
-    same two people as a role-aware list, for list-row rendering that
-    needs to badge each name individually), and logo_url (once named)."""
+    same two people as a role-aware list, each also carrying its own
+    participant id, for list-row rendering that needs to badge/link each
+    name individually), and logo_url (once named)."""
     client = admin_client()
     rows = (
         client.table("constructors")
@@ -353,7 +354,7 @@ def get_pairs(season_id: str) -> list[dict]:
     )
     for row in rows:
         members = sorted(
-            (m["participants"] for m in row["constructor_members"]),
+            ({**m["participants"], "id": m["participant_id"]} for m in row["constructor_members"]),
             key=lambda p: p["display_name"],
         )
         row["members"] = members

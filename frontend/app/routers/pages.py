@@ -33,6 +33,7 @@ from app.services.participants import (
     get_participant,
     parse_car_number,
     parse_iracing_cust_id,
+    participant_photo_url,
     update_participant,
 )
 from app.services.standings import (
@@ -41,6 +42,8 @@ from app.services.standings import (
     get_constructor_standings,
     get_fantasy_only_standings,
     get_formula_fantasy_standings,
+    get_participant_career_sim_stats,
+    get_participant_sim_stats,
     get_sim_only_standings,
     get_standings_rows,
 )
@@ -350,9 +353,73 @@ def ff_result_detail(
     )
 
 
+def _split_display_name(display_name: str) -> tuple[str, str]:
+    """"Mac Matott" -> ("Mac", "Matott") for the Drivers page's two-line
+    first-name/last-name card layout (modeled on the real F1 drivers
+    page) — a name with no space becomes ("", the whole name), shown on
+    one line instead, since there's nothing sensible to split there."""
+    parts = display_name.rsplit(" ", 1)
+    if len(parts) == 2:
+        return parts[0], parts[1]
+    return "", display_name
+
+
 @router.get("/formula-fantasy/drivers")
 def ff_drivers(request: Request):
-    return templates.TemplateResponse(request, "ff_drivers.html", {})
+    season_id = get_season_id(str(CURRENT_SEASON))
+    teams = get_pairs(season_id) if season_id else []
+    drivers = []
+    for team in teams:
+        for member in team["members"]:
+            first_name, last_name = _split_display_name(member["display_name"])
+            drivers.append(
+                {
+                    "id": member["id"],
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "car_number": member["car_number"],
+                    "team_name": team["name"],
+                    "team_color": team["color"],
+                    "team_logo_url": team["logo_url"],
+                    "photo_url": participant_photo_url(member["display_name"]),
+                }
+            )
+    return templates.TemplateResponse(request, "ff_drivers.html", {"drivers": drivers})
+
+
+@router.get("/formula-fantasy/drivers/{participant_id}")
+def ff_driver_detail(request: Request, participant_id: str):
+    season_id = get_season_id(str(CURRENT_SEASON))
+    teams = get_pairs(season_id) if season_id else []
+    driver = None
+    team = None
+    for t in teams:
+        for member in t["members"]:
+            if member["id"] == participant_id:
+                driver = member
+                team = t
+                break
+        if driver:
+            break
+    if not driver:
+        raise HTTPException(status_code=404)
+
+    first_name, last_name = _split_display_name(driver["display_name"])
+
+    return templates.TemplateResponse(
+        request,
+        "ff_driver_detail.html",
+        {
+            "season": CURRENT_SEASON,
+            "driver": driver,
+            "first_name": first_name,
+            "last_name": last_name,
+            "team": team,
+            "photo_url": participant_photo_url(driver["display_name"]),
+            "stats": get_participant_sim_stats(participant_id, season_id),
+            "career_stats": get_participant_career_sim_stats(participant_id),
+        },
+    )
 
 
 @router.get("/formula-fantasy/teams")

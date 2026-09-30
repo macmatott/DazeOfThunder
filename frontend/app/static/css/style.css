@@ -1675,6 +1675,239 @@ a.race-row:not(.race-row--has-bg):hover {
   font-size: 0.9rem;
 }
 
+/* ── Drivers page ─────────────────────────────────────────── */
+/* Modeled on the real F1 drivers page — team-color card, big hollow
+   car number, headshot bleeding off the bottom-right corner. Photos
+   are still being collected (see participant_photo_url), so
+   .driver-card__photo is a background-image (like every other
+   optional photo on this site): a missing file just leaves the
+   gradient showing through instead of a broken-image icon. */
+
+.driver-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.driver-card {
+  position: relative;
+  display: block;
+  height: 220px;
+  border-radius: 8px;
+  overflow: hidden;
+  color: var(--color-text);
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--team-color, var(--color-surface-raised)) 0%, rgba(10, 12, 18, 0.94) 78%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.driver-card:hover,
+.driver-card:focus-visible {
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  text-decoration: none;
+}
+
+.driver-card__photo {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -8%;
+  width: 68%;
+  background-size: contain;
+  background-position: bottom right;
+  background-repeat: no-repeat;
+}
+
+.driver-card__number {
+  position: absolute;
+  left: var(--space-4);
+  bottom: var(--space-3);
+  font-family: var(--font-display);
+  font-size: 3.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.55);
+}
+
+.driver-card__body {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+}
+
+.driver-card__name {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display);
+  line-height: 1.15;
+}
+
+.driver-card__first {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.driver-card__last {
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.driver-card__team {
+  margin-top: var(--space-2);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Individual driver page — a bigger version of the card above (same
+   team-gradient + floating cutout photo language) plus a plain,
+   real-F1-style stat list underneath. Only one season of sim data
+   exists so far, so there's no separate "career" box the way the real
+   site has one — season_position/season_points can be None (no sim
+   data at all yet), rendered as "—"; the count stats are always real
+   numbers, just 0 for someone who hasn't raced. */
+.driver-back-link {
+  display: inline-block;
+  margin-bottom: var(--space-3);
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.driver-back-link:hover {
+  color: var(--color-accent);
+}
+
+.driver-hero {
+  position: relative;
+  height: 280px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: var(--space-5);
+  background: linear-gradient(120deg, var(--team-color, var(--color-surface-raised)) 0%, rgba(10, 12, 18, 0.94) 72%);
+}
+
+.driver-hero__photo {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 48%;
+  background-size: contain;
+  background-position: bottom right;
+  background-repeat: no-repeat;
+}
+
+.driver-hero__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  height: 100%;
+  padding: var(--space-5);
+  max-width: 55%;
+}
+
+.driver-hero__name {
+  font-family: var(--font-display);
+  line-height: 1.1;
+}
+
+.driver-hero__first {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+.driver-hero__last {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.driver-hero__meta {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+}
+
+.driver-hero__meta-sep {
+  margin: 0 var(--space-2);
+}
+
+.driver-hero__cta {
+  margin-top: auto;
+}
+
+/* Statistics (this season, plain list) beside Career Stats (every
+   season with real results, boxed like the real F1 page's card) —
+   side by side on desktop, stacked on narrow screens since two 2-col
+   stat grids side by side gets cramped below ~700px. */
+.driver-stats-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  align-items: start;
+  margin-bottom: var(--space-5);
+}
+
+.driver-stats-col--career {
+  background: var(--color-surface-raised);
+  border-radius: 8px;
+  padding: var(--space-4);
+}
+
+/* Bigger and brighter than the plain .section-label ("Statistics") it
+   sits under — scoped to this page only, not a change to .section-label
+   itself (used site-wide, dim, for much smaller section headers
+   elsewhere). */
+.driver-stats-title {
+  font-size: 1.1rem;
+  color: var(--color-text);
+}
+
+.driver-stats-heading {
+  color: var(--color-text);
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.driver-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 var(--space-5);
+}
+
+.driver-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.driver-stat--full {
+  grid-column: 1 / -1;
+}
+
+.driver-stat__label {
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+}
+
+.driver-stat__value {
+  font-family: var(--font-data);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
 /* ── Utility ─────────────────────────────────────────────── */
 
 .card-grid {
@@ -2768,6 +3001,13 @@ a.race-row:not(.race-row--has-bg):hover {
   .schedule-meta-grid {
     display: flex;
     flex-wrap: wrap;
+  }
+
+  /* Critical: two 2-column stat grids side by side (Statistics +
+     Career Stats) has no room left to shrink into on a phone — stack
+     them instead. */
+  .driver-stats-columns {
+    grid-template-columns: 1fr;
   }
 
   /* Critical: driver-pick grid needs ~700-760px of fixed columns —

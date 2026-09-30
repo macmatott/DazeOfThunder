@@ -28,6 +28,8 @@ from collections import defaultdict
 
 from app.db.supabase_client import admin_client
 from app.services.constructor_draft import get_pairs
+from app.services.draft import get_season_id
+from app.services.f1_schedule import get_sim_session_details_by_round, list_seasons_with_sim_results
 
 STANDINGS_TABS = {"overall", "fantasy", "sim", "constructors"}
 
@@ -170,6 +172,150 @@ def get_sim_only_standings(season_id: str | None = None) -> list[dict]:
     totals = {pid: 0.0 for pid in participants}
     totals.update({pid: entry["total"] for pid, entry in breakdown.items()})
     return _rows_from_totals(totals, participants)
+
+
+def _ordinal(n: int) -> str:
+    """1 -> "1st", 2 -> "2nd", 11 -> "11th", 22 -> "22nd", etc."""
+    if 11 <= (n % 100) <= 13:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def _participant_season_sim_counts(participant_id: str, season_id: str) -> dict:
+    """Raw per-round counts for one participant in one season — races
+    entered, wins, podiums, poles (start_position 1), top 5s, fastest
+    laps, incidents (iRacing's own incident-point total, summed across
+    every race — not a DNF count), plus that season's best finish/grid.
+    Shared by get_participant_sim_stats (just the current season) and
+    get_participant_career_sim_stats (summed across every season with
+    real results)."""
+    counts = {
+        "races_entered": 0,
+        "wins": 0,
+        "podiums": 0,
+        "poles": 0,
+        "top5s": 0,
+        "fastest_laps": 0,
+        "incidents": 0,
+        "best_finish": None,
+        "best_grid": None,
+    }
+    for detail in get_sim_session_details_by_round(season_id).values():
+        row = next((r for r in detail["results"] if r["participant_id"] == participant_id), None)
+        if not row:
+            continue
+        counts["races_entered"] += 1
+        if row["position"] is not None:
+            if counts["best_finish"] is None or row["position"] < counts["best_finish"]:
+                counts["best_finish"] = row["position"]
+            if row["position"] == 1:
+                counts["wins"] += 1
+            if row["position"] <= 3:
+                counts["podiums"] += 1
+            if row["position"] <= 5:
+                counts["top5s"] += 1
+        if row["start_position"] is not None:
+            if counts["best_grid"] is None or row["start_position"] < counts["best_grid"]:
+                counts["best_grid"] = row["start_position"]
+            if row["start_position"] == 1:
+                counts["poles"] += 1
+        if row["is_fastest_lap"]:
+            counts["fastest_laps"] += 1
+        counts["incidents"] += row["incidents"] or 0
+    return counts
+
+
+def get_participant_sim_stats(participant_id: str, season_id: str | None) -> dict:
+    """This season's Sim Racing record for one participant — position/
+    points from the Drivers' Championship standings (best-9-of-12, same
+    as the standings page), plus this season's race-by-race counts.
+    season_position is already ordinal-formatted ("1st", "2nd", ...);
+    both are None if the season has no sim data at all. The counts are
+    always real numbers, just 0 for someone who hasn't raced yet."""
+    season_position = None
+    season_points = None
+    for i, row in enumerate(get_sim_only_standings(season_id)):
+        if row["participant_id"] == participant_id:
+            season_position = _ordinal(i + 1)
+            season_points = row["points"]
+            break
+
+    counts = _participant_season_sim_counts(participant_id, season_id) if season_id else None
+    counts = counts or {"races_entered": 0, "wins": 0, "podiums": 0, "poles": 0, "top5s": 0, "fastest_laps": 0, "incidents": 0}
+
+    return {
+        "season_position": season_position,
+        "season_points": season_points,
+        "races_entered": counts["races_entered"],
+        "wins": counts["wins"],
+        "podiums": counts["podiums"],
+        "poles": counts["poles"],
+        "top5s": counts["top5s"],
+        "fastest_laps": counts["fastest_laps"],
+        "incidents": counts["incidents"],
+    }
+
+
+def get_participant_career_sim_stats(participant_id: str) -> dict:
+    """All-time Sim Racing record for one participant, summed across
+    every season with real sim results (see list_seasons_with_sim_results)
+    — not scoped to the current season the way get_participant_sim_stats
+    is. Only one season exists today, so this mostly mirrors that
+    season's numbers for now; it'll genuinely diverge once a second
+    season's results exist. "championships" counts seasons this
+    participant led the Drivers' Championship (get_sim_only_standings)
+    outright at the *final* standings — our equivalent of the real
+    page's World Championships. There's no explicit "season concluded"
+    flag, so this treats every season except the newest (by year) as
+    finished — the newest is always the one currently being raced, so
+    crowning its current leader here would claim a title before the
+    season's actually over."""
+    seasons_with_sim = list_seasons_with_sim_results()
+    latest_season = max(seasons_with_sim, key=int) if seasons_with_sim else None
+
+    races_entered = wins = podiums = poles = fastest_laps = incidents = championships = 0
+    career_points = 0.0
+    best_finish = None
+    best_grid = None
+
+    for season_name in seasons_with_sim:
+        season_id = get_season_id(season_name)
+        if not season_id:
+            continue
+
+        standings = get_sim_only_standings(season_id)
+        for i, row in enumerate(standings):
+            if row["participant_id"] == participant_id:
+                career_points += row["points"]
+                if i == 0 and season_name != latest_season:
+                    championships += 1
+                break
+
+        counts = _participant_season_sim_counts(participant_id, season_id)
+        races_entered += counts["races_entered"]
+        wins += counts["wins"]
+        podiums += counts["podiums"]
+        poles += counts["poles"]
+        fastest_laps += counts["fastest_laps"]
+        incidents += counts["incidents"]
+        if counts["best_finish"] is not None and (best_finish is None or counts["best_finish"] < best_finish):
+            best_finish = counts["best_finish"]
+        if counts["best_grid"] is not None and (best_grid is None or counts["best_grid"] < best_grid):
+            best_grid = counts["best_grid"]
+
+    return {
+        "races_entered": races_entered,
+        "career_points": round(career_points, 1),
+        "best_finish": best_finish,
+        "podiums": podiums,
+        "best_grid": best_grid,
+        "poles": poles,
+        "wins": wins,
+        "championships": championships,
+        "incidents": incidents,
+    }
 
 
 def _get_sim_results_by_round(
