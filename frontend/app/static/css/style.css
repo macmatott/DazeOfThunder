@@ -1908,6 +1908,101 @@ a.race-row:not(.race-row--has-bg):hover {
   font-weight: 700;
 }
 
+/* ── Teams page ───────────────────────────────────────────── */
+/* Modeled on the real F1 teams page — a solid team-color gradient card
+   (primary to secondary livery color, not fading to dark like the
+   Drivers page's photo cards, since there's no photo here to fade
+   into) with the team name, a circular logo badge, both members' mini
+   headshots + names, and a side-view car render bleeding across the
+   card's bottom edge. */
+.team-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+/* An odd team out — last card, no partner — centers under the two
+   columns above it instead of hugging the left edge. */
+.team-card-grid > .team-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  width: calc(50% - (var(--space-4) / 2));
+  margin: 0 auto;
+}
+
+.team-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: var(--space-4);
+  padding-bottom: 116px;
+  background: linear-gradient(135deg, var(--team-color, var(--color-surface-raised)) 0%, var(--team-color-2, var(--color-surface-raised)) 100%);
+}
+
+.team-card__car {
+  position: absolute;
+  left: var(--space-4);
+  bottom: 10px;
+  width: 78%;
+  max-width: 420px;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+}
+
+.team-card__header,
+.team-card__drivers {
+  position: relative;
+  z-index: 1;
+}
+
+.team-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.team-card__name {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.team-card__logo {
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+  border-radius: 50%;
+  background: rgba(10, 12, 18, 0.35);
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.team-card__drivers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.team-card__driver {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.team-card__driver .driver-photo--sm {
+  width: 34px;
+  height: 34px;
+}
+
+.team-card__driver-name {
+  color: #fff;
+  font-size: 0.78rem;
+}
+
 /* ── Utility ─────────────────────────────────────────────── */
 
 .card-grid {
@@ -3008,6 +3103,17 @@ a.race-row:not(.race-row--has-bg):hover {
      them instead. */
   .driver-stats-columns {
     grid-template-columns: 1fr;
+  }
+
+  /* Critical: 2 team cards side by side has no room left on a phone —
+     stack them instead. */
+  .team-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-card-grid > .team-card:last-child:nth-child(odd) {
+    width: auto;
+    margin: 0;
   }
 
   /* Critical: driver-pick grid needs ~700-760px of fixed columns —

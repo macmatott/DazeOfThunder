@@ -98,6 +98,22 @@ def logo_url_for_team(team_name: str) -> str | None:
     return f"/static/img/constructors/{filename}" if filename else None
 
 
+# team_name -> side-view car render filename under
+# app/static/img/constructors/cars/, for the Teams page cards.
+CONSTRUCTOR_CARS = {
+    "Ferrari": "ferrari.png",
+    "McLaren": "mclaren.png",
+    "Mercedes": "mercedes.png",
+    "Racing Bulls": "racing-bulls.png",
+    "Red Bull Racing": "red-bull-racing.png",
+}
+
+
+def car_image_url_for_team(team_name: str) -> str | None:
+    filename = CONSTRUCTOR_CARS.get(team_name)
+    return f"/static/img/constructors/cars/{filename}" if filename else None
+
+
 # Real livery/brand colors — used to color a named Constructors' team's
 # bars on the standings page's Team Breakdown chart by their real F1
 # team, same keys as CONSTRUCTOR_LOGOS above.

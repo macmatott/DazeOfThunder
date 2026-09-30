@@ -424,7 +424,15 @@ def ff_driver_detail(request: Request, participant_id: str):
 
 @router.get("/formula-fantasy/teams")
 def ff_teams(request: Request):
-    return templates.TemplateResponse(request, "ff_teams.html", {})
+    season_id = get_season_id(str(CURRENT_SEASON))
+    teams = get_pairs(season_id) if season_id else []
+    for team in teams:
+        for member in team["members"]:
+            first_name, last_name = _split_display_name(member["display_name"])
+            member["first_name"] = first_name
+            member["last_name"] = last_name
+            member["photo_url"] = participant_photo_url(member["display_name"])
+    return templates.TemplateResponse(request, "ff_teams.html", {"season": CURRENT_SEASON, "teams": teams})
 
 
 @router.get("/profile")
