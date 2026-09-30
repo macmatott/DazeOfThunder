@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ team.name or "Team" }} — Daze of Thunder{% endblock %}
+{% block main_class %}main--wide{% endblock %}
+{% block content %}
+  {% include "_league_banner.html" %}
+
+  <a href="/formula-fantasy/teams" class="driver-back-link"><span aria-hidden="true">←</span> All Teams</a>
+
+  <div class="team-hero" style="--team-color: {{ team.color or 'var(--color-surface-raised)' }};">
+    {% if team.logo_url %}<img src="{{ team.logo_url }}" alt="" class="team-hero__logo">{% endif %}
+    {% if team.car_image_url %}<img src="{{ team.car_image_url }}" alt="" class="team-hero__car">{% endif %}
+    <h1 class="team-hero__name">{{ team.name or "Unnamed Team" }}</h1>
+    <p class="team-hero__drivers">
+      {% for member in team.members %}
+        <a href="/formula-fantasy/drivers/{{ member.id }}">{{ member.display_name }}</a>
+      {% endfor %}
+    </p>
+  </div>
+
+  <p class="section-label driver-stats-title">Drivers</p>
+  <div class="driver-card-grid team-drivers-grid" style="--member-count: {{ team.members|length }};">
+    {% for member in team.members %}
+      <a
+        class="driver-card"
+        href="/formula-fantasy/drivers/{{ member.id }}"
+        style="--team-color: {{ team.color or 'var(--color-surface-raised)' }};"
+      >
+        <span class="driver-card__photo" style="background-image: url('{{ member.photo_url }}')"></span>
+        {% if member.car_number %}<span class="driver-card__number">{{ member.car_number }}</span>{% endif %}
+        <span class="driver-card__body">
+          <span class="driver-card__name">
+            {% if member.first_name %}<span class="driver-card__first">{{ member.first_name }}</span>{% endif %}
+            <span class="driver-card__last">{{ member.last_name }}</span>
+          </span>
+        </span>
+      </a>
+    {% endfor %}
+  </div>
+
+  <p class="section-label driver-stats-title">Statistics</p>
+  <div class="driver-stats-columns">
+    <div class="driver-stats-col">
+      <p class="driver-stats-heading">{{ season }} Season</p>
+      <div class="driver-stats-grid">
+        <div class="driver-stat">
+          <span class="driver-stat__label">Season Constructors Standing</span>
+          <span class="driver-stat__value">{{ stats.season_position if stats.season_position else "—" }}</span>
+        </div>
+        <div class="driver-stat">
+          <span class="driver-stat__label">Constructor Points</span>
+          <span class="driver-stat__value">{{ (stats.season_points | round) | int if stats.season_points is not none else "—" }}</span>
+        </div>
+        <div class="driver-stat"><span class="driver-stat__label">Races Entered</span><span class="driver-stat__value">{{ stats.races_entered }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Wins</span><span class="driver-stat__value">{{ stats.wins }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Podiums</span><span class="driver-stat__value">{{ stats.podiums }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Poles</span><span class="driver-stat__value">{{ stats.poles }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Top 5s</span><span class="driver-stat__value">{{ stats.top5s }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Fastest Laps</span><span class="driver-stat__value">{{ stats.fastest_laps }}</span></div>
+        <div class="driver-stat driver-stat--full"><span class="driver-stat__label">Incidents</span><span class="driver-stat__value">{{ stats.incidents }}</span></div>
+      </div>
+    </div>
+
+    <div class="driver-stats-col driver-stats-col--career">
+      <p class="driver-stats-heading">Career Stats</p>
+      <div class="driver-stats-grid">
+        <div class="driver-stat"><span class="driver-stat__label">Races Entered</span><span class="driver-stat__value">{{ career_stats.races_entered }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Career Constructor Points</span><span class="driver-stat__value">{{ (career_stats.career_points | round) | int }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Highest Race Finish</span><span class="driver-stat__value">{{ "P" ~ career_stats.best_finish if career_stats.best_finish else "—" }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Podiums</span><span class="driver-stat__value">{{ career_stats.podiums }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Highest Grid Position</span><span class="driver-stat__value">{{ "P" ~ career_stats.best_grid if career_stats.best_grid else "—" }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Pole Positions</span><span class="driver-stat__value">{{ career_stats.poles }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Championships</span><span class="driver-stat__value">{{ career_stats.championships }}</span></div>
+        <div class="driver-stat"><span class="driver-stat__label">Incidents</span><span class="driver-stat__value">{{ career_stats.incidents }}</span></div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

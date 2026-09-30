@@ -46,6 +46,8 @@ from app.services.standings import (
     get_participant_sim_stats,
     get_sim_only_standings,
     get_standings_rows,
+    get_team_career_sim_stats,
+    get_team_sim_stats,
 )
 from app.services.team_events import list_upcoming_events
 
@@ -433,6 +435,32 @@ def ff_teams(request: Request):
             member["last_name"] = last_name
             member["photo_url"] = participant_photo_url(member["display_name"])
     return templates.TemplateResponse(request, "ff_teams.html", {"season": CURRENT_SEASON, "teams": teams})
+
+
+@router.get("/formula-fantasy/teams/{team_id}")
+def ff_team_detail(request: Request, team_id: str):
+    season_id = get_season_id(str(CURRENT_SEASON))
+    teams = get_pairs(season_id) if season_id else []
+    team = next((t for t in teams if t["id"] == team_id), None)
+    if not team:
+        raise HTTPException(status_code=404)
+
+    for member in team["members"]:
+        first_name, last_name = _split_display_name(member["display_name"])
+        member["first_name"] = first_name
+        member["last_name"] = last_name
+        member["photo_url"] = participant_photo_url(member["display_name"])
+
+    return templates.TemplateResponse(
+        request,
+        "ff_team_detail.html",
+        {
+            "season": CURRENT_SEASON,
+            "team": team,
+            "stats": get_team_sim_stats(team, season_id),
+            "career_stats": get_team_career_sim_stats(team["name"]),
+        },
+    )
 
 
 @router.get("/profile")

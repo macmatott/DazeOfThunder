@@ -318,6 +318,107 @@ def get_participant_career_sim_stats(participant_id: str) -> dict:
     }
 
 
+def get_team_sim_stats(pair: dict, season_id: str | None) -> dict:
+    """This season's Sim Racing record for one constructor pair —
+    position/points from the Constructors' standings (get_constructor_standings,
+    the same blended half-season best-9-of-12 score the Constructors'
+    Championship tab shows), plus this season's raw race-by-race counts
+    summed across every one of the team's members. Mirrors
+    get_participant_sim_stats field-for-field so the Team detail page
+    can reuse the same stats-grid markup as the Driver detail page."""
+    season_position = None
+    season_points = None
+    if season_id:
+        for i, row in enumerate(get_constructor_standings(season_id)):
+            if row["id"] == pair["id"]:
+                season_position = _ordinal(i + 1)
+                season_points = row["points"]
+                break
+
+    races_entered = wins = podiums = poles = top5s = fastest_laps = incidents = 0
+    if season_id:
+        for member in pair["members"]:
+            counts = _participant_season_sim_counts(member["id"], season_id)
+            races_entered += counts["races_entered"]
+            wins += counts["wins"]
+            podiums += counts["podiums"]
+            poles += counts["poles"]
+            top5s += counts["top5s"]
+            fastest_laps += counts["fastest_laps"]
+            incidents += counts["incidents"]
+
+    return {
+        "season_position": season_position,
+        "season_points": season_points,
+        "races_entered": races_entered,
+        "wins": wins,
+        "podiums": podiums,
+        "poles": poles,
+        "top5s": top5s,
+        "fastest_laps": fastest_laps,
+        "incidents": incidents,
+    }
+
+
+def get_team_career_sim_stats(team_name: str) -> dict:
+    """All-time Sim Racing record for a real-F1 team slot (e.g. "Red Bull
+    Racing"), summed across every league season where some constructor
+    pair carried that name — keyed by name rather than by roster, the
+    same way the team's logo/colors are (see CONSTRUCTOR_LOGOS), since a
+    season's draft can pair different people under the same team name.
+    "championships" counts every *concluded* season (every season except
+    the newest, by year — see get_participant_career_sim_stats for why)
+    this team name topped the Constructors' standings outright."""
+    seasons_with_sim = list_seasons_with_sim_results()
+    latest_season = max(seasons_with_sim, key=int) if seasons_with_sim else None
+
+    races_entered = wins = podiums = poles = fastest_laps = incidents = championships = 0
+    career_points = 0.0
+    best_finish = None
+    best_grid = None
+
+    for season_name in seasons_with_sim:
+        season_id = get_season_id(season_name)
+        if not season_id:
+            continue
+
+        pair = next((p for p in get_pairs(season_id) if p["name"] == team_name), None)
+        if not pair:
+            continue
+
+        for i, row in enumerate(get_constructor_standings(season_id)):
+            if row["id"] == pair["id"]:
+                career_points += row["points"]
+                if i == 0 and season_name != latest_season:
+                    championships += 1
+                break
+
+        for member in pair["members"]:
+            counts = _participant_season_sim_counts(member["id"], season_id)
+            races_entered += counts["races_entered"]
+            wins += counts["wins"]
+            podiums += counts["podiums"]
+            poles += counts["poles"]
+            fastest_laps += counts["fastest_laps"]
+            incidents += counts["incidents"]
+            if counts["best_finish"] is not None and (best_finish is None or counts["best_finish"] < best_finish):
+                best_finish = counts["best_finish"]
+            if counts["best_grid"] is not None and (best_grid is None or counts["best_grid"] < best_grid):
+                best_grid = counts["best_grid"]
+
+    return {
+        "races_entered": races_entered,
+        "career_points": round(career_points, 1),
+        "best_finish": best_finish,
+        "podiums": podiums,
+        "best_grid": best_grid,
+        "poles": poles,
+        "wins": wins,
+        "championships": championships,
+        "incidents": incidents,
+    }
+
+
 def _get_sim_results_by_round(
     client, season_id: str
 ) -> tuple[dict[str, dict[int, float]], dict[str, dict[int, int]], list[int]]:

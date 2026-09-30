@@ -11,7 +11,11 @@
   {% if teams %}
     <div class="team-card-grid">
       {% for team in teams %}
-        <div class="team-card" style="--team-color: {{ team.color or 'var(--color-surface-raised)' }}; --team-color-2: {{ team.secondary_color or team.color or 'var(--color-surface-raised)' }};">
+        <a
+          class="team-card"
+          href="/formula-fantasy/teams/{{ team.id }}"
+          style="--team-color: {{ team.color or 'var(--color-surface-raised)' }}; --team-color-2: {{ team.secondary_color or team.color or 'var(--color-surface-raised)' }};"
+        >
           <div class="team-card__header">
             <span class="team-card__name">{{ team.name or "Unnamed Team" }}</span>
             {% if team.logo_url %}<img src="{{ team.logo_url }}" alt="" class="team-card__logo">{% endif %}
@@ -27,7 +31,7 @@
             {% endfor %}
           </div>
           {% if team.car_image_url %}<img src="{{ team.car_image_url }}" alt="" class="team-card__car">{% endif %}
-        </div>
+        </a>
       {% endfor %}
     </div>
   {% else %}
