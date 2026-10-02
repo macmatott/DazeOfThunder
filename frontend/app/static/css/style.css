@@ -1668,6 +1668,30 @@ a.race-row:not(.race-row--has-bg):hover {
   font-weight: 600;
 }
 
+/* Marks a round whose league sim race was called off outright (see
+   CANCELED_SIM_ROUNDS) — distinct from .track-paid-badge's gold
+   info-only pill since this is a warning, not a heads-up. */
+.race-canceled-badge {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border-radius: 3px;
+  border: 1px solid var(--color-negative);
+  color: var(--color-negative);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.race-detail-strip--canceled {
+  color: var(--color-negative);
+}
+
+.race-row--canceled {
+  opacity: 0.75;
+}
+
 .tower__empty {
   padding: var(--space-5);
   text-align: center;

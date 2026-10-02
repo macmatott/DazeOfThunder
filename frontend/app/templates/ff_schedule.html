@@ -11,7 +11,12 @@
       <span class="race-track__image{% if effective_bg %} race-track__image--logo-only{% endif %}" style="background-image: url('{{ race.track_image_url }}')"></span>
     {% endif %}
     <span class="race-track__info">
-      <span class="tower__name">{{ race.race_name }}</span>
+      <span class="tower__name">
+        {{ race.race_name }}
+        {% if race.sim_race_canceled_reason %}
+          <span class="race-canceled-badge" title="{{ race.sim_race_canceled_reason }}">Sim Race Canceled</span>
+        {% endif %}
+      </span>
       {% if race.iracing_track %}
         <span class="tower__meta">
           {{ race.iracing_track }}
@@ -24,7 +29,11 @@
   </span>
   <span class="tower__points">{{ race.sim_date }}</span>
   <span class="race-detail-cell">
-    <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }} &nbsp;·&nbsp; {% if race.sim_laps %}🏁 {{ race.sim_laps }} laps &nbsp;·&nbsp; {% endif %}📅 {{ race.race_date_iso }}</span>
+    {% if race.sim_race_canceled_reason %}
+      <span class="race-detail-strip race-detail-strip--canceled">🚫 {{ race.sim_race_canceled_reason }} &nbsp;·&nbsp; 📅 {{ race.race_date_iso }}</span>
+    {% else %}
+      <span class="race-detail-strip">🌡 {{ race.sim_temperature_f }}°F &nbsp;·&nbsp; ☔ {{ race.sim_conditions }} &nbsp;·&nbsp; {% if race.sim_laps %}🏁 {{ race.sim_laps }} laps &nbsp;·&nbsp; {% endif %}📅 {{ race.race_date_iso }}</span>
+    {% endif %}
     {% if race.sim_session_detail and race.sim_session_detail.results %}
       {{ _race_podium(race.sim_session_detail.results) }}
     {% endif %}
@@ -49,7 +58,7 @@
      one yet), so this always has the existing blurred photo to fall
      back to. See f1_schedule.py's track_background_sharp_url. #}
   {% set effective_bg = (race.track_background_sharp_url if not race.is_past else none) or race.track_background_url %}
-  {% set row_classes = "race-row schedule-row" ~ (" race-row--past" if race.is_past else "") ~ (" race-row--next" if race.is_next else "") ~ (" race-row--has-bg" if effective_bg else "") %}
+  {% set row_classes = "race-row schedule-row" ~ (" race-row--past" if race.is_past else "") ~ (" race-row--next" if race.is_next else "") ~ (" race-row--has-bg" if effective_bg else "") ~ (" race-row--canceled" if race.sim_race_canceled_reason else "") %}
   {# The full per-driver breakdown now lives on the dedicated Results
      page (League if we have our own sim results for this round, else
      F1 if a real F1 import exists) — this row just links there instead

@@ -64,6 +64,17 @@ SIM_CONDITIONS_BY_ROUND: dict[int, str] = {
     13: "No rain",
 }
 
+# Rounds whose league sim race was called off outright (not just unrun
+# yet) — the real F1 race weekend still happened/happens as scheduled,
+# only our own iRacing session didn't. Set by league admin; a round
+# never gets removed from the schedule, just flagged so the page can
+# say why there's no sim race here instead of leaving it looking
+# merely overdue. Keyed by round_number -> the reason shown on the
+# schedule page.
+CANCELED_SIM_ROUNDS: dict[int, str] = {
+    16: "Canceled — low participation",
+}
+
 # Real F1 race distance (laps) per round — fixed by circuit, known in
 # advance regardless of whether the round has been run yet. The sim race
 # runs 50% distance, rounded down for odd lap counts.
@@ -622,6 +633,7 @@ def _merge_schedule_with_results(
         formatted = _format_race(race, race_dt)
         formatted["is_past"] = is_past
         formatted["is_next"] = is_next
+        formatted["sim_race_canceled_reason"] = CANCELED_SIM_ROUNDS.get(formatted["round_number"])
 
         # Deliberately its own flag, not is_next above: is_next tracks
         # the real F1 race weekend (Sunday), which is_past is based on —
@@ -629,7 +641,13 @@ def _merge_schedule_with_results(
         # Sunday F1 race, is_next still points at that same round even
         # though its sim race has already happened. The schedule page's
         # countdown needs the sim race's own actual next-up round instead.
-        is_next_sim_race = (formatted["sim_datetime"] >= now) and (not next_sim_assigned)
+        # A canceled round is skipped here too, so the countdown moves
+        # straight on to the next round that's actually happening.
+        is_next_sim_race = (
+            (formatted["sim_datetime"] >= now)
+            and (not next_sim_assigned)
+            and not formatted["sim_race_canceled_reason"]
+        )
         next_sim_assigned = next_sim_assigned or is_next_sim_race
         formatted["is_next_sim_race"] = is_next_sim_race
 
