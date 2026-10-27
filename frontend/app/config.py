@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # auto-stops when idle and can't run its own background poll loop.
     discord_webhook_youtube_live: str = ""
 
-    # Posted once a week ahead of the upcoming Thursday sim race (see
+    # Posted once a week ahead of the upcoming Sunday sim race (see
     # app/services/discord_webhooks.py::check_and_post_race_week_reminder),
     # via a GitHub Actions cron hitting /internal/check-race-week-reminder.
     discord_webhook_race_reminder: str = ""

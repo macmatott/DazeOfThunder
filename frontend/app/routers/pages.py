@@ -107,7 +107,8 @@ async def dashboard(request: Request):
         next_f1_race_results_uploaded = next_race["round_number"] in f1_details_by_round
 
     # The real F1 race — separate from the sim race above (same round,
-    # different day: the sim race runs the Thursday before). Jolpica
+    # same day, just earlier in the day: the sim race runs that same
+    # Sunday evening, after the real race). Jolpica
     # gives every round a real start time, past and future, so this is
     # actual data, not an assumed one like the team event's 6 PM.
     # Converted to the league's own Eastern timezone (same as the sim

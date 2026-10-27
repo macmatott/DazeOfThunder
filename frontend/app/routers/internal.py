@@ -50,7 +50,7 @@ def check_new_f1_results():
 def check_race_week_reminder():
     """Hit on a schedule by a GitHub Actions cron (see
     .github/workflows/race-week-reminder.yml) — posts a "Race Week"
-    reminder for the upcoming Thursday sim race, once per round (see
+    reminder for the upcoming Sunday sim race, once per round (see
     check_and_post_race_week_reminder for the idempotency guard)."""
     return {"round_posted": check_and_post_race_week_reminder(int(CURRENT_SEASON))}
 

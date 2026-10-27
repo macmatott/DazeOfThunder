@@ -3,8 +3,8 @@ name: Race-day admin check reminder
 # Posts a pre-session setup checklist to the admin channel on race day,
 # aiming to land shortly before the 8:30 PM ET practice session.
 #
-# This used to be a single exact-time cron (00:00/01:00 UTC Friday, for
-# 8:00 PM ET Thursday) — but every run so far has fired 3-3.5+ hours
+# This used to be a single exact-time cron (00:00/01:00 UTC Monday, for
+# 8:00 PM ET Sunday) — but every run so far has fired 3-3.5+ hours
 # late (see git history), a known GitHub Actions issue where an exact
 # hour-boundary cron is the most congested slot on their shared queue
 # and can be delayed for hours. By the time those delayed runs actually
@@ -22,14 +22,14 @@ name: Race-day admin check reminder
 # almost certainly gets through.
 #
 # Two DST halves, since GitHub Actions cron is UTC-only:
-#   EDT (Mar-Nov): ~7:03-8:13 PM EDT -> 23:03-23:53 UTC Thu + 00:03-00:13 UTC Fri
-#   EST (Dec-Feb): ~7:03-8:13 PM EST -> 00:03-00:53 UTC Fri + 01:03-01:13 UTC Fri
+#   EDT (Mar-Nov): ~7:03-8:13 PM EDT -> 23:03-23:53 UTC Sun + 00:03-00:13 UTC Mon
+#   EST (Dec-Feb): ~7:03-8:13 PM EST -> 00:03-00:53 UTC Mon + 01:03-01:13 UTC Mon
 on:
   schedule:
-    - cron: "3,13,23,33,43,53 23 * 3-11 4"
-    - cron: "3,13 0 * 3-11 5"
-    - cron: "3,13,23,33,43,53 0 * 12,1,2 5"
-    - cron: "3,13 1 * 12,1,2 5"
+    - cron: "3,13,23,33,43,53 23 * 3-11 0"
+    - cron: "3,13 0 * 3-11 1"
+    - cron: "3,13,23,33,43,53 0 * 12,1,2 1"
+    - cron: "3,13 1 * 12,1,2 1"
   workflow_dispatch: {}
 
 jobs:

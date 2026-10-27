@@ -405,7 +405,7 @@ create table public.race_reminder_notifications (
 
 -- One row per round we've already posted the race-day admin
 -- session-setup checklist for — same idempotency purpose as
--- race_reminder_notifications, guarding the Thursday-8 PM-ET cron
+-- race_reminder_notifications, guarding the Sunday-8 PM-ET cron
 -- against a duplicate post on a re-run / manual dispatch. See
 -- discord_webhooks.py::check_and_post_race_check_reminder.
 create table public.race_check_reminder_notifications (

@@ -1,7 +1,7 @@
 name: Race week reminder
 
-# Posts a "Race Week" reminder to Discord ahead of the upcoming Thursday
-# sim race, targeting Monday at noon ET (~3 days before the race). GitHub
+# Posts a "Race Week" reminder to Discord ahead of the upcoming Sunday
+# sim race, targeting Monday at noon ET (~6 days before the race). GitHub
 # Actions cron only runs in UTC and has no timezone/DST support, so noon
 # ET is approximated with two schedules — 16:00 UTC (noon EDT) for the
 # March-November stretch, 17:00 UTC (noon EST) for December-February.

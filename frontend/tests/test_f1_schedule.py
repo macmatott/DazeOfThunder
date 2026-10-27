@@ -15,7 +15,7 @@ from app.services.f1_schedule import (
     SIM_TEMPERATURE_F,
     _merge_schedule_with_results,
     _parse_lap_time_seconds,
-    _thursday_before,
+    _sim_race_date,
     get_upcoming_races,
 )
 
@@ -96,33 +96,30 @@ def test_merge_marks_past_next_and_future():
 
 
 def test_is_next_sim_race_decoupled_from_is_next():
-    # Round 1's real race is Sunday 2026-03-08; its sim race is the
-    # Thursday before, 2026-03-05 (already past by test time). Round 2's
-    # real race isn't until 2026-03-22, but is_next (real-race-based)
-    # still points at round 1 the whole time up through its Sunday —
-    # the schedule page's countdown needs the *sim* race's own next-up
-    # round instead, which by now should already be round 2.
-    now = datetime(2026, 3, 7, 12, 0, tzinfo=timezone.utc)  # Saturday, between rounds 1's sim and real races
+    # Round 1's real race is early Sunday 2026-03-08 (04:00 UTC); its
+    # own sim race is that same Sunday evening, 9:15 PM ET -> 2026-03-09
+    # 01:15 UTC (EDT, since US DST starts that same morning). At noon
+    # UTC on race day, the real race has already happened (is_next has
+    # already flipped to round 2) but round 1's own sim race isn't
+    # until tonight — the schedule page's countdown needs that *sim*
+    # race's own next-up round instead, which should still be round 1.
+    now = datetime(2026, 3, 8, 12, 0, tzinfo=timezone.utc)  # Sunday noon UTC, after the real race, before tonight's sim race
 
     races = _merge_schedule_with_results(SCHEDULE, now)
     by_round = {r["round_number"]: r for r in races}
 
-    assert by_round[1]["is_next"] is True
-    assert by_round[1]["is_next_sim_race"] is False  # round 1's Thursday sim race already happened
+    assert by_round[1]["is_next"] is False  # round 1's real race already happened this morning
+    assert by_round[1]["is_next_sim_race"] is True  # round 1's own sim race isn't until tonight
 
-    assert by_round[2]["is_next"] is False
-    assert by_round[2]["is_next_sim_race"] is True  # round 2's sim race is the next one up
+    assert by_round[2]["is_next"] is True
+    assert by_round[2]["is_next_sim_race"] is False
 
 
-def test_thursday_before_sunday_race():
-    # 2026-03-08 is a Sunday; the Thursday before it is 2026-03-05.
+def test_sim_race_date_matches_f1_race_day():
+    # The league sim race runs the same calendar day as the real F1
+    # race — just later that evening (see SIM_RACE_HOUR/MINUTE).
     race_dt = datetime(2026, 3, 8, 4, 0, tzinfo=timezone.utc)
-    assert _thursday_before(race_dt) == date(2026, 3, 5)
-
-
-def test_thursday_before_race_already_on_thursday():
-    race_dt = datetime(2026, 3, 5, 12, 0, tzinfo=timezone.utc)
-    assert _thursday_before(race_dt) == date(2026, 3, 5)
+    assert _sim_race_date(race_dt) == date(2026, 3, 8)
 
 
 def test_merge_attaches_sim_placeholder_fields_to_every_race():
@@ -130,9 +127,9 @@ def test_merge_attaches_sim_placeholder_fields_to_every_race():
     races = _merge_schedule_with_results(SCHEDULE, now)
 
     by_round = {r["round_number"]: r for r in races}
-    assert by_round[1]["sim_date"] == "Mar 5, 2026"
-    assert by_round[2]["sim_date"] == "Mar 19, 2026"
-    assert by_round[3]["sim_date"] == "Apr 2, 2026"
+    assert by_round[1]["sim_date"] == "Mar 8, 2026"
+    assert by_round[2]["sim_date"] == "Mar 22, 2026"
+    assert by_round[3]["sim_date"] == "Apr 5, 2026"
     assert by_round[1]["sim_temperature_f"] == SIM_TEMPERATURE_BY_ROUND[1]
     assert by_round[2]["sim_temperature_f"] == SIM_TEMPERATURE_BY_ROUND[2]
     for race in races:

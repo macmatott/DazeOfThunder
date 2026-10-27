@@ -491,7 +491,7 @@ def format_race_week_message(race: dict) -> str:
         parts.append(f"<@&{settings.discord_role_id_league}>")
 
     parts.append("")
-    parts.append(f"This week's race is **{race['sim_date']}** (Thursday).")
+    parts.append(f"This week's race is **{race['sim_date']}** (Sunday).")
     parts.append("")
     parts.append("🟢 Practice: 8:30 PM ET")
     parts.append("🟡 Qualifying: 9:10 PM ET (10 min)")
@@ -513,7 +513,7 @@ def format_race_week_message(race: dict) -> str:
 
 
 def check_and_post_race_week_reminder(season_year: int) -> int | None:
-    """Posts a "Race Week" reminder for the upcoming Thursday sim race,
+    """Posts a "Race Week" reminder for the upcoming Sunday sim race,
     once per round — idempotent via race_reminder_notifications (same
     reasoning as youtube_live_notifications: guards a weekly cron
     against a duplicate post if it's ever manually re-triggered, e.g.
@@ -522,19 +522,20 @@ def check_and_post_race_week_reminder(season_year: int) -> int | None:
     up soon, or this round's already been posted for).
 
     Selects by is_next_sim_race, not is_next — is_next tracks the next
-    real F1 Sunday weekend, which is a different thing from the next
-    sim Thursday race whenever there's a gap between one round's sim
-    race and the following F1 race weekend (e.g. round 14's Sep-10 sim
-    race but Sep-13 F1 race, with round 15's sim race not until Sep 24).
-    is_next flips to the following round the moment that F1 weekend
-    passes, so the Monday-noon cron would grab round 15 ten days early
-    instead of the ~3 days this reminder is meant to give — a real
-    incident (round 15 got announced 10 days out on 2026-09-14, deleted
-    and manually re-sent for the correct week). The (sim_datetime -
-    today).days <= 6 guard below is the actual fix: it keeps the cron's
-    weekly Monday firing harmless on a week with no sim race due soon,
-    the same way check_and_post_race_check_reminder's same-day guard
-    keeps its cron harmless on a week with no race at all."""
+    real F1 race, which is a different thing from the next sim race
+    whenever there's a gap between one round's F1 race finishing and
+    its own evening sim race, or a multi-week gap between one round and
+    the next (a summer break, a canceled round). is_next flips to the
+    following round the moment the real race passes, which can grab a
+    round that's still well over a week out instead of the ~6 days this
+    reminder is meant to give — a real incident under the old Thursday-
+    sim-race scheduling (round 15 got announced 10 days out on
+    2026-09-14, deleted and manually re-sent for the correct week).
+    The (sim_datetime - today).days <= 6 guard below is the actual fix:
+    it keeps the cron's weekly Monday firing harmless on a week with no
+    sim race due soon, the same way check_and_post_race_check_reminder's
+    same-day guard keeps its cron harmless on a week with no race at
+    all."""
     from app.services.draft import LEAGUE_TIMEZONE, get_season_id
     from app.services.f1_schedule import get_season_timeline
 
@@ -618,8 +619,8 @@ def check_and_post_race_check_reminder(season_year: int) -> int | None:
     workflow_dispatch is a no-op once a round's been posted). Returns
     the round number posted about, or None if there's nothing to post
     (no season, no sim race today, or already posted for this round).
-    Meant to be hit by a Thursday-8 PM-ET cron — a Thursday with no race
-    on the calendar just finds no round for today and no-ops."""
+    Meant to be hit by a Sunday-8 PM-ET cron — a Sunday with no race on
+    the calendar just finds no round for today and no-ops."""
     from app.services.draft import LEAGUE_TIMEZONE, get_season_id
     from app.services.f1_schedule import get_season_timeline
 

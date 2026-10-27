@@ -10,7 +10,7 @@ public-facing data.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from app.db.supabase_client import admin_client, public_client
@@ -182,13 +182,14 @@ def _race_datetime(race: dict) -> datetime:
     return datetime.fromisoformat(f"{date_str}T{time}".replace("Z", "+00:00"))
 
 
-def _thursday_before(race_dt: datetime) -> date:
-    """Most recent Thursday on/before race_dt's date (weekday 3 = Thursday)."""
-    days_since_thursday = (race_dt.weekday() - 3) % 7
-    return race_dt.date() - timedelta(days=days_since_thursday)
+def _sim_race_date(race_dt: datetime) -> date:
+    """League sim race runs the same calendar day as the real F1 race —
+    just later that evening (see SIM_RACE_HOUR/MINUTE below), after the
+    real race itself has run."""
+    return race_dt.date()
 
 
-# Matches the schedule page's own "📅 Thursdays • 9:15PM EST" meta card —
+# Matches the schedule page's own "📅 Sundays • 9:15PM EST" meta card —
 # not read from there (that's a hardcoded template string, like the rest
 # of that card's admin-known session times), just kept in sync with it
 # by hand since nothing on the site treats race start time as real data
@@ -318,7 +319,7 @@ def _format_race(race: dict, race_dt: datetime) -> dict:
     circuit = race["Circuit"]
     location = circuit["Location"]
     round_number = int(race["round"])
-    sim_date = _thursday_before(race_dt)
+    sim_date = _sim_race_date(race_dt)
     iracing_track = IRACING_TRACK_BY_ROUND.get(round_number)
     return {
         "round_number": round_number,
@@ -636,11 +637,13 @@ def _merge_schedule_with_results(
         formatted["sim_race_canceled_reason"] = CANCELED_SIM_ROUNDS.get(formatted["round_number"])
 
         # Deliberately its own flag, not is_next above: is_next tracks
-        # the real F1 race weekend (Sunday), which is_past is based on —
-        # for the ~3 days between a round's Thursday sim race and its
-        # Sunday F1 race, is_next still points at that same round even
-        # though its sim race has already happened. The schedule page's
-        # countdown needs the sim race's own actual next-up round instead.
+        # the real F1 race itself, which is_past is based on — the sim
+        # race runs the same Sunday but later that evening (see
+        # SIM_RACE_HOUR/MINUTE), so for the gap between the real race
+        # finishing and that evening's sim race, is_next has already
+        # flipped to the following round even though this round's own
+        # sim race hasn't happened yet. The schedule page's countdown
+        # needs the sim race's own actual next-up round instead.
         # A canceled round is skipped here too, so the countdown moves
         # straight on to the next round that's actually happening.
         is_next_sim_race = (
