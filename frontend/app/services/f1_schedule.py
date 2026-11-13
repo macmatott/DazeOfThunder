@@ -75,6 +75,15 @@ CANCELED_SIM_ROUNDS: dict[int, str] = {
     16: "Canceled — low participation",
 }
 
+# Rounds whose league sim race runs on a different calendar day than the
+# real F1 race it's otherwise keyed to (see _sim_race_date) — set by
+# league admin when the session gets rescheduled independent of the real
+# race weekend. Takes precedence over the same-day-as-the-real-race
+# default.
+SIM_RACE_DATE_OVERRIDE_BY_ROUND: dict[int, date] = {
+    20: date(2026, 11, 15),  # Pushed back a week — scheduling conflict
+}
+
 # Real F1 race distance (laps) per round — fixed by circuit, known in
 # advance regardless of whether the round has been run yet. The sim race
 # runs 50% distance, rounded down for odd lap counts.
@@ -319,7 +328,7 @@ def _format_race(race: dict, race_dt: datetime) -> dict:
     circuit = race["Circuit"]
     location = circuit["Location"]
     round_number = int(race["round"])
-    sim_date = _sim_race_date(race_dt)
+    sim_date = SIM_RACE_DATE_OVERRIDE_BY_ROUND.get(round_number) or _sim_race_date(race_dt)
     iracing_track = IRACING_TRACK_BY_ROUND.get(round_number)
     return {
         "round_number": round_number,
@@ -341,17 +350,23 @@ def _format_race(race: dict, race_dt: datetime) -> dict:
 
 
 def get_upcoming_races(season: int, *, now: datetime | None = None) -> list[dict]:
+    """Filters/sorts by each round's own sim race time, not the real F1
+    race time — normally the same ordering since the sim race runs
+    later that same Sunday, but a round whose sim race was pushed to a
+    later date (SIM_RACE_DATE_OVERRIDE_BY_ROUND) needs to stay "upcoming"
+    even once its real F1 race has already happened."""
     now = now or datetime.now(timezone.utc)
     races = JolpicaClient().get_full_schedule(season)
 
     upcoming = []
     for race in races:
         race_dt = _race_datetime(race)
-        if race_dt < now:
+        formatted = _format_race(race, race_dt)
+        if formatted["sim_datetime"] < now:
             continue
-        upcoming.append(_format_race(race, race_dt))
+        upcoming.append(formatted)
 
-    upcoming.sort(key=lambda r: r["race_datetime"])
+    upcoming.sort(key=lambda r: r["sim_datetime"])
     return upcoming
 
 
