@@ -62,6 +62,8 @@ SIM_CONDITIONS_BY_ROUND: dict[int, str] = {
     11: "No rain",
     12: "No rain",
     13: "No rain",
+    21: "50% rain",
+    22: "30% rain",
 }
 
 # Rounds whose league sim race was called off outright (not just unrun
