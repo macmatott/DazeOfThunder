@@ -669,6 +669,17 @@ def _merge_schedule_with_results(
         next_sim_assigned = next_sim_assigned or is_next_sim_race
         formatted["is_next_sim_race"] = is_next_sim_race
 
+        # Also its own flag: the schedule page's "Past Races"/complete
+        # styling is about the league's own sim race, not the real F1
+        # one is_past tracks — normally identical (same Sunday, sim just
+        # later that evening) but a round whose sim race was pushed to a
+        # later date (SIM_RACE_DATE_OVERRIDE_BY_ROUND) needs to keep
+        # reading as "next"/not-complete on the schedule page even once
+        # its real F1 race has already happened. is_past itself stays
+        # real-race-based since the admin F1-results-import picker
+        # depends on whether real results actually exist to import.
+        formatted["is_sim_past"] = formatted["sim_datetime"] < now
+
         track_name, _ = _split_track_name(formatted["iracing_track"])
         formatted["iracing_track_is_paid"] = track_name in paid_track_names
 
