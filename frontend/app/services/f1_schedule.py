@@ -127,7 +127,7 @@ SIM_LAPS_OVERRIDE_BY_ROUND: dict[int, int] = {
     15: 48,  # Summit Point Raceway
     16: 38,  # Motorsport Arena Oschersleben — Grand Prix
     17: 39,  # Virginia International Raceway — Full Course
-    21: 35,  # Oulton Park Circuit — International
+    21: 27,  # Daytona International Speedway — Road Course
     22: 28,  # Snetterton Circuit — 300
     23: 48,  # Lime Rock Park — Chicanes
 }
