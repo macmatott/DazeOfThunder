@@ -62,7 +62,7 @@ SIM_CONDITIONS_BY_ROUND: dict[int, str] = {
     11: "No rain",
     12: "No rain",
     13: "No rain",
-    21: "50% rain",
+    21: "6% rain",
     22: "30% rain",
 }
 
@@ -164,7 +164,7 @@ IRACING_TRACK_BY_ROUND: dict[int, str] = {
     18: "Circuit of the Americas — Grand Prix",
     19: "Autódromo Hermanos Rodríguez — Grand Prix",
     20: "Autódromo José Carlos Pace — Grand Prix",
-    21: "Oulton Park Circuit — International",
+    21: "Daytona International Speedway — Road Course",
     22: "Snetterton Circuit — 300",
     23: "Lime Rock Park — Chicanes",
 }
